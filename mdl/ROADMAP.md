@@ -8,7 +8,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 |---|---|---|---|
 | Transversal | Habilitar el flujo Spec-Driven Development | [SPEC-000](specs/000-development-workflow.md) + [plantilla](specs/TEMPLATE.md) | Validada |
 | 1 | Fork y base reproducible | [SPEC-001](specs/001-base.md) | Validada |
-| 2 | Nombre y colores | [SPEC-002](specs/002-branding.md) | Pendiente de aprobación visual |
+| 2 | Nombre, colores e icono | [SPEC-002](specs/002-branding.md) | Validada |
 | 3 | Ejecución local integrada | Se crea antes de iniciar la fase | Pendiente |
 | 4 | Imagen y ejecución Docker | Se crea antes de iniciar la fase | Pendiente |
 | 5 | Configuración, persistencia y seguridad | Se crea antes de iniciar la fase | Pendiente |

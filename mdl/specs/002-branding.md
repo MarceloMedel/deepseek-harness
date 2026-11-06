@@ -1,9 +1,10 @@
 # SPEC-002 — Nombre, colores e icono de MDL-HARNESS
 
-Estado: En implementación
+Estado: Validada
 Fase: 2
 Commit base: `2ec6d44ca4ee906483745a7ca8d3335ab9d5e013`
 Aprobación de la especificación: usuario, antes de crear la rama `change/002-branding`
+Aprobación visual: usuario, `listo, validado. avancemos`
 
 ## Objetivo
 
@@ -161,6 +162,6 @@ La revisión automática y del agente no encontró máscaras residuales, texto i
 
 ## Resultado y pendientes
 
-- Resultado: desarrollo y validaciones técnicas completados; pendiente de aprobación visual.
-- Pendientes: aprobación visual del usuario sobre las capturas y la instancia aislada.
-- Decisión de salida: pendiente de aprobación visual; después se marcará como **Validada**.
+- Resultado: **Validada**.
+- Pendientes: ninguno.
+- Decisión de salida: aprobada visualmente por el usuario; la Fase 3 puede iniciar.
