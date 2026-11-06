@@ -147,3 +147,7 @@ Docs accompany every code change: update affected README and JSDoc contracts tog
 ## Vendoring policy
 
 `vendor/` packages are pinned source copies (manifest with upstream SHAs in [vendor/README.md](vendor/README.md)). Update via the sync procedure there; re-apply or retire the logged local modifications; rerun `pnpm run test && pnpm run build`.
+
+## MDL-HARNESS personal development
+
+For personal product changes, follow the [product and development contract](mdl/PRODUCT_SPEC.md), use the active [specification](mdl/specs/), and update the [roadmap](mdl/ROADMAP.md) after validation. Mechanical changes without behavior changes need no specification.
