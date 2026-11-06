@@ -263,6 +263,14 @@ describe('Hero chrome', () => {
     expect(view.getByText('Into the Unknown')).toBeTruthy()
     expect(view.getByText('Preview')).toBeTruthy()
   })
+
+  it('leads with the application icon instead of the legacy fish mark', () => {
+    const view = render(<HeroShell t={makeTranslate(en, commonEn)} />)
+    const mark = view.container.querySelector('img')
+    expect(mark?.getAttribute('src')).toBe('/icon-192.png?v=cat-1')
+    expect(mark?.getAttribute('aria-hidden')).toBe('true')
+    expect(view.container.querySelector('svg[viewBox="0 0 23.16 17.04"]')).toBeNull()
+  })
 })
 
 describe('ConversationRoot resident composer', () => {

@@ -12,9 +12,11 @@ Este documento contiene las reglas permanentes y el flujo de desarrollo. El orde
 |---|---|
 | `MDL-IDENT-01` | El nombre visible del producto es `MDL-HARNESS`. |
 | `MDL-IDENT-02` | Los paquetes `@deepseek-ai/*`, el comando `dsh`, las variables `DSH_*`, las API y las claves internas conservan compatibilidad con upstream. |
+| `MDL-IDENT-03` | El icono de instalación, el hero y el rail usan el arte de `mdl/assets/min.jpg`; `FishLogo` puede permanecer como primitiva exportada pero no se renderiza en la interfaz. |
 | `MDL-THEME-01` | El rojo `#D40000` es el color principal de marca; cualquier variante de contraste debe quedar documentada. |
 | `MDL-THEME-02` | Los temas claro, oscuro y sistema deben permanecer utilizables y legibles. |
 | `MDL-ENV-01` | El desarrollo del fork no debe modificar la instalación global original ni sustituir su GUI en `127.0.0.1:3080`. |
+| `MDL-LOCALE-01` | Sin preferencia explícita, un navegador no soportado inicia la interfaz en inglés; chino sigue disponible como idioma del navegador o selección manual. |
 | `MDL-SEC-01` | Ninguna credencial puede incorporarse a Git, imágenes Docker, capturas o registros de validación. |
 | `MDL-SEC-02` | La exposición pública y la relajación de controles de red o sandbox requieren una especificación específica y una validación de seguridad. |
 | `MDL-DOCKER-01` | El contenedor ejecuta DSH con un usuario no root y sin privilegios innecesarios. |

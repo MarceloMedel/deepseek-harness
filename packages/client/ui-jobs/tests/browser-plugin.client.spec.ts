@@ -58,6 +58,7 @@ describe('ui-job browser half', () => {
 
   it('registers both dictionaries under its own namespace and releases them with the fiber', async () => {
     const { ctx, fiber } = await bench()
+    ctx.locale.setLocale('zh')
     const translate = ctx.locale.bind(NS)
     expect(translate('list.aria')).toBe(zh['list.aria'])
     ctx.locale.setLocale('en')

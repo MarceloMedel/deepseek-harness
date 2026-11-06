@@ -54,6 +54,18 @@ describe('ic_ds_ icon set', () => {
   })
 })
 
+describe('BrandWordmark', () => {
+  it('renders MDL-HARNESS as scalable decorative text', () => {
+    const { container } = render(<primitives.BrandWordmark size={32} className="brand" />)
+    const root = container.querySelector('span')!
+    expect(root.textContent).toBe('MDL-HARNESS')
+    expect(root.getAttribute('aria-hidden')).toBe('true')
+    expect(root.classList.contains('brand')).toBe(true)
+    expect(root.style.getPropertyValue('--mdl-brand-height')).toBe('32px')
+    expect(container.querySelector('svg')).toBeNull()
+  })
+})
+
 describe('FishLogo', () => {
   it('renders the fish path in currentColor at the native ratio', () => {
     const { container } = render(<primitives.FishLogo />)
