@@ -1,6 +1,6 @@
 # SPEC-006 — Candidato reproducible en el VPS
 
-Estado: Aprobada
+Estado: Validada
 Fase: 6
 Commit base: `394a8f6b93`
 Aprobación: usuario en el VPS, `si, continua con el push y ajusta el spec 006 antes de desarrollar`
@@ -67,11 +67,34 @@ La red, el túnel y Cloudflare Access no se vuelven a validar: pertenecen a `SPE
 8. Confirmar que la instancia viva sigue `healthy`, en `3081`, en la red `edge`, y que `dsh.devmedel.com` sin sesión sigue redirigiendo a Access.
 9. Registrar el resultado, apagar el candidato con `down -v` sobre `mdl-candidate` y decidir si se crea un tag local.
 
+## Validación ejecutada
+
+Fecha: `2026-11-06T20:24:17Z`
+Entorno: VPS Linux amd64; Docker `29.9.3`, Compose `5.7.0`; clon en `/srv/repro/deepseek-harness` en `394a8f6b93`.
+
+| Comprobación | Resultado | Evidencia |
+|---|---|---|
+| Clon limpio | Aprobado | `394a8f6b93`, árbol con 0 cambios antes y después del build |
+| Build desde el clon | Aprobado | Código 0, **0 capas desde caché**; imagen `mdl-harness:candidate` `sha256:eee0c98f…` |
+| Arquitectura | Aprobada | `amd64`, `linux`, 4,17 GB |
+| Restauración | Aprobada | `mdl-harness-20261106T193817Z.tar.gz`; `settings.yaml` con hash `05e6a624…`, igual al de la instancia viva |
+| Arranque | Aprobado | `mdl-candidate-mdl-harness-1` en `healthy`, `127.0.0.1:3082` |
+| Sesiones | Aprobadas | 4 sesiones restauradas |
+| Workspace | Aprobado | `sandbox.txt` con `ok` |
+| Sandbox | Aprobado | `landlock: fully enforced` en la imagen del clon |
+| Agente | Aprobado | Ronda real que leyó `sandbox.txt` y reportó `/workspace` |
+| Aislamiento | Aprobado | Candidato solo en `mdl-candidate_default`; `edge` sigue con la instancia viva; sin colisión de puerto |
+| Instancia viva | Intacta | Sigue `healthy` en `3081`, con 4 sesiones y el workspace sin cambios |
+| Acceso público | Intacto | `dsh.devmedel.com` sin sesión sigue en `302` al login de Access |
+| Desmontaje | Aprobado | `down -v` del proyecto `mdl-candidate` eliminó sus dos volúmenes y su red |
+
+Los IDs de imagen difieren entre la instancia viva (`ee2caa6a…`) y el candidato (`eee0c98f…`). La diferencia proviene de contenido no determinista de las capas de instalación; la reproducibilidad comprobada es funcional y de arquitectura, no bit a bit.
+
 ## Resultado
 
-Pendiente de ejecución.
+**Validada.** Un clon limpio de `main` reconstruye la imagen, restaura el backup y ejecuta el agente con el mismo comportamiento, sin afectar la instancia viva.
 
 ## Pendientes
 
-- Ejecutar el ensayo.
-- Definir si se crea un tag de release local.
+- Crear un tag local de release solo si el usuario lo aprueba; no se creó.
+- Eliminar `/srv/repro/deepseek-harness` y la imagen `mdl-harness:candidate` cuando no se necesiten para otro ensayo.

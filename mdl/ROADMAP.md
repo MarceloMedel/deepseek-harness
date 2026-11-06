@@ -12,7 +12,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 3 | Ejecución local integrada | [SPEC-003](specs/003-local-runtime.md) | Validada |
 | 4 | Imagen y ejecución Docker | [SPEC-004](specs/004-docker.md) | Validada |
 | 5 | Configuración, persistencia y seguridad | [SPEC-005](specs/005-config-persistence-security.md) | Validada |
-| 6 | Candidato reproducible en VPS | [SPEC-006](specs/006-reproducible-candidate.md) | En implementación |
+| 6 | Candidato reproducible en VPS | [SPEC-006](specs/006-reproducible-candidate.md) | Validada |
 
 ## Dependencias
 
@@ -26,7 +26,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 
 ## Próxima acción
 
-`SPEC-006` está en ejecución: clon limpio de `main`, build aislado como `mdl-harness:candidate`, restauración del último backup y verificación sin tocar la instancia viva.
+Todas las fases están validadas. El fork se reproduce desde un clon limpio de `main`, restaura el backup y ejecuta el agente sin afectar la instancia viva. Queda por decidir si se crea un tag local de release.
 
 ## Decisiones del despliegue VPS
 
