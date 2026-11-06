@@ -1,8 +1,9 @@
 # SPEC-002 — Nombre y colores de MDL-HARNESS
 
-Estado: Borrador
+Estado: En implementación
 Fase: 2
-Commit base: se registra al aprobar
+Commit base: `2ec6d44ca4ee906483745a7ca8d3335ab9d5e013`
+Aprobación de la especificación: usuario, antes de crear la rama `change/002-branding`
 
 ## Objetivo
 
@@ -93,17 +94,38 @@ Registrar capturas como evidencia de revisión sin incorporar credenciales, sesi
 
 ## Validación ejecutada
 
-No se ha ejecutado. Esta especificación está en Borrador y no autoriza implementación.
+Fecha: `2026-11-06T11:34:24-0300`
+Entorno: macOS 15.7.7, arm64; Chromium Playwright `149.0.7827.55`
 
 | Comprobación | Resultado | Evidencia |
 |---|---|---|
-| Tests y snapshots | Pendiente | Pendiente |
-| Build completo | Pendiente | Pendiente |
-| Revisión visual claro/oscuro/sistema | Pendiente | Pendiente |
-| Revisión del diff, iconos y secretos | Pendiente | Pendiente |
+| Pruebas dirigidas de identidad y paleta | 4 archivos, 86 pruebas aprobadas | Título, manifest, onboarding, iconos y tokens |
+| Suite GUI | 273 archivos, 3.762 pruebas aprobadas, 1 omitida | `corepack pnpm run test:gui`, código 0 |
+| Snapshot de sidebar | 2 snapshots actualizados intencionalmente | Solo cambió el SVG por texto `MDL-HARNESS` |
+| Build completo | Código 0 | Host, Client, bundles y frontend Web |
+| Suite Web final | 253 pruebas aprobadas, 15 omitidas, 0 fallidas | `DSH_SNAPSHOT=replay corepack pnpm run test:web:built`, código 0 |
+| Verificación en navegador | Aprobada | Título exacto, nombre nuevo visible, nombre anterior ausente, 0 errores de página |
+| Tokens computados | Aprobados | Claro `rgb(212, 0, 0)` / `rgb(244, 244, 245)`; oscuro `rgb(255, 99, 99)` / `rgb(17, 17, 19)` |
+| Contrastes AA | Aprobados | 5,53:1; 16,12:1; 6,09:1; 9,69:1 |
+| Documentación | 28 comprobaciones aprobadas | `corepack pnpm run doc-sync`, código 0 |
+| Pares bilingües | 936 pares consistentes | `verify-translation-pairing` |
+| Diff, iconos y secretos | Aprobados | Sin cambios en iconos o favicon y sin valores sensibles detectados |
+
+La primera ejecución Web encontró fallos de entorno —Chromium no instalado y sandbox anidado— y diferencias en dos expectativas de color y un golden de onboarding con el nombre anterior. Tras instalar el navegador, corregir únicamente esas expectativas y regenerar el snapshot intencional de sidebar, las tres áreas afectadas pasaron 22 pruebas y la suite Web completa terminó con código 0.
+
+### Evidencia visual
+
+La instancia aislada quedó disponible durante la revisión en `http://127.0.0.1:3081`. Capturas locales:
+
+- `/tmp/mdl-harness-visual/verified-light.png`
+- `/tmp/mdl-harness-visual/verified-dark.png`
+- `/tmp/mdl-harness-visual/verified-collapsed-dark.png`
+- `/tmp/mdl-harness-visual/onboarding-light.png`
+
+La revisión automática y del agente no encontró máscaras residuales, texto ilegible ni errores de consola. La aprobación visual final corresponde al usuario.
 
 ## Resultado y pendientes
 
-- Resultado: pendiente de aprobación de la especificación.
-- Pendientes: confirmar que el alcance y la paleta propuesta son los que se implementarán.
-- Decisión de salida: requiere pruebas técnicas exitosas y aprobación visual del usuario.
+- Resultado: desarrollo y validaciones técnicas completados; pendiente de aprobación visual.
+- Pendientes: aprobación visual del usuario sobre las capturas y la instancia aislada.
+- Decisión de salida: pendiente de aprobación visual; después se marcará como **Validada**.

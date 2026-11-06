@@ -12,6 +12,10 @@
 
 两条路径在构造上互斥。`scrollbar-width`／`scrollbar-color` 写在 `@supports not selector(::-webkit-scrollbar)` 之内，因为这两个属性中的任一个只要取非 `auto` 值，Chromium 与 Safari 就会丢弃该元素上的全部 `::-webkit-scrollbar*` 规则，`::-webkit-scrollbar-thumb:hover` 也在其中——若无条件地同时声明，`--dsh-scrollbar-thumb-hover` 在任何引擎上都不会被渲染。因此 Firefox 走标准属性，WebKit 系引擎走伪元素，hover token 只经由伪元素这条路径渲染。相关原理与实测计算值见[滚动条 Agent Note](../../../.agents/notes/implemented/bug-fix/2026-07-28-themed-scrollbars-and-reserved-gutter.md)。
 
+## MDL-HARNESS 调色板
+
+静态 `deepseek` 尺度承载 MDL-HARNESS 品牌红色，其中 `deepseek-500` 为 `#D40000`；中性尺度提供不带蓝色调的石墨与中性表面。品牌别名经由该红色尺度解析，深色模式使用更亮的 `deepseek-400` 强调色，使品牌填充上的文字保持对比度。错误、警告与成功仍是彼此独立的语义色系。
+
 ## 模型体验
 
 无。主题服务管理浏览器偏好；这里没有任何内容进入模型请求。

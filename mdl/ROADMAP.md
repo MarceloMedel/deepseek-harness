@@ -8,7 +8,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 |---|---|---|---|
 | Transversal | Habilitar el flujo Spec-Driven Development | [SPEC-000](specs/000-development-workflow.md) + [plantilla](specs/TEMPLATE.md) | Validada |
 | 1 | Fork y base reproducible | [SPEC-001](specs/001-base.md) | Validada |
-| 2 | Nombre y colores | [SPEC-002](specs/002-branding.md) | Borrador; no iniciada |
+| 2 | Nombre y colores | [SPEC-002](specs/002-branding.md) | Pendiente de aprobación visual |
 | 3 | Ejecución local integrada | Se crea antes de iniciar la fase | Pendiente |
 | 4 | Imagen y ejecución Docker | Se crea antes de iniciar la fase | Pendiente |
 | 5 | Configuración, persistencia y seguridad | Se crea antes de iniciar la fase | Pendiente |
@@ -26,7 +26,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 
 ## Próxima acción
 
-Validar la habilitación del flujo y revisar `SPEC-002`. No se implementa branding hasta que esa especificación pase a **Aprobada**.
+Obtener la aprobación visual de `SPEC-002` en `http://127.0.0.1:3081`. La Fase 3 no se inicia hasta cerrar esa puerta.
 
 ## Decisiones posteriores al trabajo local
 
