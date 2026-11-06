@@ -67,7 +67,7 @@ Entorno: VPS amd64; deploy key `mdl-harness vps`, id `169040303`, `read_only: fa
 |---|---|---|
 | `GIT-01` Lectura | Aprobado | `git ls-remote --heads origin` → `refs/heads/master` en `9b32a62` |
 | `GIT-02` Fetch y pull | Aprobado | `fetch --prune` eliminó `origin/feat/neon-esquema` y avanzó `master` de `226d27a` a `9b32a62`; `pull --ff-only` completó |
-| `GIT-03` Escritura | Aprobado | `git push --dry-run origin master` → `Everything up-to-date` |
+| `GIT-03` Escritura | Aprobado | `push origin master:mdl-deploy-key-test` creó la rama remota y `push origin --delete` la eliminó; el remoto queda solo con `master` |
 | `GIT-04` Alcance | Aprobado | Otro repo privado (`personal-suite`) responde `ERROR: Repository not found`; los repos públicos son legibles por cualquier clave autenticada |
 | `GIT-05` Exposición | Aprobado | La clave no está en la imagen, el volumen `DSH_HOME` ni el backup; el montaje es `rw=false`; el entorno solo contiene rutas |
 | `GIT-06` Host | Aprobado | El remoto del host sigue siendo `https://github.com/MarceloMedel/pipay-sii.git` |
