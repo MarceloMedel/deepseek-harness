@@ -11,7 +11,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 2 | Nombre, colores e icono | [SPEC-002](specs/002-branding.md) | Validada |
 | 3 | Ejecución local integrada | [SPEC-003](specs/003-local-runtime.md) | Validada |
 | 4 | Imagen y ejecución Docker | [SPEC-004](specs/004-docker.md) | Validada |
-| 5 | Configuración, persistencia y seguridad | [SPEC-005](specs/005-config-persistence-security.md) | En implementación |
+| 5 | Configuración, persistencia y seguridad | [SPEC-005](specs/005-config-persistence-security.md) | Validada |
 | 6 | Candidato reproducible en VPS | [SPEC-006](specs/006-reproducible-candidate.md) | Borrador |
 
 ## Dependencias
@@ -26,8 +26,8 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 
 ## Próxima acción
 
-`SPEC-005` está aprobada e implementándose en `change/005-config-persistence-security`: proveedor Ollama local, acceso por Cloudflare Access en `dsh.devmedel.com`, fix del sandbox Landlock, backup y restauración. La Fase 6 no inicia hasta validar restauración y aislamiento.
+`SPEC-005` está validada. El siguiente cambio es `SPEC-006`: reproducir el candidato desde un clon limpio en el VPS, restaurar un backup y confirmar la arquitectura amd64.
 
 ## Decisiones del despliegue VPS
 
-Resueltas en `SPEC-005`: proveedor Ollama local (`deepseek-v4.1-flash:cloud`), acceso por Cloudflare Tunnel con Access email OTP, hostname `dsh.devmedel.com`, volúmenes Docker con backup diario externo, UID 1000 y límites de 4 CPU, 4 GiB y 512 procesos. La aplicación de Access ya está creada; falta el CNAME en el dashboard de Cloudflare.
+Resueltas en `SPEC-005`: proveedor Ollama local (`deepseek-v4.1-flash:cloud`), acceso por Cloudflare Tunnel con Access email OTP en `dsh.devmedel.com`, volúmenes Docker con backup diario externo, UID 1000 y límites de 4 CPU, 4 GiB y 512 procesos.

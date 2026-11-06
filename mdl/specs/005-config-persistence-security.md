@@ -1,6 +1,6 @@
 # SPEC-005 — Configuración, secretos, persistencia y sandbox
 
-Estado: En implementación — validación local completa, publicación pendiente del dashboard
+Estado: Validada
 Fase: 5
 Commit base: `c4f5f6e3e9`
 Aprobación: usuario en el VPS, `Aprobar SPEC-005 completa`
@@ -140,19 +140,19 @@ Entorno: VPS Linux amd64, 6 vCPU, 11 GiB; Docker `29.9.3`, Compose `5.7.0`; imag
 | Fallo simulado | Aprobado | `pkill nginx` → contenedor reiniciado por `unless-stopped` y `healthy` |
 | Backup diario | Instalado | Cron de root, `17 4 * * *`, log en `/var/log/mdl-harness-backup.log` |
 | Red y credenciales | Aprobadas | Solo `127.0.0.1:3081`; sin `.credentials.yaml`; `settings.yaml` modo 600 |
+| DNS público | Aprobado | `dsh.devmedel.com` resuelve al tunnel |
+| Access sin sesión | Aprobado | `302` a `marcelomedel.cloudflareaccess.com/cdn-cgi/access/login/dsh.devmedel.com` antes de alcanzar DSH |
+| Sesión con Access | Aprobada | Tunnel sirviendo `/plugins/events` del navegador; usuario confirmó la GUI operativa |
 
 La ruta hacia Ollama requirió un header `Authorization` porque el transporte OpenAI-compatible de pi-ai lo exige aunque el endpoint no autentique. El valor es un literal no secreto y está documentado en `mdl/docker/settings.yaml`.
 
-El hostname `dsh.devmedel.com` todavía no resuelve: falta crear la aplicación de Access y el CNAME en Cloudflare. Hasta entonces no hay exposición pública.
+La aplicación de Access se creó por API el `2026-11-06T19:45Z`: `mdl-harness`, dominio `dsh.devmedel.com`, política `allow-owner` con el email del propietario, IdP `onetimepin` y sesión de 24 h. Se creó antes del DNS a propósito. El CNAME se creó desde el dashboard porque el token de API del gateway no tiene permiso de DNS.
 
 ## Resultado
 
-Parcialmente validada. Implementación y validación local completas; `ACCESS-01` y `ACCESS-02` quedan pendientes de la configuración en Cloudflare.
+**Validada.** Sandbox, proveedor, persistencia, backup, restauración, límites, operación y exposición con Access funcionan en la instancia amd64 del VPS.
 
 ## Pendientes
 
-- Crear el CNAME `dsh.devmedel.com` hacia `e95d9ad3-a210-4269-b357-e42c9e99dac8.cfargotunnel.com` (proxied). El token de `/srv/projects/secrets/gateway/cloudflare-api-token` no tiene permiso de DNS: la API responde `10000 Authentication error`.
-- Verificar desde fuera que sin sesión de Access no se alcanza DSH.
 - Repetir el arranque desde un clon limpio en `SPEC-006`.
-
-La aplicación de Access se creó por API el `2026-11-06T19:45Z`: `mdl-harness`, dominio `dsh.devmedel.com`, política `allow-owner` con el email del propietario, IdP `onetimepin` y sesión de 24 h. Se creó antes del DNS a propósito.
+- Revisar el tamaño de la imagen y la política de retención cuando el uso real lo justifique.

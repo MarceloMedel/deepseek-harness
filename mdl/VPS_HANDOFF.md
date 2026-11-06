@@ -65,12 +65,9 @@ sudo docker exec -u node mdl-harness-mdl-harness-1 \
 
 El hostname previsto es `dsh.devmedel.com` a través del tunnel existente. La configuración del gateway vive en `/srv/projects/personal-suite/ops/gateway/` y ya incluye el ingress y el bloque de Caddy.
 
-La aplicación de Access ya existe (`mdl-harness`, política `allow-owner` con email, One-time PIN, 24 h), creada antes del DNS a propósito.
+La aplicación de Access (`mdl-harness`, política `allow-owner` con email, One-time PIN, 24 h) y el CNAME hacia el tunnel están operativos. Sin sesión, el hostname responde `302` al login de Cloudflare y no alcanza DSH.
 
-Pendiente en el dashboard de Cloudflare:
-
-1. Crear el CNAME `dsh.devmedel.com` hacia `e95d9ad3-a210-4269-b357-e42c9e99dac8.cfargotunnel.com`, proxied. El token de API actual no tiene permiso de DNS (`10000 Authentication error`).
-2. Verificar que sin sesión de Access el hostname redirige al login y no alcanza DSH.
+El plano privilegiado de DSH sigue disponible solo por loopback, no por el hostname público.
 
 Sin Access, cualquiera que resuelva el hostname puede ejecutar comandos en el contenedor. No crear el DNS antes que la aplicación de Access.
 
@@ -89,15 +86,19 @@ Cron diario a las `04:17` en `/srv/backups/mdl-harness`, retención de 7 días, 
 - Fase 2: branding, idioma e icono, validados.
 - Fase 3: GUI, sesiones y agente real local, validados.
 - Fase 4: imagen Docker, healthcheck, proxy, WebSockets, herramientas y volúmenes, validados en amd64.
-- Fase 5: sandbox, proveedor, persistencia, backup, restauración, límites y ruteo validados; publicación pendiente.
-- Fase 6: borrador, depende del cierre de la Fase 5.
+- Fase 5: sandbox, proveedor, persistencia, backup, restauración, límites, ruteo y acceso con Cloudflare Access, validados.
+- Fase 6: borrador; reproduce el candidato desde un clon limpio.
 
 Límites conocidos:
 
 - La imagen mide aproximadamente 4,2 GB; la optimización queda pendiente.
 - La retención del backup es de 7 días y no hay copia externa al VPS.
-- `dsh.devmedel.com` todavía no resuelve.
 - `bwrap` no es usable dentro del contenedor; el runner es Landlock.
+- El plano privilegiado de DSH solo funciona por loopback, no por `dsh.devmedel.com`.
+
+## Siguiente trabajo
+
+Abrir `mdl/specs/006-reproducible-candidate.md`, aprobarla y reproducir el candidato desde un clon limpio en amd64.
 
 ## Flujo obligatorio
 
