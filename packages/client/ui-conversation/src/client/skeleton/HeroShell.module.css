@@ -1,6 +1,6 @@
-/* NEW SESSION hero (figma Input_Bottom 75:8208): fish + title, workspace chip
-   above the shared InputBar card. The input itself is InputBar — only stack
-   geometry and the chip live here. */
+/* NEW SESSION hero (figma Input_Bottom 75:8208): application mark + title,
+   workspace chip above the shared InputBar card. The input itself is InputBar —
+   only stack geometry and the chip live here. */
 
 .root {
   display: flex;
@@ -23,9 +23,8 @@
   overflow: visible;
 }
 
-/* figma 34:10411: fish + title, gap 10, centered; 26/32 wt500. The preview
-   badge is a product addition outside that source: a mono superscript pill
-   riding the title's top-right. */
+/* Mark + title, gap 10, centered; 26/32 wt500. The preview badge is a product
+   addition: a mono superscript pill riding the title's top-right. */
 .headline {
   display: grid;
   grid-template-columns: 34px auto auto;
@@ -62,7 +61,7 @@
 }
 
 /* Keep hover detection on a stationary box while the mark moves within it. */
-.fishHitbox {
+.brandHitbox {
   grid-row: 1;
   grid-column: 1;
   display: inline-flex;
@@ -70,29 +69,28 @@
   justify-content: center;
 }
 
-/* Keep the hero mark in the same primary ink as its headline. */
-.fish {
-  color: var(--dsw-alias-label-primary);
+.appMark {
+  display: block;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  object-fit: cover;
   transform-origin: 50% 60%;
 }
 
-@keyframes hero-fish-swim {
+@keyframes hero-mark-hover {
   0%, 100% {
-    transform: translate(0, 0) rotate(0deg);
+    transform: scale(1) rotate(0deg);
   }
 
-  35% {
-    transform: translate(-1px, -1px) rotate(-5deg);
-  }
-
-  70% {
-    transform: translate(1px, 0) rotate(3deg);
+  50% {
+    transform: scale(1.04) rotate(-2deg);
   }
 }
 
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  .fishHitbox:hover .fish {
-    animation: hero-fish-swim var(--ds-transition-duration-slow) var(--ds-ease-in-out);
+  .brandHitbox:hover .appMark {
+    animation: hero-mark-hover var(--ds-transition-duration-slow) var(--ds-ease-in-out);
   }
 }
 

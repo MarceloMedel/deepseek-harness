@@ -17,13 +17,12 @@ exports[`sidebar shell snapshots > renders the collapsed rail after the crossfad
         class="iconButton toggle"
         type="button"
       >
-        <svg
+        <img
+          alt=""
           aria-hidden="true"
-          class="railFish"
-          data-content="965fe321"
-          fill="none"
-          height="17.6580310880829"
-          viewBox="0 0 23.16 17.04"
+          class="railMark"
+          height="24"
+          src="/icon-192.png?v=cat-1"
           width="24"
         />
         <svg

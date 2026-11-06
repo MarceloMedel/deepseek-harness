@@ -9,8 +9,8 @@ it('ships install metadata with the built web application', async () => {
   const index = await readFile(join(DIST_ROOT, 'index.html'), 'utf8')
   expect(index).toContain('<html lang="en">')
   expect(index).toContain('<link rel="manifest" href="/manifest.webmanifest" />')
-  expect(index).toContain('<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />')
-  expect(index).toContain('<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />')
+  expect(index).toContain('<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=cat-1" />')
+  expect(index).toContain('<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=cat-1" />')
 
   const manifest: unknown = JSON.parse(await readFile(join(DIST_ROOT, 'manifest.webmanifest'), 'utf8'))
   expect(manifest).toEqual({
@@ -21,17 +21,17 @@ it('ships install metadata with the built web application', async () => {
     scope: '/',
     display: 'fullscreen',
     icons: [{
-      src: '/icon-192.png',
+      src: '/icon-192.png?v=cat-1',
       sizes: '192x192',
       type: 'image/png',
       purpose: 'any',
     }, {
-      src: '/icon-512.png',
+      src: '/icon-512.png?v=cat-1',
       sizes: '512x512',
       type: 'image/png',
       purpose: 'any',
     }, {
-      src: '/icon-maskable-512.png',
+      src: '/icon-maskable-512.png?v=cat-1',
       sizes: '512x512',
       type: 'image/png',
       purpose: 'maskable',

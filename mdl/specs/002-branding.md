@@ -18,6 +18,7 @@ La Fase 1 está validada en [001-base.md](001-base.md). La personalización debe
 - Sustituir el nombre visible por `MDL-HARNESS` en títulos, manifest, marca escrita y textos de identidad de la aplicación.
 - Sustituir la marca gráfica escrita de la barra lateral por texto `MDL-HARNESS`, conservando los iconos internos.
 - Generar el icono de instalación desde `mdl/assets/min.jpg` en 32, 180, 192 y 512 px, más una variante maskable.
+- Reemplazar la ballena visible del hero y del sidebar contraído por el nuevo icono, con URLs versionadas para evitar caché.
 - Aplicar el rojo `#D40000` como color principal de marca y acento.
 - Aplicar grises neutros y grafito mediante los tokens de `ui-theme`.
 - Mantener operativos los temas claro, oscuro y sistema.
@@ -45,6 +46,7 @@ La Fase 1 está validada en [001-base.md](001-base.md). La personalización debe
 | `ICON-01` | Favicon, Apple Touch e iconos 192/512 usan el arte derivado de `min.jpg` y tienen las dimensiones declaradas | Test de assets PNG y revisión visual |
 | `ICON-02` | El manifest declara iconos normales y maskable; el favicon anterior ya no se referencia | Test del manifest y búsqueda de referencias |
 | `ICON-03` | Los assets PNG se sirven como `image/png` | Test HTTP del servidor de frontend |
+| `ICON-04` | El hero y el rail muestran el icono de la aplicación y no la ballena anterior | Tests de hero/sidebar, snapshots y revisión visual |
 | `THEME-01` | `#D40000` se define como token de marca y se reutiliza en acentos aprobados | Tests o revisión de tokens y capturas |
 | `THEME-02` | El tema oscuro usa superficies grafito y el claro usa grises legibles | Revisión visual en ambos temas |
 | `THEME-03` | Focus, selección, botones y estados interactivos son visibles; el rojo de marca no ambigúa errores o acciones destructivas | Checklist visual y contraste |
@@ -72,6 +74,8 @@ Los valores de superficie se pueden ajustar dentro de la misma escala de grises 
 - `apps/web/public/` para favicon, Apple Touch, iconos PWA y variante maskable.
 - `mdl/assets/min.jpg` como fuente reproducible y `mdl/assets/app-icon-1024.png` como alta resolución.
 - `packages/host/frontend-static/src/index.ts` para el MIME `image/png`.
+- `packages/client/ui-conversation/src/client/skeleton/EmptyHero.tsx` y `HeroShell.module.css` para el icono del hero.
+- `packages/client/ui-sidebar/src/client/SidebarRoot.tsx` y su CSS para el icono del rail.
 - El componente propietario del título en `packages/client/web`.
 - `packages/client/ui-sidebar/src/client/SidebarRoot.tsx` y sus pruebas para la marca escrita.
 - `packages/client/ui-theme/src/styles/` para los tokens compartidos.
@@ -90,6 +94,7 @@ No se editarán artefactos `dist/` o `lib/` manualmente; se generarán mediante 
 - Ejecutar los tests de `packages/client/locale`.
 - Ejecutar el test de iconos de `ui-primitives` como comprobación de no regresión de `FishLogo` e iconos internos.
 - Ejecutar el test de manifest, dimensiones PNG y MIME de `image/png`.
+- Ejecutar las pruebas de hero y snapshot de sidebar para confirmar que no se renderiza la ballena anterior.
 - Ejecutar `corepack pnpm run build` después de los cambios.
 - Revisar que los identificadores internos permanezcan intactos y que solo cambie el icono de instalación.
 
@@ -110,7 +115,7 @@ Registrar capturas como evidencia de revisión sin incorporar credenciales, sesi
 
 ## Validación ejecutada
 
-Fecha: `2026-11-06T14:42:55-0300`
+Fecha: `2026-11-06T15:03:33-0300`
 Entorno: macOS 15.7.7, arm64; Chromium Playwright `149.0.7827.55`
 
 | Comprobación | Resultado | Evidencia |
@@ -123,8 +128,9 @@ Entorno: macOS 15.7.7, arm64; Chromium Playwright `149.0.7827.55`
 | Suite Web final | 253 pruebas aprobadas, 15 omitidas, 0 fallidas | `DSH_SNAPSHOT=replay corepack pnpm run test:web`, código 0 |
 | Validación posterior de `lang` | 10 pruebas Web dirigidas aprobadas | Manifest e idioma persistente; build final código 0 |
 | Iconos y MIME | 2 pruebas PWA y 1 prueba HTTP aprobadas | Dimensiones PNG, manifest y `image/png` |
+| Hero y rail | 22 pruebas aprobadas; snapshot actualizado | Gato renderizado; cero ballenas en hero/rail |
 | Assets servidos | 5 de 5 respuestas HTTP 200 con `image/png` | Favicon, Apple Touch, 192, 512 y maskable |
-| Verificación en navegador español | Aprobada | `htmlLang=en`, UI inglesa, sin texto chino, sin nombre anterior, 0 errores |
+| Verificación en navegador español | Aprobada | `htmlLang=en`, UI inglesa, gato visible, sin ballena, sin nombre anterior, 0 errores |
 | Tokens computados | Aprobados | Claro `rgb(212, 0, 0)` / `rgb(244, 244, 245)`; oscuro `rgb(255, 99, 99)` / `rgb(17, 17, 19)` |
 | Contrastes AA | Aprobados | 5,53:1; 16,12:1; 6,09:1; 9,69:1 |
 | Documentación | 28 comprobaciones aprobadas | `corepack pnpm run doc-sync`, código 0 |
@@ -137,9 +143,9 @@ La primera ejecución Web encontró fallos de entorno —Chromium no instalado y
 
 La instancia aislada quedó disponible durante la revisión en `http://127.0.0.1:3081`. Capturas locales:
 
-- `/tmp/mdl-harness-visual/spanish-final-light.png`
-- `/tmp/mdl-harness-visual/spanish-final-dark.png`
-- `/tmp/mdl-harness-visual/verified-collapsed-dark.png`
+- `/tmp/mdl-harness-visual/cat-hero-light.png`
+- `/tmp/mdl-harness-visual/cat-hero-dark.png`
+- `/tmp/mdl-harness-visual/cat-rail-dark.png`
 - `/tmp/mdl-harness-visual/onboarding-light.png`
 
 Assets de icono revisados:
