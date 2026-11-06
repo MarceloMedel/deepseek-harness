@@ -1,8 +1,8 @@
 # SPEC-003 — Validación local integrada
 
-Estado: Aprobada
+Estado: Validada
 Fase: 3
-Commit base: se registra después de integrar `SPEC-002`
+Commit base: `f243441c78b1064805473035f6ff7e1fd173c4e1`
 Aprobación para iniciar: usuario, `listo, validado. avancemos`
 
 ## Objetivo
@@ -44,7 +44,7 @@ Validar el producto completo desde el fork: interfaz, conexión, sesiones y una 
 | `AGENT-02` | El agente ejecuta una herramienta segura y accede al workspace desechable | Resultado visible y archivo de prueba |
 | `AGENT-03` | No se modifican archivos fuera del workspace permitido | Inspección del sandbox y del workspace |
 | `ISOLATION-01` | El DSH global y sus sesiones permanecen intactos | Puerto `3080` y estado previo sin cambios |
-| `SEC-01` | La credencial temporal no aparece en el repositorio ni en registros | Búsqueda y limpieza del entorno |
+| `RUN-SEC-01` | La credencial temporal no aparece en el repositorio ni en registros | Búsqueda y limpieza del entorno |
 
 ## Validación prevista
 
@@ -68,10 +68,39 @@ Validar el producto completo desde el fork: interfaz, conexión, sesiones y una 
 - No se imprime, versiona ni incorpora a capturas.
 - El `DSH_HOME` temporal y el workspace desechable se eliminan o quedan fuera del repositorio al terminar.
 
+## Validación ejecutada
+
+Fecha: `2026-11-06T15:20:50-0300`
+Entorno: macOS 15.7.7, arm64; Node `22.23.2`; Chromium Playwright
+
+| Comprobación | Resultado | Evidencia |
+|---|---|---|
+| Arranque aislado | Aprobado | `http://127.0.0.1:3081` con `DSH_HOME` temporal |
+| Interfaz y conexión | Aprobadas | Shell cargado, inglés activo, 0 errores de página |
+| Workspace | Aprobado | `/private/tmp/mdl-harness-phase3-workspace` conectado |
+| Sesión creada | Aprobada | Título `Run pwd and create phase3 file` |
+| Reapertura tras recarga | Aprobada | Conversación, herramientas y salida restauradas |
+| Cambio de sesión | Aprobado | Nueva sesión en blanco y regreso a la sesión del agente |
+| Ronda real del agente | Aprobada | `deepseek-v4.1-flash:cloud`, 1 turno, 4 pasos, 0 errores |
+| Herramientas | Aprobadas | Bash ejecutó `pwd`; Write produjo `phase3.txt` |
+| Archivo producido | Aprobado | `/tmp/mdl-harness-phase3-workspace/phase3.txt`, 9 bytes, `phase3-ok` sin salto final |
+| Sandbox | Aprobado | Ningún otro archivo del workspace o repositorio fue modificado |
+| DSH global | Intacto | `http://127.0.0.1:3080` respondió HTTP 200 |
+| Credencial temporal | Limpiada | Enlace eliminado; archivo original de DSH intacto |
+
+La primera conexión falló porque el `settings.yaml` copiado seleccionaba el preset `standard-wide`, ausente en el perfil limpio. Se cambió únicamente el hogar temporal a `standard`; no se modificó código del producto.
+
+Evidencia visual:
+
+- `/tmp/mdl-harness-visual/phase3-agent-round.png`
+- `/tmp/mdl-harness-visual/phase3-session-reopened.png`
+- `/tmp/mdl-harness-visual/phase3-session-switch.png`
+
 ## Resultado
 
-Pendiente de ejecución.
+**Validada.** La GUI, la conexión, el workspace, las sesiones y una ronda real del agente funcionan desde el fork compilado.
 
 ## Pendientes
 
-- Registrar evidencia y decisión de salida al finalizar.
+- Ninguno para esta especificación.
+- La Fase 4 puede iniciar.
