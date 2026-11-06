@@ -52,6 +52,10 @@ La instancia usa Ollama del host por su endpoint OpenAI-compatible: `http://host
 
 El plano privilegiado de DSH (`settings.*`, `credentials.*`, `llm.discoverModels`, `host.pickDirectory`) está fijado a loopback: se administra por `127.0.0.1:3081`, nunca por el hostname público.
 
+## Proyectos del host
+
+El contenedor monta `/srv/projects` en lectura-escritura en la misma ruta (`MDL_PROJECTS_DIR` cambia el origen). Para trabajar sobre un repo, elegí esa carpeta como workspace desde la GUI por loopback; el sandbox confina las escrituras al workspace elegido y `secrets` sigue inaccesible para el usuario `node`. Los proyectos no forman parte del backup diario.
+
 ## Sandbox
 
 La cadena Linux prueba `bwrap` y recurre a Landlock. Dentro del contenedor `bwrap` no puede crear user namespaces por AppArmor, así que el runner efectivo es Landlock, compilado en la imagen. Sin ese binario el sandbox falla cerrado y `bash` no ejecuta.

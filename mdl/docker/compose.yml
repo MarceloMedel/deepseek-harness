@@ -22,6 +22,11 @@ services:
     volumes:
       - mdl-dsh-home:/data/dsh
       - mdl-workspace:/workspace
+      # Host projects, read-write and at the same absolute path, so a session
+      # can pick one as its workspace. The mount never includes
+      # /srv/projects/secrets, which stays root-only outside the container's
+      # user. Set MDL_PROJECTS_DIR to mount another directory.
+      - ${MDL_PROJECTS_DIR:-/srv/projects}:/srv/projects
       - ./settings.yaml:/etc/mdl-harness/settings.yaml:ro
     networks:
       - default
