@@ -9,7 +9,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | Transversal | Habilitar el flujo Spec-Driven Development | [SPEC-000](specs/000-development-workflow.md) + [plantilla](specs/TEMPLATE.md) | Validada |
 | 1 | Fork y base reproducible | [SPEC-001](specs/001-base.md) | Validada |
 | 2 | Nombre, colores e icono | [SPEC-002](specs/002-branding.md) | Validada |
-| 3 | Ejecución local integrada | [SPEC-003](specs/003-local-runtime.md) | En implementación |
+| 3 | Ejecución local integrada | [SPEC-003](specs/003-local-runtime.md) | Validada |
 | 4 | Imagen y ejecución Docker | Se crea antes de iniciar la fase | Pendiente |
 | 5 | Configuración, persistencia y seguridad | Se crea antes de iniciar la fase | Pendiente |
 | 6 | Candidato previo al VPS | Se crea antes de iniciar la fase | Pendiente |
@@ -26,7 +26,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 
 ## Próxima acción
 
-Ejecutar y validar `SPEC-003` en un `DSH_HOME` y workspace desechables. La Fase 4 no inicia hasta comprobar GUI, sesión y agente real.
+Crear y aprobar `SPEC-004` para la imagen Docker local. La Fase 5 no inicia hasta validar build, ejecución, herramientas y red aislada del contenedor.
 
 ## Decisiones posteriores al trabajo local
 
