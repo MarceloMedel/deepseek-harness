@@ -206,21 +206,23 @@ describe('LocaleRuntime', () => {
     expect(make().svc.getLocale().active).toBe('en')
     vi.stubGlobal('navigator', { language: 'en-US' })
     expect(make().svc.getLocale().active).toBe('en')
-    // No shipped language anywhere in the browser's preferences: zh remains
+    // No shipped language anywhere in the browser's preferences: English is
     // the product default rather than an arbitrary near-match.
     stubLanguages('fr-FR', 'de')
-    expect(make().svc.getLocale().active).toBe('zh')
+    expect(make().svc.getLocale().active).toBe('en')
+    stubLanguages('es-CL')
+    expect(make().svc.getLocale().active).toBe('en')
   })
 
-  it('runs outside a browser (node boots): the fallback decides and the machine language does not', () => {
+  it('runs outside a browser (node boots): the English default decides and the machine language does not', () => {
     vi.stubGlobal('window', undefined)
     // Node exposes its own global navigator; without a window it must not
     // reach the resolution at all.
     stubLanguages('en-US')
     const { svc } = make()
-    expect(svc.getLocale().active).toBe('zh')
-    svc.setLocale('en')
     expect(svc.getLocale().active).toBe('en')
+    svc.setLocale('zh')
+    expect(svc.getLocale().active).toBe('zh')
   })
 
   it('lets an explicit in-process preference replace the browser-derived value', () => {
@@ -228,6 +230,16 @@ describe('LocaleRuntime', () => {
     const { svc } = make()
     svc.setLocale('zh')
     expect(svc.getLocale().active).toBe('zh')
+  })
+
+  it('keeps the document language synchronized with the active locale', () => {
+    stubLanguages('es-CL')
+    const { svc } = make()
+    expect(document.documentElement.lang).toBe('en')
+    svc.setLocale('zh')
+    expect(document.documentElement.lang).toBe('zh-CN')
+    svc.setLocale('en')
+    expect(document.documentElement.lang).toBe('en')
   })
 
   it('exposes the two shipped locales with self-described labels', () => {

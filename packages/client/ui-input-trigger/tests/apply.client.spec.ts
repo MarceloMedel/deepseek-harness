@@ -37,6 +37,7 @@ async function bench() {
     scopeOf: (c: Context) => scopeOf(c),
   })
   const locale = new LocaleRuntime(ctx)
+  locale.setLocale('zh')
   ctx.provide('locale', locale)
   return { ctx, slots, locale }
 }

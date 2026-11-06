@@ -86,8 +86,11 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
-/** Fallback locale consulted after the active locale misses (also the last-resort initial locale). */
+/** Fallback locale consulted after the active locale misses. */
 export const FALLBACK_LOCALE: LocaleId = 'zh'
+
+/** Product locale when neither an explicit preference nor a shipped browser language decides. */
+export const DEFAULT_LOCALE: LocaleId = 'en'
 
 /** Shared namespace for shell-level texts. */
 export const COMMON_NS = 'common'
@@ -100,6 +103,12 @@ const LOCALES: readonly LocaleDefinition[] = Object.freeze([
   { id: 'zh', label: '中文' },
   { id: 'en', label: 'English' },
 ])
+
+/** BCP 47 tag applied to the document element for each shipped locale. */
+const DOCUMENT_LANG: Readonly<Record<LocaleId, string>> = Object.freeze({
+  zh: 'zh-CN',
+  en: 'en',
+})
 
 /**
  * Dictionary registry plus locale preference. Lookup chain per key: the
@@ -132,6 +141,7 @@ export class LocaleRuntime {
     this.host = host
     this.provisional = resolveInitialLocale()
     this.snapshot = Object.freeze({ active: this.provisional, locales: LOCALES, revision: 0 })
+    this.syncDocumentLanguage()
     if (host !== undefined) {
       ctx.effect(() => host.subscribe(() => { this.adopt(host) }), 'locale: settings scope adoption')
       this.adopt(host)
@@ -286,6 +296,11 @@ export class LocaleRuntime {
     return locales?.get(this.snapshot.active)?.[key] ?? locales?.get(FALLBACK_LOCALE)?.[key]
   }
 
+  /** Publish the active locale as the document's language in browser runs. */
+  private syncDocumentLanguage(): void {
+    if (typeof document !== 'undefined') document.documentElement.lang = DOCUMENT_LANG[this.snapshot.active]
+  }
+
   /**
    * Advance the snapshot revision and notify LocaleFace subscribers (render
    * refresh). Only an active-locale switch additionally emits
@@ -299,6 +314,7 @@ export class LocaleRuntime {
       locales: this.snapshot.locales,
       revision: this.snapshot.revision + 1,
     })
+    this.syncDocumentLanguage()
     if (localeChanged) this.ctx.emit('locale/change', this.snapshot)
     for (const fn of [...this.listeners]) {
       try {
@@ -313,11 +329,11 @@ export class LocaleRuntime {
 }
 
 /**
- * The browser's own language wins over {@link FALLBACK_LOCALE}; an explicit
+ * A shipped browser language wins over {@link DEFAULT_LOCALE}; an explicit
  * Host preference may replace this provisional value after plugin activation.
  */
 function resolveInitialLocale(): LocaleId {
-  return detectBrowserLocale() ?? FALLBACK_LOCALE
+  return detectBrowserLocale() ?? DEFAULT_LOCALE
 }
 
 /**
