@@ -2,7 +2,7 @@
 
 Estado: Aprobada
 Fase: 3
-Commit base: se registra después de integrar `SPEC-002`
+Commit base: `f243441c78b1064805473035f6ff7e1fd173c4e1`
 Aprobación para iniciar: usuario, `listo, validado. avancemos`
 
 ## Objetivo
@@ -44,7 +44,7 @@ Validar el producto completo desde el fork: interfaz, conexión, sesiones y una 
 | `AGENT-02` | El agente ejecuta una herramienta segura y accede al workspace desechable | Resultado visible y archivo de prueba |
 | `AGENT-03` | No se modifican archivos fuera del workspace permitido | Inspección del sandbox y del workspace |
 | `ISOLATION-01` | El DSH global y sus sesiones permanecen intactos | Puerto `3080` y estado previo sin cambios |
-| `SEC-01` | La credencial temporal no aparece en el repositorio ni en registros | Búsqueda y limpieza del entorno |
+| `RUN-SEC-01` | La credencial temporal no aparece en el repositorio ni en registros | Búsqueda y limpieza del entorno |
 
 ## Validación prevista
 
