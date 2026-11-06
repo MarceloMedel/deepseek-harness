@@ -10,7 +10,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 1 | Fork y base reproducible | [SPEC-001](specs/001-base.md) | Validada |
 | 2 | Nombre, colores e icono | [SPEC-002](specs/002-branding.md) | Validada |
 | 3 | Ejecución local integrada | [SPEC-003](specs/003-local-runtime.md) | Validada |
-| 4 | Imagen y ejecución Docker | [SPEC-004](specs/004-docker.md) | En implementación |
+| 4 | Imagen y ejecución Docker | [SPEC-004](specs/004-docker.md) | Validada |
 | 5 | Configuración, persistencia y seguridad | Se crea antes de iniciar la fase | Pendiente |
 | 6 | Candidato previo al VPS | Se crea antes de iniciar la fase | Pendiente |
 
@@ -26,7 +26,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 
 ## Próxima acción
 
-Construir y validar `SPEC-004`: imagen local, ejecución no root, herramientas y proxy loopback. La Fase 5 no inicia hasta cerrar esta puerta.
+Crear y aprobar `SPEC-005` para configuración, secretos, persistencia real y sandbox dentro de Docker. La Fase 6 no inicia hasta validar restauración y aislamiento.
 
 ## Decisiones posteriores al trabajo local
 

@@ -1,0 +1,16 @@
+.git
+**/node_modules
+.artifacts
+.dsh
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+.DS_Store
+*.log
+mdl/.runtime
+mdl/validation
+graphify-out
+**/graphify-out

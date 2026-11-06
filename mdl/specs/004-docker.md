@@ -1,6 +1,6 @@
 # SPEC-004 — Imagen Docker local
 
-Estado: Aprobada
+Estado: Validada
 Fase: 4
 Commit base: `fefd988b6241c8e200120febf4e8f0b2a543863c`
 Aprobación para iniciar: usuario, continuación directa de la Fase 3
@@ -66,10 +66,52 @@ Construir y validar una imagen Docker local de MDL-HARNESS que ejecute la aplica
 - Comprobar que DSH no escucha en todas las interfaces.
 - Detener el contenedor y verificar que los volúmenes permanecen.
 
+## Uso local
+
+```sh
+docker compose -f mdl/docker/compose.yml up -d --build
+# http://127.0.0.1:3081
+docker compose -f mdl/docker/compose.yml logs -f
+docker compose -f mdl/docker/compose.yml down
+```
+
+El puerto global `3080` no se usa. Los volúmenes `mdl-harness_mdl-dsh-home` y `mdl-harness_mdl-workspace` conservan la configuración y el workspace.
+
+## Validación ejecutada
+
+Fecha: `2026-11-06T15:56:07-0300`
+Entorno: Docker `28.0.1`, Compose `2.33.1`, macOS 15.7.7 arm64
+
+| Comprobación | Resultado | Evidencia |
+|---|---|---|
+| Build local | Aprobado | Código 0; imagen `mdl-harness:local`, linux/arm64 |
+| Healthcheck | Aprobado | `healthy`, también tras reiniciar el contenedor |
+| GUI por proxy | Aprobada | Título `MDL-HARNESS`, inglés, gato visible, sin errores |
+| WebSockets | Aprobados | `events.mux` y `events.host` sobre el puerto `3081` |
+| Iconos | Aprobados | Tres respuestas 200 `image/png` |
+| Usuario runtime | Aprobado | UID 1000, usuario `node`, no root |
+| Herramientas | Aprobadas | Node 22.23.4, Python 3.11, Git, GH, Docker CLI, uv, Graphify, bwrap, Nginx |
+| Red DSH | Aprobada | `127.0.0.1:3080` únicamente |
+| Proxy | Aprobado | `0.0.0.0:8080` dentro del contenedor |
+| Publicación host | Aprobada | `127.0.0.1:3081` únicamente |
+| Volúmenes | Aprobados | `/data/dsh` y `/workspace` persistentes tras reinicio |
+| Socket Docker | Ausente | Sin montaje de `/var/run/docker.sock` |
+| Credenciales | Ausentes | Sin `.credentials.yaml` ni claves en la imagen |
+| Registry | No usado | Imagen permanece solo local |
+
+El build requirió usar la imagen completa de Node y el espejo Rackspace para Debian porque el CDN de `deb.debian.org` no era accesible desde el contenedor. También se corrigieron el modo de `/etc/nginx/nginx.conf` y el UID preexistente del usuario `node`.
+
+La imagen reporta 4,1 GB en `docker image ls`. La reducción de tamaño queda como optimización posterior, fuera de la puerta funcional.
+
+Evidencia visual:
+
+- `/tmp/mdl-harness-visual/docker-phase4.png`
+
 ## Resultado
 
-Pendiente de ejecución.
+**Validada.** MDL-HARNESS se construye y ejecuta en Docker, con proxy loopback, herramientas, persistencia y aislamiento del daemon.
 
 ## Pendientes
 
-- Registrar evidencia y decisión de salida al finalizar.
+- Ninguno para esta especificación.
+- La Fase 5 puede iniciar.
