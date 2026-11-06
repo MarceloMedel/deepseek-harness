@@ -67,9 +67,7 @@ El hostname previsto es `dsh.devmedel.com` a través del tunnel existente. La co
 
 La aplicación de Access (`mdl-harness`, política `allow-owner` con email, One-time PIN, 24 h) y el CNAME hacia el tunnel están operativos. Sin sesión, el hostname responde `302` al login de Cloudflare y no alcanza DSH.
 
-El plano privilegiado de DSH sigue disponible solo por loopback, no por el hostname público.
-
-Sin Access, cualquiera que resuelva el hostname puede ejecutar comandos en el contenedor. No crear el DNS antes que la aplicación de Access.
+El plano privilegiado de DSH sigue disponible solo por loopback, no por el hostname público. La aplicación de Access debe existir antes que el DNS: sin ella, cualquiera que resuelva el hostname puede ejecutar comandos en el contenedor.
 
 ## Backup y restauración
 
@@ -87,7 +85,7 @@ Cron diario a las `04:17` en `/srv/backups/mdl-harness`, retención de 7 días, 
 - Fase 3: GUI, sesiones y agente real local, validados.
 - Fase 4: imagen Docker, healthcheck, proxy, WebSockets, herramientas y volúmenes, validados en amd64.
 - Fase 5: sandbox, proveedor, persistencia, backup, restauración, límites, ruteo y acceso con Cloudflare Access, validados.
-- Fase 6: borrador; reproduce el candidato desde un clon limpio.
+- Fase 6: candidato reproducible desde un clon limpio, restauración del backup y agente, validados en amd64.
 
 Límites conocidos:
 
@@ -95,10 +93,12 @@ Límites conocidos:
 - La retención del backup es de 7 días y no hay copia externa al VPS.
 - `bwrap` no es usable dentro del contenedor; el runner es Landlock.
 - El plano privilegiado de DSH solo funciona por loopback, no por `dsh.devmedel.com`.
+- Los IDs de imagen no son idénticos entre builds sucesivos; la reproducibilidad es funcional, no bit a bit.
+- Quedan `/srv/repro/deepseek-harness` y la imagen `mdl-harness:candidate` del ensayo.
 
 ## Siguiente trabajo
 
-Abrir `mdl/specs/006-reproducible-candidate.md`, aprobarla y reproducir el candidato desde un clon limpio en amd64.
+Todas las fases están validadas. El trabajo siguiente es de producto y requiere su propia especificación: decidir un tag local de release, optimizar el tamaño de la imagen o incorporar cambios de upstream.
 
 ## Flujo obligatorio
 
