@@ -12,14 +12,35 @@ services:
     environment:
       DSH_HOME: /data/dsh
       DSH_PERMISSION_MODE: workspace-write
+      # Public authority accepted by the /api browser-trust fence. It does not
+      # grant the privileged configuration plane, which stays loopback-only.
+      DSH_TRUSTED_HOST: dsh.devmedel.com
+    extra_hosts:
+      # Ollama runs on the host and listens on 11434; containers reach it
+      # through the bridge gateway.
+      - host.docker.internal:host-gateway
     volumes:
       - mdl-dsh-home:/data/dsh
       - mdl-workspace:/workspace
+      - ./settings.yaml:/etc/mdl-harness/settings.yaml:ro
+    networks:
+      - default
+      - edge
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    # The host has 6 vCPU and 11 GiB, shared with Ollama and personal-suite.
+    # These bounds cover the agent's subprocesses without starving them.
+    cpus: 4.0
+    mem_limit: 4g
+    pids_limit: 512
     stop_grace_period: 20s
+
+networks:
+  edge:
+    external: true
+    name: edge
 
 volumes:
   mdl-dsh-home:

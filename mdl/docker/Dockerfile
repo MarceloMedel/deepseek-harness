@@ -14,7 +14,19 @@ RUN corepack enable \
 
 WORKDIR /app
 COPY . .
+
+# The Linux sandbox chain tries bwrap and falls back to the Landlock launcher.
+# bwrap cannot create a user namespace under the container's AppArmor profile,
+# and the launcher is a git-ignored, per-architecture static binary absent from
+# a source checkout. Building it here is what gives the runtime image a usable
+# sandbox; without it every bash call fails closed with SANDBOX_UNAVAILABLE.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends musl-tools \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN corepack pnpm install --frozen-lockfile \
+    && corepack pnpm --filter @deepseek-ai/node-addon-landlock-run-workspace run build:native \
+    && find native/landlock-run/packages -path '*/bin/landlock-run' -type f -executable | grep -q . \
     && corepack pnpm run build
 
 FROM ${NODE_IMAGE} AS runtime
