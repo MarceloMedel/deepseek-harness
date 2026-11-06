@@ -1,0 +1,28 @@
+# MDL-HARNESS deployment settings. The entrypoint seeds this file into an
+# empty $DSH_HOME on first boot; from then on the volume copy is authoritative
+# and this file is only a template. It carries no credential: the Ollama
+# endpoint is unauthenticated, and any key would belong in
+# $DSH_HOME/.credentials.yaml or the process environment.
+llm-pi-ai:
+  providers:
+    ollama:
+      displayName: Ollama (host)
+      api: openai-completions
+      baseURL: http://host.docker.internal:11434/v1
+      # pi-ai's OpenAI-compatible transport requires an Authorization header
+      # even when the endpoint does not authenticate. Ollama ignores its value.
+      headers:
+        Authorization: Bearer ollama
+      models:
+        - id: "deepseek-v4.1-flash:cloud"
+          name: DeepSeek V4.1 Flash
+          contextWindow: 1048576
+          maxTokens: 32768
+        - id: "gemma4:cloud"
+          name: Gemma 4
+          contextWindow: 262144
+          maxTokens: 32768
+
+agent-default-model:
+  provider: ollama
+  model: "deepseek-v4.1-flash:cloud"
