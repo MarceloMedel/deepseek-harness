@@ -56,6 +56,8 @@ El plano privilegiado de DSH (`settings.*`, `credentials.*`, `llm.discoverModels
 
 El contenedor monta `/srv/projects` en lectura-escritura en la misma ruta (`MDL_PROJECTS_DIR` cambia el origen). Para trabajar sobre un repo, elegí esa carpeta como workspace desde la GUI por loopback; el sandbox confina las escrituras al workspace elegido y `secrets` sigue inaccesible para el usuario `node`. Los proyectos no forman parte del backup diario.
 
+`pipay-sii` tiene una deploy key SSH de escritura limitada a ese repositorio, montada como archivo de solo lectura desde `/home/ubuntu/.config/mdl-harness/git` (`MDL_GIT_DIR`). El contenedor puede hacer `fetch`, `pull` y `push`; otros repos privados no autentican con esa clave. Para revocarla: GitHub → Settings → Deploy keys, y borrar el directorio del host.
+
 ## Sandbox
 
 La cadena Linux prueba `bwrap` y recurre a Landlock. Dentro del contenedor `bwrap` no puede crear user namespaces por AppArmor, así que el runner efectivo es Landlock, compilado en la imagen. Sin ese binario el sandbox falla cerrado y `bash` no ejecuta.

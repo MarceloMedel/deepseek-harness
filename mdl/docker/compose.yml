@@ -15,6 +15,18 @@ services:
       # Public authority accepted by the /api browser-trust fence. It does not
       # grant the privileged configuration plane, which stays loopback-only.
       DSH_TRUSTED_HOST: dsh.devmedel.com
+      # Read-write deploy key scoped to MarceloMedel/pipay-sii. The key is a
+      # read-only bind mount from the host, never an image layer, environment
+      # value, or volume (which the daily backup archives). Only that exact
+      # remote is rewritten to SSH; other repositories keep their HTTPS URL.
+      GIT_SSH_COMMAND: >-
+        ssh -i /etc/mdl-harness/git/pipay_deploy -o IdentitiesOnly=yes
+        -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/etc/mdl-harness/git/known_hosts
+        -o User=git
+      GIT_TERMINAL_PROMPT: "0"
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: url.ssh://git@github.com/MarceloMedel/pipay-sii.git.insteadOf
+      GIT_CONFIG_VALUE_0: https://github.com/MarceloMedel/pipay-sii.git
     extra_hosts:
       # Ollama runs on the host and listens on 11434; containers reach it
       # through the bridge gateway.
@@ -27,6 +39,9 @@ services:
       # /srv/projects/secrets, which stays root-only outside the container's
       # user. Set MDL_PROJECTS_DIR to mount another directory.
       - ${MDL_PROJECTS_DIR:-/srv/projects}:/srv/projects
+      # Deploy key and pinned GitHub host keys, outside the projects mount so
+      # the agent cannot rewrite them.
+      - ${MDL_GIT_DIR:-/home/ubuntu/.config/mdl-harness/git}:/etc/mdl-harness/git:ro
       - ./settings.yaml:/etc/mdl-harness/settings.yaml:ro
     networks:
       - default

@@ -32,6 +32,12 @@ El contenedor monta `${MDL_PROJECTS_DIR:-/srv/projects}` en la misma ruta absolu
 
 Los proyectos no entran en el backup diario: se respaldan por git. El volumen `mdl-workspace` sigue disponible para sesiones sin proyecto.
 
+## Credencial git
+
+El contenedor usa una deploy key SSH de escritura limitada a `MarceloMedel/pipay-sii`. Vive en `/home/ubuntu/.config/mdl-harness/git/` (`MDL_GIT_DIR` cambia el origen), se monta en `/etc/mdl-harness/git` como solo lectura y la reescritura de URL aplica únicamente al remoto exacto de ese repo. El remoto del host sigue en HTTPS.
+
+No está en la imagen, ni en el volumen `DSH_HOME`, ni en el backup. Para rotarla o revocarla: GitHub → repo → Settings → Deploy keys, y después borrar el directorio del host y regenerar el par.
+
 ## Sandbox
 
 La cadena Linux de `dsh-sandbox-local` prueba `bwrap` y recurre a Landlock. Dentro del contenedor `bwrap` no puede crear user namespaces por el perfil AppArmor, así que el runner efectivo es Landlock. La imagen compila el launcher (`native/landlock-run`) durante la build; sin ese binario el sandbox se queda sin runners y `bash` falla cerrado.
