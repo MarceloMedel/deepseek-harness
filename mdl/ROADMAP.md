@@ -11,8 +11,8 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 2 | Nombre, colores e icono | [SPEC-002](specs/002-branding.md) | Validada |
 | 3 | Ejecución local integrada | [SPEC-003](specs/003-local-runtime.md) | Validada |
 | 4 | Imagen y ejecución Docker | [SPEC-004](specs/004-docker.md) | Validada |
-| 5 | Configuración, persistencia y seguridad | Se crea antes de iniciar la fase | Pendiente |
-| 6 | Candidato previo al VPS | Se crea antes de iniciar la fase | Pendiente |
+| 5 | Configuración, persistencia y seguridad | [SPEC-005](specs/005-config-persistence-security.md) | Pendiente de aprobación |
+| 6 | Candidato reproducible en VPS | [SPEC-006](specs/006-reproducible-candidate.md) | Borrador |
 
 ## Dependencias
 
@@ -22,12 +22,12 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 - La Fase 3 requiere una Fase 2 validada y termina con GUI, sesiones y agente operativos desde el fork.
 - La Fase 4 parte del commit validado en Fase 3 y termina con el producto completo ejecutándose en Docker.
 - La Fase 5 exige persistencia, separación de secretos y sandbox validado.
-- La Fase 6 reproduce el candidato desde un entorno limpio.
+- La Fase 6 reproduce el candidato desde un clon limpio en el VPS.
 
 ## Próxima acción
 
-Crear y aprobar `SPEC-005` para configuración, secretos, persistencia real y sandbox dentro de Docker. La Fase 6 no inicia hasta validar restauración y aislamiento.
+Abrir [VPS_HANDOFF.md](VPS_HANDOFF.md) en el VPS, resolver las decisiones de `SPEC-005` y aprobarla antes de implementar. La Fase 6 no inicia hasta validar restauración y aislamiento.
 
-## Decisiones posteriores al trabajo local
+## Decisiones del despliegue VPS
 
-Quedan para la etapa del VPS: arquitectura del servidor, transferencia o build de la imagen, modelo de acceso, firewall, dominio y certificados si se utilizan, recursos, backups y publicación eventual en un registry.
+Quedan por resolver: proveedor y modelo, acceso por túnel SSH, firewall, dominio y certificados si se utilizan, recursos, backups, restauración y publicación eventual en un registry.
