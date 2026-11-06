@@ -30,4 +30,4 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 
 ## Decisiones del despliegue VPS
 
-Resueltas en `SPEC-005`: proveedor Ollama local (`deepseek-v4.1-flash:cloud`), acceso por Cloudflare Tunnel con Access email OTP, hostname `dsh.devmedel.com`, volúmenes Docker con backup diario externo, UID 1000 y límites de 4 CPU, 4 GiB y 512 procesos. Falta crear la aplicación de Access y el CNAME en el dashboard de Cloudflare.
+Resueltas en `SPEC-005`: proveedor Ollama local (`deepseek-v4.1-flash:cloud`), acceso por Cloudflare Tunnel con Access email OTP, hostname `dsh.devmedel.com`, volúmenes Docker con backup diario externo, UID 1000 y límites de 4 CPU, 4 GiB y 512 procesos. La aplicación de Access ya está creada; falta el CNAME en el dashboard de Cloudflare.

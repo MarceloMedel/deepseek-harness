@@ -151,7 +151,8 @@ Parcialmente validada. Implementación y validación local completas; `ACCESS-01
 
 ## Pendientes
 
-- Crear la aplicación de Cloudflare Access con email OTP para `dsh.devmedel.com`.
-- Crear el CNAME `dsh.devmedel.com` hacia el tunnel.
+- Crear el CNAME `dsh.devmedel.com` hacia `e95d9ad3-a210-4269-b357-e42c9e99dac8.cfargotunnel.com` (proxied). El token de `/srv/projects/secrets/gateway/cloudflare-api-token` no tiene permiso de DNS: la API responde `10000 Authentication error`.
 - Verificar desde fuera que sin sesión de Access no se alcanza DSH.
 - Repetir el arranque desde un clon limpio en `SPEC-006`.
+
+La aplicación de Access se creó por API el `2026-11-06T19:45Z`: `mdl-harness`, dominio `dsh.devmedel.com`, política `allow-owner` con el email del propietario, IdP `onetimepin` y sesión de 24 h. Se creó antes del DNS a propósito.

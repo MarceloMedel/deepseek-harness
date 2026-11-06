@@ -65,11 +65,12 @@ sudo docker exec -u node mdl-harness-mdl-harness-1 \
 
 El hostname previsto es `dsh.devmedel.com` a través del tunnel existente. La configuración del gateway vive en `/srv/projects/personal-suite/ops/gateway/` y ya incluye el ingress y el bloque de Caddy.
 
-Pendiente en el dashboard de Cloudflare, en este orden:
+La aplicación de Access ya existe (`mdl-harness`, política `allow-owner` con email, One-time PIN, 24 h), creada antes del DNS a propósito.
 
-1. Crear la aplicación de Access para `dsh.devmedel.com` con política por email (One-time PIN), igual que las de `app.devmedel.com`.
-2. Crear el CNAME `dsh.devmedel.com` hacia `e95d9ad3-a210-4269-b357-e42c9e99dac8.cfargotunnel.com`, proxied.
-3. Verificar que sin sesión de Access el hostname redirige al login y no alcanza DSH.
+Pendiente en el dashboard de Cloudflare:
+
+1. Crear el CNAME `dsh.devmedel.com` hacia `e95d9ad3-a210-4269-b357-e42c9e99dac8.cfargotunnel.com`, proxied. El token de API actual no tiene permiso de DNS (`10000 Authentication error`).
+2. Verificar que sin sesión de Access el hostname redirige al login y no alcanza DSH.
 
 Sin Access, cualquiera que resuelva el hostname puede ejecutar comandos en el contenedor. No crear el DNS antes que la aplicación de Access.
 
