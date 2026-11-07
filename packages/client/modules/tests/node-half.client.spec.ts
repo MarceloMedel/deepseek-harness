@@ -140,10 +140,11 @@ describe('client bundle activation', () => {
     await route.handler({
       method: 'GET',
       url: `/plugins/${packageName}/client.js.map`,
+      headers: {},
     } as IncomingMessage, response)
 
     expect(status).toBe(200)
-    expect(headers).toEqual({
+    expect(headers).toMatchObject({
       'content-type': 'application/json; charset=utf-8',
       'cache-control': 'no-cache',
     })

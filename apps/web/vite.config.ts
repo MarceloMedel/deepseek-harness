@@ -61,6 +61,32 @@ const VENDOR_PACKAGES: ReadonlySet<string> = new Set([
 ])
 
 /**
+ * Drop the woff and ttf faces of every family that also ships woff2.
+ *
+ * KaTeX's stylesheet lists three formats per face for browsers from the woff
+ * era; the shell only supports browsers that take woff2, which is the first
+ * entry of every @font-face src list, so the other two are dead weight in the
+ * image and in any request that falls back on them. Vite hashes each format
+ * separately, so a face is matched by its name stem (everything before the
+ * content hash), never by swapping the extension.
+ */
+function dropRedundantFonts(): Plugin {
+  return {
+    name: 'dsh-drop-redundant-fonts',
+    generateBundle(_options, bundle) {
+      const stem = (fileName: string): string => fileName.replace(/\.[^.]+$/, '').replace(/-[A-Za-z0-9_-]{8}$/, '')
+      const woff2Stems = new Set(
+        Object.keys(bundle).filter(fileName => fileName.endsWith('.woff2')).map(stem),
+      )
+      for (const fileName of Object.keys(bundle)) {
+        const redundant = fileName.endsWith('.woff') || fileName.endsWith('.ttf')
+        if (redundant && woff2Stems.has(stem(fileName))) delete bundle[fileName]
+      }
+    },
+  }
+}
+
+/**
  * Boot grammars statically imported by ui-primitives' highlight.ts
  * (`@shikijs/langs/typescript` → `dist/typescript.mjs`, etc.). They live in
  * the same package as the lazy read-card grammars, but unlike those they are
@@ -90,7 +116,7 @@ function npmPackageOf(id: string): string | undefined {
 }
 
 export default defineConfig({
-  plugins: [rejectStandaloneServe(), react()],
+  plugins: [rejectStandaloneServe(), react(), dropRedundantFonts()],
   build: {
     sourcemap: true,
     rollupOptions: {
