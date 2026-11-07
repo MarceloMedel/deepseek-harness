@@ -186,14 +186,36 @@
   width: 100% !important;
 }
 
-/* The details column keeps its zero-width track (never unmounted), so its
-   border must not paint a seam. */
+/* The details column is the phone's second surface: the same panel, rendered as
+   a full-screen sheet over the conversation instead of a track. The width
+   preference still decides whether it is showing, so the desktop drag path and
+   the sheet share one state. Visibility, not a transform, keeps the sheet's own
+   fixed descendants — and any future one — positioned against the viewport. */
 .frame[data-mobile] .detailsCol {
+  position: fixed;
+  inset: 0;
+  z-index: 24;
   border-left: none;
+  background: var(--dsw-alias-bg-base);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--ds-transition-duration-slow) var(--ds-ease-in-out),
+    visibility 0s linear var(--ds-transition-duration-slow);
+}
+
+.frame[data-mobile][data-details-open] .detailsCol {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity var(--ds-transition-duration-slow) var(--ds-ease-in-out);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .frame[data-mobile] .sidebarCol {
+  .frame[data-mobile] .sidebarCol,
+  .frame[data-mobile] .detailsCol,
+  .frame[data-mobile][data-details-open] .detailsCol {
     transition: none;
   }
 }

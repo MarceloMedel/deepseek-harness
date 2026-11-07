@@ -7,7 +7,7 @@ import type {
 } from '@deepseek-ai/dsh-client-ui-slots'
 import type {
   CommandNode, CompactionSummaryNode, ConversationSnapshot, ConversationTurnDataMap,
-  ObservableSnapshot, PendingInteraction, PendingWait, SessionId, ToolCallBlock,
+  ObservableSnapshot, PendingInteraction, PendingWait, SessionId, SnapshotStore, ToolCallBlock,
   TurnLocation, WorkspaceId,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import type { MarkdownFileMentions } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -21,6 +21,7 @@ import type { createChatStore } from '../stores.ts'
 import type { ComposerSubmitGesture, InputSubmitMode } from './composer-submission.ts'
 import type { ChatNode, ChatNodeKind } from './chat-nodes.ts'
 import type { CallId, SelectionTarget, ViewTab } from './views.ts'
+import type { ChatDensity } from '../../conversation-settings.ts'
 
 /** Browser-owned image that has not crossed the durable host boundary. */
 export interface ComposerAttachment {
@@ -370,6 +371,12 @@ export interface ChatNodeTurnDataInjected {
 
 /** Stable owner currency delivered to one keyed Chat business renderer. */
 export interface ChatNodeOwnerProps {
+  /**
+   * Chat display density for this render: `compact` folds each run of work
+   * into one row, `balanced` gives every step its own row, and `detailed` also
+   * opens the reasoning that accompanies a step.
+   */
+  density: ChatDensity
   /** Selected Tool call, when the shared details store names one. */
   selectedCallId?: CallId | undefined
   /** Session workspace root; Tool summaries display paths relative to it. */
@@ -689,6 +696,10 @@ export interface ChatScrollPosition {
  * outside the view (layout orchestration; the session object layer).
  */
 export interface ChatViewInjected {
+  hooks: {
+    /** Persisted chat density preference bound as useDensity. */
+    density: SnapshotStore<ChatDensity>
+  }
   /** Selection write + details panel opening in one gesture (store action + layout orchestration). */
   openDetails: (target: SelectionTarget) => void
   /**
@@ -726,7 +737,7 @@ export interface ChatViewInjected {
 /** Full chat-view component props: runtime & its Tool/command/tail render shares & store & injected & locale seat. */
 export type ChatViewSlotProps =
   PropsRuntime<'conversation.view'> & PropsRenderSlots<'conversation.chat.node'>
-  & PropsStore<ChatStore> & ChatViewInjected & PropsLocale<'conversation'>
+  & PropsStore<ChatStore> & InjectFace<ChatViewInjected> & PropsLocale<'conversation'>
 
 /**
  * Injected share of the details slot: the panel is otherwise a pure reader of

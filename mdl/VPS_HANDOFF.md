@@ -77,6 +77,18 @@ La aplicación de Access (`mdl-harness`, política `allow-owner` con email, One-
 
 El plano privilegiado de DSH sigue disponible solo por loopback, no por el hostname público. La aplicación de Access debe existir antes que el DNS: sin ella, cualquiera que resuelva el hostname puede ejecutar comandos en el contenedor.
 
+## Instalación en el iPhone
+
+La interfaz se instala en la pantalla de inicio del iPhone sin pasar por la App Store ([SPEC-014](specs/014-instalacion-ios.md)). La imagen sirve el manifest y los iconos; la instalación solo requiere que la instancia corra una versión que incluya las etiquetas `apple-mobile-web-app-*` del shell.
+
+1. En el iPhone, abrir `https://dsh.devmedel.com` en Safari e iniciar sesión en Cloudflare Access con el email autorizado.
+2. Compartir → «Añadir a pantalla de inicio». En iOS 16.4 o posterior también se ofrece desde Chrome, Edge y Firefox.
+3. Confirmar el nombre `NIM`: el icono abre la conversación a pantalla completa, sin la barra de Safari.
+
+iOS fija el nombre y el icono al instalar: un cambio de etiqueta llega cuando el contenedor reconstruido sirve el manifest nuevo y el icono se elimina y se vuelve a añadir desde Safari, porque reinstalar sobre el icono existente conserva el nombre anterior. La etiqueta vive en `name`/`short_name` del manifest y en `apple-mobile-web-app-title`; el nombre dentro del producto sigue en `<title>` y en el wordmark ([SPEC-014](specs/014-instalacion-ios.md)).
+
+La sesión de Access dura 24 h; cuando vence, la app instalada muestra el login de Cloudflare dentro de la propia app. Subirla a una semana o a un mes es `Session Duration` en Zero Trust → Access → Applications → `mdl-harness`, fuera de este repositorio. Los ajustes de proveedor, credenciales y selector de workspace siguen respondiendo `403` por el hostname público, así que tampoco se alcanzan desde la app instalada: se administran por loopback.
+
 ## Backup y restauración
 
 ```sh
@@ -101,6 +113,7 @@ Límites conocidos:
 - La retención del backup es de 7 días y no hay copia externa al VPS.
 - `bwrap` no es usable dentro del contenedor; el runner es Landlock.
 - El plano privilegiado de DSH solo funciona por loopback, no por `dsh.devmedel.com`.
+- La app instalada en el iPhone vuelve a pedir el PIN de Cloudflare Access cada 24 h.
 - Los IDs de imagen no son idénticos entre builds sucesivos; la reproducibilidad es funcional, no bit a bit.
 - Quedan `/srv/repro/deepseek-harness` y la imagen `mdl-harness:candidate` del ensayo.
 

@@ -14,7 +14,7 @@ The two paths are mutually exclusive by construction. `scrollbar-width`/`scrollb
 
 ## MDL-HARNESS palette
 
-The static `deepseek` scale carries the MDL-HARNESS brand red, with `deepseek-500` at `#D40000`; the neutral scale supplies graphite and neutral surfaces without a blue tint. Brand aliases resolve through that red scale, while dark mode uses the lighter `deepseek-400` accent so text on brand fills retains contrast. Error, warning, and success remain independent semantic families.
+The static `deepseek` scale carries the MDL-HARNESS brand red, with `deepseek-500` at `#D40000`; the neutral scale supplies graphite and neutral surfaces without a blue tint. Brand aliases resolve through that red scale, while dark mode uses the lighter `deepseek-400` accent so text on brand fills retains contrast. Error states use their own scales instead of the brand red: `fuchsia-600` and `fuchsia-500` fill the primary and secondary roles in light mode, and `yellow-400` fills both in dark mode. Warning and success keep their amber and green families.
 
 ## Model Experience
 

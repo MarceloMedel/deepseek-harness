@@ -142,10 +142,12 @@ describe('createLayoutStore', () => {
     expect(store.getSnapshot().drawerOpen).toBe(false)
   })
 
-  it('the phone refuses to open the details panel; the desktop keeps its default', () => {
+  it('openDetails uses the same preference on the phone, where it renders a sheet', () => {
     const { store, actions } = createLayoutStore().create()
     actions.setMobile(true)
     actions.openDetails()
+    expect(store.getSnapshot().details).toBe(DETAILS_DEFAULT)
+    actions.closeDetails()
     expect(store.getSnapshot().details).toBe(0)
     actions.setMobile(false)
     actions.openDetails()

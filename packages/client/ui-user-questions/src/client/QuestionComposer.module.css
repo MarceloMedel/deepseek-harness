@@ -18,6 +18,7 @@
      hidden): cap the card against the viewport and scroll the option list
      so header and footer actions stay reachable on long batches. */
   max-height: min(60vh, 520px);
+  max-height: min(60dvh, 520px);
   padding: 0 0 10px;
   border: 1px solid var(--dsw-alias-border-l2-darkmode-thin);
   border-radius: 20px;
@@ -403,5 +404,21 @@
   .option,
   .customRow {
     transition: none;
+  }
+}
+
+/* Phone layout (<=767px, docs/web-styling.md): the footer reflows instead of
+   overflowing — pager left, actions right, wrapping onto a second line only when
+   the labels need it — and the card is capped against the live viewport so the
+   answer buttons stay reachable with the keyboard open. */
+@media (max-width: 767px) {
+  .footer {
+    flex-wrap: wrap;
+    row-gap: 8px;
+    padding: 0 10px;
+  }
+
+  .footerActions {
+    margin-left: auto;
   }
 }

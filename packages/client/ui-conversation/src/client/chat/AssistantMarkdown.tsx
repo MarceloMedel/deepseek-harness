@@ -25,6 +25,8 @@ export interface AssistantMarkdownProps {
   streaming: boolean
   /** Frozen partial of an aborted turn: rendered with a stopped marker. */
   interrupted?: boolean | undefined
+  /** Whether reasoning starts expanded (the `detailed` chat density). */
+  expandReasoning?: boolean | undefined
   /** Session-authorized durable image loader. */
   loadImage?: ImageLoader
   /** Resolved prose file mentions for this Assistant's closing turn. */
@@ -35,7 +37,7 @@ export interface AssistantMarkdownProps {
 
 /** Reasoning block as the Think variant summary row (figma 39:28304). */
 export const AssistantMarkdown = memo(function AssistantMarkdown({
-  blocks, streaming, interrupted, loadImage, mentions, t,
+  blocks, streaming, interrupted, expandReasoning, loadImage, mentions, t,
 }: AssistantMarkdownProps) {
   const imageLoader = loadImage ?? (() => Promise.reject(new Error(t('image.serviceUnavailable'))))
   // Stable per locale revision (t identity changes on switch): a fresh object
@@ -66,7 +68,15 @@ export const AssistantMarkdown = memo(function AssistantMarkdown({
         )
         break
       case 'reasoning':
-        rendered.push(<ReasoningRow key={i} text={block.text} running={streaming && i === last} t={t} />)
+        rendered.push(
+          <ReasoningRow
+            key={i}
+            text={block.text}
+            running={streaming && i === last}
+            defaultOpen={expandReasoning === true}
+            t={t}
+          />,
+        )
         break
       case 'image': {
         // Consecutive image blocks share one gallery so several images tile

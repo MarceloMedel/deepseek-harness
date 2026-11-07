@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, within } from '@testing-library/react'
 import { useEffect } from 'react'
 import type {
-  AssistantMessageNode, CommandNode, CompactionSummaryNode, ConversationNode, ConversationSnapshot,
+  AssistantMessageNode, ChatSnapshot, CommandNode, CompactionSummaryNode, ConversationNode, ConversationSnapshot,
   ModelRetryNode, RunningToolCall, SessionId, SessionListState, ToolCallBlock, ToolResultNode, TurnErrorNode,
   TurnMaxTokensNode, UserMessageNode, WorkspaceListState,
 } from '@deepseek-ai/dsh-client-runtime/client'
@@ -149,7 +149,13 @@ function emptyWorkspaces() {
   return bindSnapshotSelector(store)
 }
 
-function makeHarness(init?: Partial<ConversationSnapshot>) {
+/** Density hook shared by every harness mount; tests override it per case. */
+function densityHookOf(initial: 'compact' | 'balanced' | 'detailed' = 'compact') {
+  return bindSnapshotSelector(createSnapshotStore(initial))
+}
+
+function makeHarness(init?: Partial<ConversationSnapshot>, density: 'compact' | 'balanced' | 'detailed' = 'compact') {
+  const densityHook = densityHookOf(density)
   const { set, source } = makeSource(init)
   const openDetails = vi.fn<(t: SelectionTarget) => void>()
   const openFile = vi.fn<(path: string) => void>()
@@ -278,6 +284,7 @@ function makeHarness(init?: Partial<ConversationSnapshot>) {
     },
     useStore: bindSnapshotSelector(chat),
     actions: chat.actions,
+    useDensity: densityHook,
     renderSlot,
     SessionProvider: SessionProviderStub,
     openDetails,
@@ -323,6 +330,34 @@ function installScrollMetrics(element: HTMLElement, initialHeight: number, clien
       scrollTop = Math.max(0, Math.min(top, scrollHeight - clientHeight))
     },
   }
+}
+
+/** Turn-scoped Chat snapshot: the shared fixture leaves Tool nodes turn-less,
+ *  so run grouping needs nodes that carry the Step's Turn the way the real
+ *  Tool Definition does. */
+function chatFlow(entries: readonly { key: string; kind: string; seq: number; data: unknown }[]): ChatSnapshot {
+  const turn = {
+    turn: 1, start: undefined, end: undefined, status: 'open' as const, steps: [],
+    data: { get: () => undefined },
+  }
+  const nodes = entries.map(entry => ({
+    key: entry.key,
+    kind: entry.kind,
+    id: entry.key,
+    target: 'chat' as const,
+    anchorSeq: entry.seq,
+    location: { kind: 'turn' as const, turn } as never,
+    visibility: 'visible' as const,
+    data: entry.data,
+  }))
+  const byKey = new Map(nodes.map(node => [node.key, node]))
+  return {
+    order: nodes.map(node => node.key),
+    nodes: { get: (key: string) => byKey.get(key), values: () => nodes },
+    locations: { getTurn: () => [], getStep: () => [] },
+    timeline: { turnOrder: [1], turns: new Map() },
+    legacy: { nodes: [], partial: null, runningCalls: [], turnTimings: new Map(), turnEnds: new Map() },
+  } satisfies ChatSnapshot
 }
 
 describe('Chat node rendering', () => {
@@ -477,8 +512,11 @@ describe('ChatView', () => {
     fireEvent.click(within(pendingBubble as HTMLElement).getByRole('button', { name: '复制' }))
     expect(writeText).toHaveBeenCalledWith('interrupt now')
     expect(within(pendingBubble as HTMLElement).queryByRole('button', { name: '在新对话中分支' })).toBeNull()
-    expect(view.getByRole('status').compareDocumentPosition(view.getByText('interrupt now'))
-      & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0)
+    // The pending steering bubble closes the flow: the turn-level activity
+    // signal lives on the composer's dock, never in this column.
+    const column = view.container.querySelector('[data-chat-flow]') as HTMLElement
+    expect(column.lastElementChild?.contains(pendingBubble)).toBe(true)
+    expect(view.queryByRole('status')).toBeNull()
 
     act(() => {
       h.set({
@@ -875,7 +913,6 @@ describe('ChatView', () => {
     const view = render(<h.ChatView {...h.props} />)
     expect(view.getByTestId('tool-seat-r1')).toBeTruthy()
     expect(h.toolOwners[0]?.block).toMatchObject({ callId: 'r1', argsRaw: '{"command":"cmd-r1"}' })
-    expect(view.getByRole('status').textContent).toBe('Deep diving...')
   })
 
   it('keeps the Tool renderer mounted when a running call settles into log order', () => {
@@ -926,30 +963,6 @@ describe('ChatView', () => {
     expect(unmounted).not.toHaveBeenCalled()
   })
 
-  it('the running clock uses turn/start, ignores steering, and stays out of the live region', () => {
-    const startTime = Date.now() - 125_000
-    const trigger: UserMessageNode = { ...user(1, 'go'), time: startTime + 1 }
-    const h = makeHarness({
-      nodes: [trigger], turnTimings: new Map([[1, { startTime }]]), running: true,
-    })
-    const view = render(<h.ChatView {...h.props} />)
-    // Freshly mounted (as after a reload) yet already past the 15s gate.
-    const status = view.getByRole('status')
-    expect(status.textContent).toMatch(/^Deep diving\.\.\.2分0\d秒$/)
-    expect(status.querySelector('[aria-hidden="true"]')).not.toBeNull()
-    act(() => {
-      h.set({ queue: [{
-        id: 'steering-occurrence' as never,
-        messageId: 'steering-message' as never,
-        placement: 'steering',
-        content: [{ type: 'text', text: 'also' }],
-        preview: 'also',
-        text: 'also',
-      }] })
-    })
-    expect(status.textContent).toMatch(/^Deep diving\.\.\.2分0\d秒$/)
-  })
-
   it('hands each ordered root call to the keyed business-node slot', () => {
     const block = toolResult(3, 'a')
     const h = makeHarness({ nodes: [block] })
@@ -969,6 +982,57 @@ describe('ChatView', () => {
     expect((owner.node.data as { readonly root: ToolCallBlock }).root).toBe(block)
     expect(owner.openFile).toBe(h.openFile)
     expect(owner.inspectCall).toBe(h.inspectCall)
+  })
+
+  it('folds a run of tool calls into one activity row that expands to the seats', () => {
+    const h = makeHarness({ chat: chatFlow([
+      { key: 'n-user', kind: 'user', seq: 1, data: user(1, 'q') },
+      { key: 'n-a', kind: 'tool-call', seq: 2, data: { root: toolResult(2, 'a') } },
+      { key: 'n-b', kind: 'tool-call', seq: 3, data: { root: toolResult(3, 'b') } },
+    ]) })
+    const view = render(<h.ChatView {...h.props} />)
+    // Collapsed: no seat for either call, one activity row instead.
+    expect(view.queryByTestId('tool-seat-a')).toBeNull()
+    const row = view.getByRole('button', { expanded: false })
+    expect(row.textContent).toContain('2 个工具')
+    expect(h.toolOwners).toHaveLength(0)
+    fireEvent.click(row)
+    expect(view.getByTestId('tool-seat-a')).toBeTruthy()
+    expect(view.getByTestId('tool-seat-b')).toBeTruthy()
+    expect(h.toolOwners.map(owner => owner.callId)).toEqual(['a', 'b'])
+  })
+
+  it('leaves every run unfolded under the balanced and detailed densities', () => {
+    const chat = chatFlow([
+      { key: 'n-user', kind: 'user', seq: 1, data: user(1, 'q') },
+      { key: 'n-a', kind: 'tool-call', seq: 2, data: { root: toolResult(2, 'a') } },
+      { key: 'n-b', kind: 'tool-call', seq: 3, data: { root: toolResult(3, 'b') } },
+    ])
+    for (const density of ['balanced', 'detailed'] as const) {
+      const h = makeHarness({ chat }, density)
+      const view = render(<h.ChatView {...h.props} />)
+      expect(view.getByTestId('tool-seat-a')).toBeTruthy()
+      expect(view.getByTestId('tool-seat-b')).toBeTruthy()
+      expect(view.queryByRole('button', { expanded: false })).toBeNull()
+      cleanup()
+    }
+  })
+
+  it('keeps prose between runs and never folds a lone call', () => {
+    const h = makeHarness({ chat: chatFlow([
+      { key: 'n-user', kind: 'user', seq: 1, data: user(1, 'q') },
+      { key: 'n-a', kind: 'tool-call', seq: 2, data: { root: toolResult(2, 'a') } },
+      {
+        key: 'n-prose', kind: 'assistant-step', seq: 3,
+        data: { status: 'settled', turn: 1, step: 1, blocks: [{ kind: 'text', text: 'narration' }], time: 3_000 },
+      },
+      { key: 'n-b', kind: 'tool-call', seq: 4, data: { root: toolResult(4, 'b') } },
+    ]) })
+    const view = render(<h.ChatView {...h.props} />)
+    // Each call is a run of one: rendered as its own seat, as before.
+    expect(view.getByTestId('tool-seat-a')).toBeTruthy()
+    expect(view.getByTestId('tool-seat-b')).toBeTruthy()
+    expect(view.queryByRole('button', { expanded: false })).toBeNull()
   })
 
   it('prepend preserves a semantic row; a trailing user node force-scrolls', () => {

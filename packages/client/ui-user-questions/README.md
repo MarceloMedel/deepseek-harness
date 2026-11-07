@@ -12,6 +12,8 @@ Selection state is local to a component keyed by the request rpcId. A replay wit
 
 Composer chrome copy (pager, buttons, placeholders, validation feedback) is bilingual: the plugin registers zh/en dictionaries under the `question` namespace of `dsh-client-locale` and hands the entry its bound translator plus the locale snapshot source through the inject face, so a locale switch re-renders a mounted composer. Question and option text arrives from the model and renders verbatim; carrier failure messages also display untranslated.
 
+On the phone layout both takeovers reflow rather than overflow: the card is capped against the live viewport (`60dvh`) so the answer buttons stay reachable with the keyboard open, and the footer wraps when the pager and the actions no longer fit on one line.
+
 ## Model Experience
 
 Indirectly, through `dsh-tool-ask-user`; that package owns the model-visible tool schema and structured result.

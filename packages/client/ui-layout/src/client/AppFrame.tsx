@@ -159,6 +159,11 @@ export function AppFrame({
   const cols = mobile
     ? computeMobileColumns(viewport)
     : computeColumns(viewport, sidebarPreference, detailsSession === undefined ? 0 : panels.details)
+  // The phone renders the details flag as a full-screen sheet rather than a
+  // track, so its open state is read from the preference, not from the solve.
+  const detailsOpen = mobile
+    ? detailsSession !== undefined && panels.details > 0
+    : cols.details > 0
   const colsRef = useRef(cols)
   colsRef.current = cols
 
@@ -206,7 +211,8 @@ export function AppFrame({
       data-mobile={mobile || undefined}
       data-drawer-open={(mobile && panels.drawerOpen) || undefined}
       data-sidebar-collapsed={(!mobile && sidebarCollapsed) || undefined}
-      data-details-collapsed={cols.details === 0 || undefined}
+      data-details-collapsed={!detailsOpen || undefined}
+      data-details-open={(mobile && detailsOpen) || undefined}
       data-dragging={dragging || undefined}
     >
       <div className={css.sidebarCol}>

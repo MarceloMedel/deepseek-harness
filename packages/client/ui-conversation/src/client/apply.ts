@@ -27,7 +27,11 @@ import { ComposerSubmissionPolicy } from './input/submission-policy.ts'
 import { InputBar } from './skeleton/InputBar.tsx'
 import { EnterBehaviorRow } from './settings/EnterBehaviorRow.tsx'
 import type { EnterBehaviorRowInjected } from './settings/EnterBehaviorRow.tsx'
+import { DensityRow } from './settings/DensityRow.tsx'
+import type { DensityRowInjected } from './settings/DensityRow.tsx'
+import { ChatDensityPreference } from './chat/density-preference.ts'
 import { ChatView } from './chat/ChatView.tsx'
+import { LiveActivity } from './chat/LiveActivity.tsx'
 import { StatsLine } from './chat/StatsLine.tsx'
 import { ApprovalPanel } from './skeleton/ApprovalPanel.tsx'
 import { todoDockEntry } from './skeleton/TodoPanel.tsx'
@@ -38,7 +42,7 @@ import { DetailsPanel } from './skeleton/DetailsPanel.tsx'
 import { en, NS, zh, type ConversationKey } from './locales.ts'
 import { registerConversationNodes } from './conversation-nodes/register.ts'
 import { registerChatNodeRenderers } from './chat/register-node-renderers.ts'
-import { CONVERSATION_SETTINGS_NAMESPACE, type ConversationSettings } from '../submission-settings.ts'
+import { CONVERSATION_SETTINGS_NAMESPACE, type ConversationSettings } from '../conversation-settings.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -128,11 +132,12 @@ export function apply(ctx: Context): void {
   // re-registration; components read the standard `t` seat instead.
   const t = ctx.locale.bind(NS)
 
-  // Apply-time construction keeps store identity bound to this fiber.
+  // Apply-time construction keeps store identity bound to this fiber. One
+  // settings scope serves every preference this plugin owns.
   const chatStore = createChatStore()
-  const submissionPolicy = new ComposerSubmissionPolicy(
-    ctx.settingsScope.bind<ConversationSettings>({ namespace: CONVERSATION_SETTINGS_NAMESPACE }),
-  )
+  const settings = ctx.settingsScope.bind<ConversationSettings>({ namespace: CONVERSATION_SETTINGS_NAMESPACE })
+  const submissionPolicy = new ComposerSubmissionPolicy(settings)
+  const densityPreference = new ChatDensityPreference(settings)
 
   ctx.slots.inject('settings.general.item', () => ctx.slots.register({
     name: 'settings.general.item',
@@ -144,6 +149,17 @@ export function apply(ctx: Context): void {
       setBusyEnter: (behavior) => { submissionPolicy.setBusyEnter(behavior) },
     }),
   }, EnterBehaviorRow))
+
+  ctx.slots.inject('settings.general.item', () => ctx.slots.register({
+    name: 'settings.general.item',
+    id: 'chat-density',
+    order: 21,
+    locale: NS,
+    inject: (): DensityRowInjected => ({
+      hooks: { density: densityPreference.density },
+      setDensity: (density) => { densityPreference.setDensity(density) },
+    }),
+  }, DensityRow))
 
   // Chat semantic reader positions by session, surviving view switches and
   // width reflow when the tab ring remounts the view. Deliberately not
@@ -387,6 +403,7 @@ export function apply(ctx: Context): void {
       const conversation = concreteConversation(ctx)
       const scoped = scopedConversation(sessions, sessionId)
       return {
+        hooks: { density: densityPreference.density },
         openDetails: (target) => {
           actions.select(target)
           layout.openDetails()
@@ -427,6 +444,11 @@ export function apply(ctx: Context): void {
 
   // Session stats stick with the composer (composer.dock = stats-line family).
   slots.register({ name: 'conversation.composer.dock', id: 'stats', order: 0, locale: NS }, StatsLine)
+
+  // The live activity line rides the dock above the composer card, between
+  // the plan strip (0) and the queue rows (20): one fixed place for "what is
+  // it doing now", outside the scrolling transcript.
+  slots.register({ name: 'conversation.input.dock', id: 'live-activity', order: 10, locale: NS }, LiveActivity)
 
   // Class-plugin mount (packages/AGENTS.md service form): the service
   // registers itself as `conversation` and lives on its own child fiber.
