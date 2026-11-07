@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-07-29-oxlint-linter.zh.md)
-
 ## Problem
 
 The repository needs type-aware TypeScript correctness rules, consistent formatting, and file-local duplicate-logic checks across its owned source. ESLint supplied those checks through a JavaScript parser, a project service, and multiple plugins, but a clean lint run spent about one minute on the local migration baseline and required an 8 GiB Node heap, CI result caches, and separately tuned ESLint concurrency.
@@ -12,7 +10,7 @@ A faster runner cannot justify losing rules. The migration must preserve the str
 
 ## Decision
 
-The root [`.oxlintrc.json`](../../../../.oxlintrc.json) is the authoritative type-aware repository lint configuration. The project-free [`.oxlintrc.staged.json`](../../../../.oxlintrc.staged.json) profile inherits its source rules, disables type analysis for the bounded pre-commit path, and re-includes preserved TypeGraph fixtures that the type-aware backend cannot analyze. The `lint` and `lint:fix` package scripts, gate scheduler, CI, and lefthook invoke Oxlint through [`scripts/run-oxlint.ts`](../../../../scripts/run-oxlint.ts); the [Oxlint-only fix workflow](2026-08-09-oxlint-only-fix-workflow.md) owns multipass plugin fixes and supersedes the separate formatting fallback.
+The root [`.oxlintrc.json`](../../../../.oxlintrc.json) is the authoritative type-aware repository lint configuration. The project-free [`.oxlintrc.staged.json`](../../../../.oxlintrc.staged.json) profile inherits its source rules, disables type analysis for the bounded pre-commit path, and re-includes preserved TypeGraph fixtures that the type-aware backend cannot analyze. The `lint` and `lint:fix` package scripts, gate scheduler, CI, and lefthook invoke Oxlint through `scripts/run-oxlint.ts`; the [Oxlint-only fix workflow](2026-08-09-oxlint-only-fix-workflow.md) owns multipass plugin fixes and supersedes the separate formatting fallback.
 
 `options.typeAware` enables `oxlint-tsgolint`. Its backend performs per-file TypeScript-project discovery: package sources use their package projects, host tests/examples/website use `tsconfig.host.json`, and client tests plus `scripts/client-bundle-purity.spec.ts` use `tsconfig.client.json`. The program-less root solution is never flattened. Oxlint's `--tsconfig` override affects import resolution but is ignored by type-aware linting, so this repository does not set it. The configuration explicitly carries the migrated strict-type-checked rules and repository overrides instead of enabling broad Oxlint categories whose contents may change. `typescript/no-unnecessary-condition` remains enabled from Oxlint's nursery set because it was an enforced repository rule before migration.
 

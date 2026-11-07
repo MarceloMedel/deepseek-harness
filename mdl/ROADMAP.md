@@ -22,6 +22,9 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 14 | Instalar la interfaz en la pantalla de inicio del iPhone | [SPEC-014](specs/014-instalacion-ios.md) | En implementación |
 | 15 | Conversación compacta con detalle a demanda | [SPEC-015](specs/015-conversacion-compacta.md) | Validada |
 | 16 | Densidad de la conversación elegible | [SPEC-016](specs/016-densidad-conversacion.md) | Validada |
+| 17 | Optimización de la imagen Docker | [SPEC-017](specs/017-optimizacion-imagen.md) | En implementación |
+| 18 | Payload del cliente web y móvil | [SPEC-018](specs/018-payload-cliente.md) | En implementación |
+| 19 | Idiomas: inglés y español, sin chino | [SPEC-019](specs/019-idiomas-en-es.md) | En implementación |
 
 ## Dependencias
 
@@ -39,6 +42,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 - La Fase 10 parte del commit validado de la Fase 9 y termina con el agente capaz de empujar una rama y abrir un PR sin que la credencial entre en la imagen, el repositorio o la sesión.
 - La Fase 15 no depende de una fase anterior: cambia solo la presentación de la conversación y conserva el detalle en las superficies que ya existen.
 - La Fase 16 parte de la Fase 15: convierte su comportamiento único en una preferencia de tres niveles sobre la misma presentación.
+- Las fases 17, 18 y 19 son independientes entre sí y se validan por separado: 17 reduce la imagen, 18 el payload del navegador y 19 los idiomas publicados.
 
 ## Próxima acción
 

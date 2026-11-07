@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-11-06-phone-layout-shell.zh.md)
-
 ## Problem
 
 The shell's narrow tier stopped at an auto-collapsed 56px rail. On a 390px phone that rail spent 14% of the width, never became the session list, and the details column could not open at all (`computeColumns` resolves it to zero below ~1000px). The header carried three pieces of chrome a phone cannot act on: the session's agent-preset label, the view tab strip, and the session-log download capsule. Composer controls were pointer-sized (28px chips, a 34px send circle), and the shell pinned itself to `height: 100%` of the layout viewport, which a mobile URL bar and keyboard do not shrink.

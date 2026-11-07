@@ -11,7 +11,7 @@ import { createLanguageRowStore } from '../src/client/settings-store.ts'
 
 afterEach(cleanup)
 
-const OPTIONS = [{ id: 'zh', label: '中文' }, { id: 'en', label: 'English' }]
+const OPTIONS = [{ id: 'es', label: '中文' }, { id: 'en', label: 'English' }]
 
 /** Empty global standard-kit hooks (the row reads neither). */
 function emptySessions() {
@@ -58,7 +58,7 @@ describe('LanguageRow', () => {
     fireEvent.click(trigger)
     expect(trigger.getAttribute('aria-expanded')).toBe('true')
     fireEvent.click(screen.getByRole('menuitem', { name: '中文' }))
-    expect(b.setLocale).toHaveBeenCalledWith('zh')
+    expect(b.setLocale).toHaveBeenCalledWith('es')
     expect(trigger.getAttribute('aria-expanded')).toBe('false')
     expect(screen.queryByRole('menuitem', { name: '中文' })).toBeNull()
   })
@@ -74,7 +74,7 @@ describe('LanguageRow', () => {
 
   it('follows store changes; an unknown active id falls back to the id itself', () => {
     const b = mount('en')
-    act(() => { b.store.actions.sync('zh', OPTIONS, 1) })
+    act(() => { b.store.actions.sync('es', OPTIONS, 1) })
     expect(screen.getByRole('button', { name: /中文/ })).toBeDefined()
     act(() => { b.store.actions.sync('fr', OPTIONS, 2) })
     expect(screen.getByRole('button', { name: /fr/ })).toBeDefined()

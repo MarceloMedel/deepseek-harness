@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-08-09-oxlint-only-fix-workflow.zh.md)
-
 ## Problem
 
 The [repository linter migration](2026-07-29-oxlint-linter.md) retained a formatting-only ESLint invocation because Oxlint's JavaScript-plugin bridge was treated as validation-only. The pinned Oxlint toolchain executes the safe fixers supplied by `@stylistic/eslint-plugin`, so the separate formatter duplicates a configuration boundary, command startup, and direct `eslint` plus `@typescript-eslint/parser` dependencies.
@@ -12,7 +10,7 @@ A single Oxlint invocation is not an equivalent replacement. Overlapping plugin 
 
 ## Decision
 
-All repository lint and fix workflows invoke Oxlint through [`scripts/run-oxlint.ts`](../../../../scripts/run-oxlint.ts). Normal validation remains one process with inherited output. An invocation containing `--fix`, `--fix-suggestions`, or `--fix-dangerously` captures the first Oxlint result; success emits its stdout and stderr on their original channels, while a completed non-zero run discards its potentially obsolete diagnostics and runs the same command once more with inherited output. The runner re-raises a child signal instead of retrying or converting it to an exit code, and the second process completion is final.
+All repository lint and fix workflows invoke Oxlint through `scripts/run-oxlint.ts`. Normal validation remains one process with inherited output. An invocation containing `--fix`, `--fix-suggestions`, or `--fix-dangerously` captures the first Oxlint result; success emits its stdout and stderr on their original channels, while a completed non-zero run discards its potentially obsolete diagnostics and runs the same command once more with inherited output. The runner re-raises a child signal instead of retrying or converting it to an exit code, and the second process completion is final.
 
 The `lint:fix` package script and staged lefthook job use that runner directly. The type-aware root profile still ignores preserved TypeGraph fixture shapes that `oxlint-tsgolint` cannot analyze; the project-free staged profile re-includes that directory, carries its intentional `any` and quote exceptions, and applies its style fixes before the full type-aware fix pass. The formatting-only ESLint configuration and the direct `eslint` and `@typescript-eslint/parser` development dependencies are absent. `@stylistic/eslint-plugin` and `eslint-plugin-sonarjs` remain Oxlint JavaScript plugins because they preserve enforced rules; pnpm still installs ESLint as their declared peer, but no repository configuration or workflow invokes it.
 

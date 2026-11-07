@@ -8,9 +8,9 @@ import type { ConversationSnapshot, RunningToolCall } from '@deepseek-ai/dsh-cli
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-web-react'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
+import { es as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/es.ts'
 import { LiveActivity } from '../src/client/chat/LiveActivity.tsx'
-import { zh } from '../src/client/locales.ts'
+import { es } from '../src/client/locales.ts'
 import { chatSnapshotFixture } from './chat-snapshot-fixture.client.ts'
 
 beforeEach(() => { localStorage.clear() })
@@ -47,7 +47,7 @@ function harness(init: {
   }
   const store = createSnapshotStore<ConversationSnapshot>(snapshot)
   return {
-    props: { useSession: bindSnapshotSelector(store), t: makeTranslate(zh, commonZh) },
+    props: { useSession: bindSnapshotSelector(store), t: makeTranslate(es, commonZh) },
     store,
     startTime,
   }
@@ -66,10 +66,10 @@ describe('live activity line', () => {
     const h = harness({ running: true, runningCalls: [runningCall()], startTime: 91_000 })
     const view = render(<LiveActivity {...h.props} />)
     const status = view.getByRole('status')
-    expect(status.textContent).toBe('pnpm lint9秒')
+    expect(status.textContent).toBe('pnpm lint9s')
     expect(status.querySelector('[data-live-activity]')).toBeNull()
     act(() => { vi.advanceTimersByTime(2_000) })
-    expect(view.getByRole('status').textContent).toBe('pnpm lint11秒')
+    expect(view.getByRole('status').textContent).toBe('pnpm lint11s')
   })
 
   it('reports that the agent is working between calls', () => {
@@ -77,7 +77,7 @@ describe('live activity line', () => {
     vi.setSystemTime(100_000)
     const h = harness({ running: true, startTime: 99_000 })
     const view = render(<LiveActivity {...h.props} />)
-    expect(view.getByRole('status').textContent).toBe('正在处理…1秒')
+    expect(view.getByRole('status').textContent).toBe('Trabajando…1s')
   })
 
   it('names the last call when several are in flight', () => {

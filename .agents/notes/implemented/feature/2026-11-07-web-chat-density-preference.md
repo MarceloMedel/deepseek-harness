@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-11-07-web-chat-density-preference.zh.md)
-
 ## Problem
 
 [The activity fold](2026-11-07-web-activity-fold-and-live-line.md) made one display behavior the only one: every run of work renders as a single collapsed row. A reader who wants to follow a call per call has to expand every run, and a reader who wants to watch the reasoning has to open every Think row, so the same transcript serves two opposite reading styles badly. The choice is durable, not per conversation: it is how a person reads, not what one session contains.

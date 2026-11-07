@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-11-07-mobile-agent-surfaces.zh.md)
-
 ## Problem
 
 [The phone layout](2026-11-06-phone-layout-shell.md) gave the shell one surface — the conversation — and left the surfaces the agent is actually operated through behind. A tool call's detail was unreachable: the frame refused `openDetails()` on the phone and the column resolved to zero width. The approval and question takeovers arrived with pointer-shaped geometry: right-aligned 36px actions, a 336px body cap, and no relationship to the live viewport, so a phone with the keyboard open could push the answers off the screen.

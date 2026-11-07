@@ -524,8 +524,8 @@ describe('fork', () => {
   it.each([
     ['Roadmap', 'Roadmap (1)'],
     ['Roadmap (1)', 'Roadmap (2)'],
-    ['计划（1）', '计划（2）'],
-    ['计划 （9）', '计划 （10）'],
+    ['计划 (1)', '计划 (2)'],
+    ['计划  (9)', '计划  (10)'],
   ])('increments the durable title %j after the child is published', async (sourceTitle, childTitle) => {
     const b = bench()
     b.svc.handleMuxEnvelope({

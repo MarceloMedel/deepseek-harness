@@ -3,23 +3,23 @@
 /** Dictionary namespace owned by this plugin. */
 export const NS = 'skill'
 
-/** Simplified Chinese dictionary (the key-set source of truth). */
-export const zh = {
-  'row.running': '正在加载 skill',
-  'row.failed': 'skill 加载失败',
-  'row.stopped': 'skill 加载已中止',
-  'row.instructions': '说明',
-  'menu.userOnly': '仅用户',
+/** English dictionary (the key-set source of truth). */
+export const en = {
+  'row.running':      'Loading skill',
+  'row.failed':       'Skill load failed',
+  'row.stopped':      'Skill load stopped',
+  'row.instructions': 'Instructions',
+  'menu.userOnly':    'user-only',
 } satisfies Record<string, string>
 
-/** The skill namespace key union. */
-export type SkillKey = keyof typeof zh
+/** The namespace key union. */
+export type SkillKey = keyof typeof en
 
-/** English dictionary, checked complete against the zh key set. */
-export const en = {
-  'row.running': 'Loading skill',
-  'row.failed': 'Skill load failed',
-  'row.stopped': 'Skill load stopped',
-  'row.instructions': 'Instructions',
-  'menu.userOnly': 'user-only',
+/** Spanish dictionary, checked complete against the English key set. */
+export const es = {
+  'row.running':      'Cargando habilidad',
+  'row.failed':       'Falló la carga de la habilidad',
+  'row.stopped':      'Carga de la habilidad detenida',
+  'row.instructions': 'Instrucciones',
+  'menu.userOnly':    'solo usuario',
 } satisfies Record<SkillKey, string>

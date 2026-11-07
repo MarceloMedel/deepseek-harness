@@ -7,7 +7,7 @@ const MAX_CHARS = 20_000
 
 /** Default truncation footer; the owner passes a localized formatter. */
 function defaultTruncatedLabel(total: number): string {
-  return `… 已截断，共 ${total} 字符`
+  return `… truncado, ${total} caracteres en total`
 }
 
 export function JsonBlock({ label, payload, defaultOpen = false, truncatedLabel = defaultTruncatedLabel }: {

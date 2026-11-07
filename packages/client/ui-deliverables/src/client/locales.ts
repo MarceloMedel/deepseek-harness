@@ -3,23 +3,23 @@
 /** Dictionary namespace owned by this plugin. */
 export const NS = 'deliverables'
 
-/** Simplified Chinese dictionary (the key-set source of truth). */
-export const zh = {
-  'produced.label': '产物',
-  'produced.moreOne': '+ 1 个文件',
-  'produced.more': '+ {count} 个文件',
-  'produced.open': '打开 {name}',
-  'produced.showInFolder': '在文件夹中显示',
-}
-
-/** English dictionary (same key set). */
-export const en: Record<DeliverablesKey, string> = {
-  'produced.label': 'Produced',
-  'produced.moreOne': '+ 1 file',
-  'produced.more': '+ {count} files',
-  'produced.open': 'Open {name}',
+/** English dictionary (the key-set source of truth). */
+export const en = {
+  'produced.label':        'Produced',
+  'produced.moreOne':      '+ 1 file',
+  'produced.more':         '+ {count} files',
+  'produced.open':         'Open {name}',
   'produced.showInFolder': 'Show in folder',
-}
+} satisfies Record<string, string>
 
-/** Union of this namespace's dictionary keys. */
-export type DeliverablesKey = keyof typeof zh
+/** The namespace key union. */
+export type DeliverablesKey = keyof typeof en
+
+/** Spanish dictionary, checked complete against the English key set. */
+export const es = {
+  'produced.label':        'Producido',
+  'produced.moreOne':      '+ 1 archivo',
+  'produced.more':         '+ {count} archivos',
+  'produced.open':         'Abrir {name}',
+  'produced.showInFolder': 'Mostrar en la carpeta',
+} satisfies Record<DeliverablesKey, string>

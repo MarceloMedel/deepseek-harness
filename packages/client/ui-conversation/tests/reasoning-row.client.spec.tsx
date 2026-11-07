@@ -2,9 +2,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render } from '@testing-library/react'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
+import { es as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/es.ts'
 import { AssistantMarkdown } from '../src/client/chat/AssistantMarkdown.tsx'
-import { zh } from '../src/client/locales.ts'
+import { es } from '../src/client/locales.ts'
 
 let nextAnimationFrameId = 1
 let animationFrames = new Map<number, FrameRequestCallback>()
@@ -36,7 +36,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-const t = makeTranslate(zh, commonZh)
+const t = makeTranslate(es, commonZh)
 
 describe('ReasoningRow', () => {
   it('starts expanded when the chat density asks for it, and the reader still closes it', () => {
@@ -59,7 +59,7 @@ describe('ReasoningRow', () => {
         streaming
       />,
     )
-    expect(view.getByText('运行中')).toBeTruthy()
+    expect(view.getByText('En ejecución')).toBeTruthy()
     const summary = view.getByText('Newest reasoning tokens')
     Object.defineProperties(summary, {
       scrollWidth: { configurable: true, value: 300 },
@@ -89,7 +89,7 @@ describe('ReasoningRow', () => {
     )
     flushAnimationFrames(3)
     expect(view.getByText('Inspect the session')).toBeTruthy()
-    expect(view.queryByText('运行中')).toBeNull()
+    expect(view.queryByText('En ejecución')).toBeNull()
     expect(summary.scrollLeft).toBe(0)
     expect(summary.hasAttribute('data-follow-end')).toBe(false)
   })

@@ -30,13 +30,13 @@ const ROW_READY: AgentPresetSettingsState = {
   currentValue: 'standard',
   // `mine` deliberately names itself nothing: the row must fall back to the
   // id for a preset whose author wrote no metadata.
-  options: [{ id: 'standard', trust: 'system', name: '标准模式' }, { id: 'mine', trust: 'user' }],
+  options: [{ id: 'standard', trust: 'system', name: 'Modo estándar' }, { id: 'mine', trust: 'user' }],
 }
 
 const SEAT_READY: AgentPresetSeatState = {
   current: 'standard',
   options: [
-    { id: 'standard', trust: 'system', name: '标准模式', description: '完整的编码 agent。' },
+    { id: 'standard', trust: 'system', name: 'Modo estándar', description: '完整的编码 agent.' },
     { id: 'mine', trust: 'user' },
   ],
   busy: false,
@@ -114,7 +114,7 @@ describe('the General-settings row', () => {
     renderRow({
       currentValue: 'mine',
       options: [
-        { id: 'standard', trust: 'system', name: '标准模式' },
+        { id: 'standard', trust: 'system', name: 'Modo estándar' },
         { id: 'bare', trust: 'system' },
         { id: 'mine', trust: 'user' },
         { id: 'ours', trust: 'user', name: '团队模式' },
@@ -314,12 +314,12 @@ describe('the chip introduce cue', () => {
     expect(delayedChars()).toHaveLength(0)
   })
 
-  it('keeps the per-tick cap for a short CJK name', () => {
+  it('keeps the per-tick cap for a short name', () => {
     vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })))
     vi.useFakeTimers()
     renderSeat({
       current: 'creator',
-      options: [{ id: 'creator', trust: 'user', name: '创造模式' }],
+      options: [{ id: 'creator', trust: 'user', name: 'Modo' }],
       introduce: true,
     })
 

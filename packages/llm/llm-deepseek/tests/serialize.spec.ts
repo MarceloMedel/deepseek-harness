@@ -288,7 +288,7 @@ describe('review fixes: assistant content shapes', () => {
     // plain turns, and content must still be SET — a null here poisoned the
     // session log and bricked every later turn of that session.
     const wire = serializeMessages([createMessage({
-      role: 'assistant', content: [{ type: 'reasoning', text: '你好！有什么我可以帮你的吗？' }],
+      role: 'assistant', content: [{ type: 'reasoning', text: '你好！有什么我可以帮你的吗?' }],
       source: { kind: 'plugin', plugin: 'test' },
     })])
     expect(wire).toEqual([{ role: 'assistant', content: '' }])

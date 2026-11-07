@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-11-07-web-activity-fold-and-live-line.zh.md)
-
 ## Problem
 
 A turn in the web conversation painted one row per event: every Assistant step contributed a `Think` row with a one-line preview, and every Tool call contributed its own summary row. A task of thirty steps therefore produced forty-odd rows of equal weight, and because `ChatView` follows the tail while the turn runs, that column moved at model speed past a reader who could not read it. The one element that answered "what is it doing now" — the in-flow `Deep diving...` status — lived inside the same scrollport, so it left the screen exactly when it was needed.
