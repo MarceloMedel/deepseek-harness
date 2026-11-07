@@ -21,11 +21,17 @@ function latestLine(text: string): string {
  * Render one assistant reasoning block as the Think disclosure row.
  * @param props.text - complete or streaming reasoning text.
  * @param props.running - whether this block is the streaming tail.
+ * @param props.defaultOpen - whether the row starts expanded (the `detailed` density); the reader's own toggle then owns it.
  * @param props.t - conversation locale seat for the running status.
  * @returns the reasoning disclosure.
  */
-export function ReasoningRow({ text, running, t }: { text: string; running: boolean; t: ChatViewSlotProps['t'] }) {
-  const [expanded, setExpanded] = useState(false)
+export function ReasoningRow({ text, running, defaultOpen = false, t }: {
+  text: string
+  running: boolean
+  defaultOpen?: boolean
+  t: ChatViewSlotProps['t']
+}) {
+  const [expanded, setExpanded] = useState(defaultOpen)
   const summaryRef = useRef<HTMLSpanElement>(null)
   const summary = running ? latestLine(text) : firstLine(text)
   const scheduleSummaryScroll = useThrottledVisualUpdate(() => {

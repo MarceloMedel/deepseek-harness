@@ -1,0 +1,101 @@
+/* Collapsed activity row: the same 24px summary line the Tool rows use
+   ([16 leading] gap6 [title] gap8 [dot] gap8 [summary truncate]), plus the
+   run's last thought line below it while the row stays closed. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.row {
+  position: relative; /* sweep-glare overlay anchor */
+  overflow: hidden;
+}
+
+/* A running run wears the Tool rows' own in-flight signal: a background-band
+   glare that glides over the row while work continues. */
+.root[data-state='running'] .row::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 300px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--dsw-alias-bg-base) 60%, transparent) 55%,
+    transparent 100%
+  );
+  animation: dsh-activity-row-sweep 2.6s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes dsh-activity-row-sweep {
+  0% { left: -300px; }
+  90%, 100% { left: 100%; }
+}
+
+.leading {
+  flex-shrink: 0;
+}
+
+.chevron {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.title {
+  font-weight: 400;
+}
+
+.sep {
+  flex: none;
+  width: 2px;
+  height: 2px;
+  border-radius: 1px;
+  margin: 0 8px;
+  background: var(--dsw-alias-label-caption);
+}
+
+.summary {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 14px;
+  line-height: 24px;
+}
+
+.summary[data-error] {
+  color: var(--dsw-alias-state-error-primary);
+}
+
+/* Last thought line: aligned with the title text, one line, muted. */
+.thought {
+  padding: 0 0 0 22px;
+  margin-top: -2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+/* Expanded rows keep their own chrome; the indent marks them as this run's
+   contents instead of the turn's. */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 2px 0 0 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root[data-state='running'] .row::after {
+    animation: none;
+  }
+}

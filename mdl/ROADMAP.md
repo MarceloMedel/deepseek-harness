@@ -20,6 +20,8 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 11 | Identidad git genérica por token HTTPS | [SPEC-011](specs/011-git-config-file.md) | Validada |
 | 12 | Operar el agente desde el teléfono | [SPEC-012](specs/012-mobile-agent-surfaces.md) | En implementación |
 | 14 | Instalar la interfaz en la pantalla de inicio del iPhone | [SPEC-014](specs/014-instalacion-ios.md) | En implementación |
+| 15 | Conversación compacta con detalle a demanda | [SPEC-015](specs/015-conversacion-compacta.md) | En implementación |
+| 16 | Densidad de la conversación elegible | [SPEC-016](specs/016-densidad-conversacion.md) | En implementación |
 
 ## Dependencias
 
@@ -35,6 +37,8 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 - La Fase 13 queda reservada para ajustes a pantalla completa y el bloque contenedor que rompe los paneles fijos en móvil.
 - La Fase 14 parte de la Fase 9 validada y agrega metadatos de instalación sin tocar la composición; se valida en el teléfono sobre el hostname público.
 - La Fase 10 parte del commit validado de la Fase 9 y termina con el agente capaz de empujar una rama y abrir un PR sin que la credencial entre en la imagen, el repositorio o la sesión.
+- La Fase 15 no depende de una fase anterior: cambia solo la presentación de la conversación y conserva el detalle en las superficies que ya existen.
+- La Fase 16 parte de la Fase 15: convierte su comportamiento único en una preferencia de tres niveles sobre la misma presentación.
 
 ## Próxima acción
 

@@ -39,6 +39,18 @@ afterEach(() => {
 const t = makeTranslate(zh, commonZh)
 
 describe('ReasoningRow', () => {
+  it('starts expanded when the chat density asks for it, and the reader still closes it', () => {
+    const view = render(
+      <AssistantMarkdown t={t} blocks={[{ kind: 'reasoning', text: 'Full chain of thought' }]} streaming={false} expandReasoning />,
+    )
+    // Both the collapsed summary and the open body carry the text; the body
+    // is the one inside the disclosure body.
+    expect(view.getByRole('button', { expanded: true })).toBeTruthy()
+    expect(view.getAllByText('Full chain of thought').length).toBeGreaterThan(0)
+    fireEvent.click(view.getByRole('button', { expanded: true }))
+    expect(view.getByRole('button', { expanded: false })).toBeTruthy()
+  })
+
   it('follows the latest streaming line, scrolls to its end, then restores the settled first line', () => {
     const view = render(
       <AssistantMarkdown

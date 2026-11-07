@@ -2,12 +2,13 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import { settingsNamespace } from '@deepseek-ai/dsh-settings'
-import { CONVERSATION_SETTINGS_NAMESPACE, ConversationSettingsSchema } from './submission-settings.ts'
+import { CONVERSATION_SETTINGS_NAMESPACE, ConversationSettingsSchema } from './conversation-settings.ts'
 
 export {
-  BUSY_ENTER_BEHAVIORS, BUSY_ENTER_FIELD, CONVERSATION_SETTINGS_NAMESPACE,
-  DEFAULT_BUSY_ENTER_BEHAVIOR, type BusyEnterBehavior, type ConversationSettings,
-} from './submission-settings.ts'
+  BUSY_ENTER_BEHAVIORS, BUSY_ENTER_FIELD, CHAT_DENSITIES, CHAT_DENSITY_FIELD,
+  CONVERSATION_SETTINGS_NAMESPACE, DEFAULT_BUSY_ENTER_BEHAVIOR, DEFAULT_CHAT_DENSITY,
+  type BusyEnterBehavior, type ChatDensity, type ConversationSettings,
+} from './conversation-settings.ts'
 
 /**
  * Register the durable conversation section when a settings provider exists.

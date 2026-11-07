@@ -13,12 +13,13 @@
 // lifecycle updates replace only their own row without remounting it.
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { ConversationTimelineSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ChatNodeStore } from '@deepseek-ai/dsh-client-runtime/client'
 import { IconChevronDownOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ChatViewSlotProps } from '../contract/slots.ts'
 import { PendingSteeringBubble } from './MessageItem.tsx'
 import { ChatNodeSeat } from './ChatNodeSeat.tsx'
-import { formatRunDuration } from './message-chrome.ts'
+import { ActivityGroup } from './ActivityGroup.tsx'
+import { isActivityKind, turnOf } from './activity-model.ts'
 import css from './ChatView.module.css'
 
 const FOLLOW_THRESHOLD = 24
@@ -95,61 +96,50 @@ function scrollPosition(list: HTMLElement, scrollport: HTMLElement): ChatScrollP
   }
 }
 
-function runningTurnStartTime(timeline: ConversationTimelineSnapshot): number | null {
-  let latest: number | null = null
-  for (const turn of timeline.turns.values()) {
-    if (turn.status === 'open' && turn.start !== undefined) latest = turn.start.time
-  }
-  return latest
-}
+/** One child of the flow column: a plain Chat Node seat, or a run of work. */
+type FlowItem =
+  | { readonly kind: 'node'; readonly key: string; readonly nodeKey: string }
+  | { readonly kind: 'activity'; readonly key: string; readonly nodeKeys: readonly string[] }
 
-/** Turn-level model activity label retained across first-token, tool, and streaming phases. */
-function TurnStatus({ startTime, t }: {
-  /** The running turn's logged `turn/start` time; null falls back to mount
-   *  time when that boundary is outside the window. */
-  startTime: number | null
-  /** The owning view's locale seat. */
-  t: ChatViewSlotProps['t']
-}) {
-  const [mountedAt] = useState(() => Date.now())
-  // Anchored to turn/start so a mid-turn reload keeps the real
-  // elapsed time and the final footer's Ran-for label matches this clock.
-  const anchor = startTime ?? mountedAt
-  const [elapsedMs, setElapsedMs] = useState(() => Math.max(0, Date.now() - anchor))
-  useEffect(() => {
-    const tick = (): void => {
-      setElapsedMs(Math.max(0, Date.now() - anchor))
+/** Consecutive Activity kinds inside one turn form one run; anything else is a boundary. */
+function groupFlow(order: readonly string[], nodes: ChatNodeStore): FlowItem[] {
+  const items: FlowItem[] = []
+  let run: string[] = []
+  let runTurn: number | undefined
+  const flush = (): void => {
+    const [first] = run
+    if (first === undefined) return
+    if (run.length > 1) items.push({ kind: 'activity', key: `activity:${first}`, nodeKeys: run })
+    else items.push({ kind: 'node', key: first, nodeKey: first })
+    run = []
+  }
+  for (const key of order) {
+    const node = nodes.get(key)
+    const turn = turnOf(node)
+    if (node !== undefined && turn !== undefined && isActivityKind(node.kind)) {
+      if (run.length > 0 && runTurn !== turn) flush()
+      runTurn = turn
+      run.push(key)
+      continue
     }
-    tick()
-    const id = setInterval(tick, 1000)
-    return () => { clearInterval(id) }
-  }, [anchor])
-  // Short turns keep the plain label; the clock only appears once the turn
-  // has clearly been running for a while.
-  const showClock = elapsedMs >= 15_000
-  return (
-    <div className={css.turnStatus} role="status" aria-live="polite">
-      Deep diving...
-      {showClock && (
-        <span className={css.turnStatusClock} aria-hidden>
-          {formatRunDuration(elapsedMs, t)}
-        </span>
-      )}
-    </div>
-  )
+    flush()
+    items.push({ kind: 'node', key, nodeKey: key })
+  }
+  flush()
+  return items
 }
 
 /**
  * The chat view slot entry: pure component over the composed props; each
- * ordered business Node crosses the keyed renderer seat.
+ * ordered business Node crosses the keyed renderer seat, and a run of work
+ * crosses the activity fold as one row.
  */
 export function ChatView({
   useSession, useSessions, useStore, renderSlot, sessionId, openFile, loadOlder, loadImage, inspectCall, chatScroll, forkAt,
-  fileMentions, t,
+  fileMentions, useDensity, t,
 }: ChatViewSlotProps) {
   const order = useSession(s => s.chat.order)
   const nodeStore = useSession(s => s.chat.nodes)
-  const timeline = useSession(s => s.chat.timeline)
   const inbox = useSession(s => s.queue)
   // Workspace root off the session list row: path summaries display relative to it.
   const cwd = useSessions(s => s.byId[sessionId]?.cwd)
@@ -159,12 +149,22 @@ export function ChatView({
   const hasMore = useSession(s => s.hasMore)
   const loadingOlder = useSession(s => s.loadingOlder)
   const selectedCallId = useStore(s => s.selection?.callId)
+  const density = useDensity(value => value)
 
   const pendingSteering = useMemo(
     () => inbox.filter(item => item.placement === 'steering'),
     [inbox],
   )
-  const runningTurnStart = useMemo(() => runningTurnStartTime(timeline), [timeline])
+  // `compact` folds each run of work into one row; the other densities render
+  // one row per step, and `detailed` additionally opens the reasoning inside
+  // it. Grouping rides the order — kinds and turns are fixed per key — so
+  // stream deltas never re-run it.
+  const flow = useMemo(
+    () => density === 'compact'
+      ? groupFlow(order, nodeStore)
+      : order.map(key => ({ kind: 'node' as const, key, nodeKey: key })),
+    [density, order, nodeStore],
+  )
 
   const listRef = useRef<HTMLDivElement | null>(null)
   const columnRef = useRef<HTMLDivElement | null>(null)
@@ -379,28 +379,46 @@ export function ChatView({
               </button>
             </div>
           )}
-          {order.map(nodeKey => (
-            <ChatNodeSeat
-              key={nodeKey}
-              nodeKey={nodeKey}
-              useSession={useSession}
-              selectedCallId={selectedCallId}
-              cwd={cwd}
-              openFile={openFile}
-              inspectCall={inspectCall}
-              forkAt={forkAt}
-              loadImage={loadImage}
-              fileMentions={fileMentions}
-              renderSlot={renderSlot}
-              t={t}
-            />
-          ))}
+          {flow.map(item => item.kind === 'activity'
+            ? (
+              <ActivityGroup
+                key={item.key}
+                keys={item.nodeKeys}
+                density={density}
+                useSession={useSession}
+                selectedCallId={selectedCallId}
+                cwd={cwd}
+                openFile={openFile}
+                inspectCall={inspectCall}
+                forkAt={forkAt}
+                loadImage={loadImage}
+                fileMentions={fileMentions}
+                renderSlot={renderSlot}
+                t={t}
+              />
+            )
+            : (
+              <ChatNodeSeat
+                key={item.key}
+                nodeKey={item.nodeKey}
+                density={density}
+                useSession={useSession}
+                selectedCallId={selectedCallId}
+                cwd={cwd}
+                openFile={openFile}
+                inspectCall={inspectCall}
+                forkAt={forkAt}
+                loadImage={loadImage}
+                fileMentions={fileMentions}
+                renderSlot={renderSlot}
+                t={t}
+              />
+            ))}
           {/* No pending placeholders: questions (ui-user-questions) and approvals
               (ApprovalPanel) both take over the composer, so a flow card would
               double-render the same wait. */}
-          {/* Turn-level loading signal: rides the whole running turn (first-token
-              wait, tool execution, streaming) so it never flickers per step. */}
-          {running && <TurnStatus startTime={runningTurnStart} t={t} />}
+          {/* The turn-level activity signal is the docked live line, outside
+              this scrollport, so it cannot pass the reader by. */}
           {pendingSteering.map(item => (
             <PendingSteeringBubble key={item.id} content={item.content} loadImage={loadImage} t={t} />
           ))}

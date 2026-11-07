@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-11-07-mobile-agent-surfaces.md
 2026-11-07-mobile-agent-surfaces.md: 708a9095197bb597092fb2695a368f8f523783aa
-2026-11-07-mobile-agent-surfaces.zh.md: e13311c94a2869970775ca532952c920ef073c3d
+2026-11-07-mobile-agent-surfaces.zh.md: c89345d4fdd7b1356b2ba036b0b84d7a3a6af381
