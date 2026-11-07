@@ -16,6 +16,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 7 | Proyectos del host como workspace | [SPEC-007](specs/007-host-projects-workspace.md) | Validada |
 | 8 | Credencial git para pipay-sii | [SPEC-008](specs/008-git-deploy-key.md) | Validada |
 | 9 | Shell móvil para el teléfono | [SPEC-009](specs/009-mobile-shell.md) | Validada |
+| 10 | Credencial de GitHub para push y PR | [SPEC-010](specs/010-github-pr-credential.md) | Aprobada |
 
 ## Dependencias
 
@@ -27,6 +28,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 - La Fase 5 exige persistencia, separación de secretos y sandbox validado.
 - La Fase 6 reproduce el candidato desde un clon limpio en el VPS.
 - La Fase 9 parte del commit validado de la Fase 8 y termina con la interfaz usable desde un teléfono de 390 px de ancho.
+- La Fase 10 parte del commit validado de la Fase 9 y termina con el agente capaz de empujar una rama y abrir un PR sin que la credencial entre en la imagen, el repositorio o la sesión.
 
 ## Próxima acción
 

@@ -70,6 +70,14 @@ RUN printf '%s\n' \
 RUN mkdir -p /data/dsh /workspace \
     && chown -R node:node /data /workspace
 
+# GitHub credential surface (SPEC-010): `gh` resolves to the wrapper below on
+# PATH and reads the token per invocation from the read-only mount, so the secret
+# never enters a process environment; the git helper answers github.com only.
+COPY mdl/docker/gh-wrapper.sh /usr/local/bin/gh
+COPY mdl/docker/git-credential.sh /usr/local/bin/mdl-git-credential
+RUN chmod 0755 /usr/local/bin/gh /usr/local/bin/mdl-git-credential \
+    && git config --system credential.helper /usr/local/bin/mdl-git-credential
+
 COPY --from=build /app /app
 COPY mdl/docker/nginx.conf /etc/nginx/nginx.conf
 COPY mdl/docker/entrypoint.sh /usr/local/bin/mdl-entrypoint

@@ -10,6 +10,15 @@ if [[ ! -e "$DSH_HOME/settings.yaml" && -f /etc/mdl-harness/settings.yaml ]]; th
   install -m 0600 /etc/mdl-harness/settings.yaml "$DSH_HOME/settings.yaml"
 fi
 
+# Visibility only (SPEC-010): a missing GitHub credential must surface here, not
+# as a silent refusal the first time an agent tries to push. The token itself is
+# never read, echoed, or exported by this script.
+if [[ -r /etc/mdl-harness/gh/token ]]; then
+  echo "mdl-harness: GitHub credential mounted; gh and HTTPS pushes are enabled"
+else
+  echo "mdl-harness: no GitHub credential at /etc/mdl-harness/gh/token; gh and HTTPS pushes will refuse (see mdl/docker/README.md)"
+fi
+
 dsh_args=(--profile web --host 127.0.0.1 --port 3080)
 if [[ -n "${DSH_TRUSTED_HOST:-}" ]]; then
   dsh_args+=(--trusted-host "$DSH_TRUSTED_HOST")

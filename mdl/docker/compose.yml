@@ -42,6 +42,10 @@ services:
       # Deploy key and pinned GitHub host keys, outside the projects mount so
       # the agent cannot rewrite them.
       - ${MDL_GIT_DIR:-/home/ubuntu/.config/mdl-harness/git}:/etc/mdl-harness/git:ro
+      # GitHub token for `gh` and HTTPS pushes (SPEC-010): read-only, outside the
+      # projects mount, and read per invocation by the image's gh wrapper, so it
+      # never becomes an environment value. Rotating it is replacing the file.
+      - ${MDL_GH_DIR:-/home/ubuntu/.config/mdl-harness/gh}:/etc/mdl-harness/gh:ro
       - ./settings.yaml:/etc/mdl-harness/settings.yaml:ro
     networks:
       - default

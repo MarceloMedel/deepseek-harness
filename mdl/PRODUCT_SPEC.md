@@ -19,6 +19,7 @@ Este documento contiene las reglas permanentes y el flujo de desarrollo. El orde
 | `MDL-LOCALE-01` | Sin preferencia explícita, un navegador no soportado inicia la interfaz en inglés; chino sigue disponible como idioma del navegador o selección manual. |
 | `MDL-SEC-01` | Ninguna credencial puede incorporarse a Git, imágenes Docker, capturas o registros de validación. |
 | `MDL-SEC-02` | La exposición pública y la relajación de controles de red o sandbox requieren una especificación específica y una validación de seguridad. |
+| `MDL-GH-01` | Una credencial de GitHub con escritura vive fuera de la imagen y del repositorio, se monta como archivo de solo lectura, se limita a un repositorio y nunca se expone en el entorno de procesos ni en registros. |
 | `MDL-DOCKER-01` | El contenedor ejecuta DSH con un usuario no root y sin privilegios innecesarios. |
 | `MDL-DOCKER-02` | El socket Docker del host no se monta por defecto; instalar Docker CLI no otorga control del host. |
 | `MDL-DATA-01` | La configuración, los proyectos y el estado persistente deben sobrevivir al reinicio y a la recreación del contenedor. |
