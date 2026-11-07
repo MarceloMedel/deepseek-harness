@@ -66,6 +66,17 @@ Entorno: VPS Linux amd64; imagen `mdl-harness:local`; `/srv/projects` de 452 MB,
 | `WS-05` Selector | Aprobado | `host.listDirectory` sobre `/srv/projects` responde `ok` con los proyectos |
 | `WS-06` Instancia | Aprobada | Contenedor `healthy`, 4 sesiones intactas, `dsh.devmedel.com` sin sesión sigue en `302` |
 
+### Revalidación de `WS-04` (2026-11-07)
+
+El usuario del contenedor volvió a leer el almacén: `ubuntu` (mismo uid que `node` dentro del contenedor) tenía una ACL `r-x` sobre `/srv/projects/secrets` y `/srv/projects/secrets/pipay-sii`, y `pipay-sii/app.env` era legible desde el agente. `gateway` y `personal-suite` seguían cerrados.
+
+| Comprobación | Resultado | Evidencia |
+|---|---|---|
+| `WS-04` revalidado | Aprobado | `setfacl -Rb` y `chmod 0700` sobre ambos niveles; desde el contenedor `ls /srv/projects/secrets` → `Permission denied` y ningún archivo de `pipay-sii` legible; `drwx------ root root` |
+| Sin daño colateral | Aprobado | `lsof` y `grep` sobre `/etc/systemd/system` y `personal-suite/ops` no encontraron ningún consumidor; `git config --list` y `gh api user` siguen funcionando |
+
+La causa del desvío: el almacén concedía acceso a `ubuntu` por ACL, y ese usuario comparte uid con el del contenedor, así que la separación por permisos desaparecía. La postura aplicable es `root` estricto: un servicio que necesite esos archivos debe consumirlos como root (por ejemplo con `--env-file` o un bind mount del archivo), nunca mediante una ACL para `ubuntu`.
+
 ## Resultado
 
 **Validada.** El agente ve y edita los repositorios del host, el sandbox confina las escrituras al workspace elegido y `secrets` permanece inaccesible.
