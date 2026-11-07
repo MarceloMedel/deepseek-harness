@@ -33,7 +33,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 
 ## Próxima acción
 
-Las fases 1 a 9 están validadas y el fork se reproduce desde un clon limpio de `main` sin afectar la instancia viva. La Fase 9 se validó en un teléfono sobre la imagen reconstruida desde la rama `feat/mobile-shell`, y las fases 9 y 10 llegaron a `main` por los PR #1 y #2 del fork, con el agente empujando y abriendo el PR desde el contenedor. Queda pendiente `GH-05` de `SPEC-010`, que exige un segundo token de solo lectura. Queda por decidir si la interfaz móvil continúa con detalles, ajustes y aprobaciones como hoja a pantalla completa, y si se crea un tag local de release.
+Las fases 1 a 11 están validadas y el fork se reproduce desde un clon limpio de `main` sin afectar la instancia viva. La Fase 9 se validó en un teléfono sobre la imagen reconstruida desde la rama `feat/mobile-shell`, y las fases 9, 10 y 11 llegaron a `main` por los PR #1, #2 y #3 del fork, con el agente empujando y abriendo el PR desde el contenedor. Queda por decidir si la interfaz móvil continúa con detalles, ajustes y aprobaciones como hoja a pantalla completa, y si se crea un tag local de release.
 
 Pendiente de seguridad, ajeno a la Fase 10: el almacén `/srv/projects/secrets` ya no cumple el criterio `WS-04` de `SPEC-007`. El usuario del contenedor lista el directorio y lee `pipay-sii/app.env`; `gateway` y `personal-suite` siguen cerrados. La corrección es del host —restringir el directorio y sus ACL— y debe comprobar antes qué procesos leen `pipay-sii/app.env` y `pipay-sii/certs`, para no romper ese despliegue.
 

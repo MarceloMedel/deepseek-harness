@@ -72,7 +72,7 @@ Ejecutada el 2026-11-07 sobre la imagen reconstruida en el VPS, con el token emi
 | `GH-02` Empuje y PR | Aprobado | `git push -u origin change/010-github-pr-credential` autenticó por el helper; `gh pr create` creó el PR #1 y el #2, y el #2 se fusionó |
 | `GH-03` Sin archivo | Aprobado | `MDL_GH_TOKEN_FILE=<ruta ausente> gh api user` → exit 78 con el mensaje que nombra la ruta esperada |
 | `GH-04` Sin exposición | Aprobado | `env` sin ninguna variable que contenga `token`; `grep -rIl 'github_pat_\|ghp_'` sin coincidencias en el árbol; el montaje es de solo lectura |
-| `GH-05` Token sin `Contents: write` | Pendiente | Requiere un segundo token de solo lectura, que emite el usuario |
+| `GH-05` Token sin `Contents: write` | Aprobado | Con un segundo token fine-grained de solo `Contents: Read`: la lectura funciona (`gh api user` → `MarceloMedel`) y `POST /git/refs` falla con `HTTP 403: Resource not accessible by personal access token`, `exit 1`, sin que el token aparezca en la salida |
 | `GH-06` Alcance del helper | Aprobado | El helper no responde a `host=example.com`, responde solo a `host=github.com` y no hace nada en `store`/`erase` |
 | `GH-07` Lectura por invocación | Aprobado | Con el mismo proceso vivo: archivo con token inválido → `exit 1` (`Bad credentials`); archivo borrado → `exit 78`; token real → `exit 0` y `MarceloMedel`. Ningún caché, ninguna reinicio |
 | `GH-08` Ubicación | Aprobado | El token vive en `~/.config/mdl-harness/gh/token`, fuera de `/srv/projects/secrets` y de los volúmenes; `secrets` no contiene ninguna copia |
@@ -80,5 +80,5 @@ Ejecutada el 2026-11-07 sobre la imagen reconstruida en el VPS, con el token emi
 ## Resultado y pendientes
 
 - Resultado: validado. La credencial permite empujar ramas y abrir PR desde dentro del contenedor, y el secreto no aparece en el entorno, en el árbol ni en los volúmenes. El PR #1 llevó la Fase 9 y esta Fase 10 a `main` en el commit `7b617375f3`.
-- Pendientes o excepciones aceptadas: `GH-05` (un token sin `Contents: write` debe fallar con el error de GitHub) queda sin ejecutar porque exige un segundo token emitido por el usuario; no se registra como superado.
-- Decisión de salida: la Fase 10 se cierra con `GH-05` como comprobación pendiente de una sesión de seguridad posterior.
+- Pendientes o excepciones aceptadas: ninguna. `GH-05` se ejecutó con un segundo token de solo lectura y el token de prueba se revocó después.
+- Decisión de salida: la Fase 10 se cierra con las ocho comprobaciones aprobadas.
