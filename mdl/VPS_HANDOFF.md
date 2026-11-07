@@ -83,7 +83,9 @@ La interfaz se instala en la pantalla de inicio del iPhone sin pasar por la App 
 
 1. En el iPhone, abrir `https://dsh.devmedel.com` en Safari e iniciar sesión en Cloudflare Access con el email autorizado.
 2. Compartir → «Añadir a pantalla de inicio». En iOS 16.4 o posterior también se ofrece desde Chrome, Edge y Firefox.
-3. Confirmar el nombre `MDL-HARNESS`: el icono abre la conversación a pantalla completa, sin la barra de Safari.
+3. Confirmar el nombre `NIM`: el icono abre la conversación a pantalla completa, sin la barra de Safari.
+
+iOS fija el nombre y el icono al instalar: un cambio de etiqueta llega cuando el contenedor reconstruido sirve el manifest nuevo y el icono se elimina y se vuelve a añadir desde Safari, porque reinstalar sobre el icono existente conserva el nombre anterior. La etiqueta vive en `name`/`short_name` del manifest y en `apple-mobile-web-app-title`; el nombre dentro del producto sigue en `<title>` y en el wordmark ([SPEC-014](specs/014-instalacion-ios.md)).
 
 La sesión de Access dura 24 h; cuando vence, la app instalada muestra el login de Cloudflare dentro de la propia app. Subirla a una semana o a un mes es `Session Duration` en Zero Trust → Access → Applications → `mdl-harness`, fuera de este repositorio. Los ajustes de proveedor, credenciales y selector de workspace siguen respondiendo `403` por el hostname público, así que tampoco se alcanzan desde la app instalada: se administran por loopback.
 

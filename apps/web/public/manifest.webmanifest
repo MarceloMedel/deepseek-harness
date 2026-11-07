@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "MDL-HARNESS",
-  "short_name": "MDL-HARNESS",
+  "name": "NIM",
+  "short_name": "NIM",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -3,11 +3,11 @@
 Estado: En implementación
 Fase: 14
 Commit base: `8b04da218b`
-Aprobación: usuario en sesión Web, petición «how can we convert this app into a iOS installable web app? … I need to have it as an icon in my iPhone», con `https://dsh.devmedel.com` como origen del icono.
+Aprobación: usuario en sesión Web, petición «how can we convert this app into a iOS installable web app? … I need to have it as an icon in my iPhone», con `https://dsh.devmedel.com` como origen del icono. La etiqueta `NIM` la aprobó el mismo usuario en la petición «how can i change the name of icon to “NIM”?».
 
 ## Objetivo
 
-Que MDL-HARNESS se instale en el iPhone como una aplicación de la pantalla de inicio: un icono con el arte del producto que abre la conversación a pantalla completa, sin la barra de Safari, alcanzable desde cualquier red.
+Que MDL-HARNESS se instale en el iPhone como una aplicación de la pantalla de inicio: un icono con el arte del producto, con la etiqueta `NIM`, que abre la conversación a pantalla completa, sin la barra de Safari, alcanzable desde cualquier red.
 
 ## Contexto
 
@@ -17,6 +17,7 @@ Que MDL-HARNESS se instale en el iPhone como una aplicación de la pantalla de i
 
 - Etiquetas `apple-mobile-web-app-capable`, `mobile-web-app-capable`, `apple-mobile-web-app-title` y `apple-mobile-web-app-status-bar-style` en [index.html](../../apps/web/index.html).
 - Icono de 180 px declarado también en el manifest, además de la etiqueta `apple-touch-icon` existente.
+- Etiqueta de instalación `NIM` en el manifest (`name`, `short_name`) y en `apple-mobile-web-app-title`.
 - Prueba del artefacto construido que fija el manifest completo, las etiquetas de iOS y las dimensiones de los PNG.
 - Instrucciones de instalación, origen y sesión de Access en [VPS_HANDOFF.md](../VPS_HANDOFF.md).
 
@@ -34,14 +35,14 @@ Que MDL-HARNESS se instale en el iPhone como una aplicación de la pantalla de i
 | ID | Requisito observable | Comprobación |
 |---|---|---|
 | `IOS-01` | El HTML servido declara `apple-mobile-web-app-capable=yes` y `mobile-web-app-capable=yes` | Prueba sobre `dist/index.html` |
-| `IOS-02` | El nombre bajo el icono es `MDL-HARNESS`, independiente del `<title>` | Prueba sobre `dist/index.html` |
+| `IOS-02` | El nombre bajo el icono es `NIM` en la etiqueta y en el manifest, independiente del `<title>` | Prueba sobre `dist/index.html` y `dist/manifest.webmanifest` |
 | `IOS-03` | La barra de estado usa el estilo `default`, de modo que la página empieza debajo de ella | Prueba sobre `dist/index.html` |
 | `IOS-04` | El manifest declara `standalone`, `theme_color`, `background_color` y un icono de 180 px; cada PNG existe con las dimensiones declaradas | Prueba sobre `dist/` |
 | `IOS-05` | El teléfono instala la app desde el hostname público y abre la conversación sin la barra de Safari | Validación manual en el iPhone |
 
 ## Restricciones
 
-- `MDL-IDENT-01`, `MDL-IDENT-03`: el icono instalado y el nombre son los del producto.
+- `MDL-IDENT-01`, `MDL-IDENT-03`: el icono instalado es el arte del producto. Excepción aprobada a `MDL-IDENT-01`: la etiqueta de la pantalla de inicio es `NIM`; el nombre visible dentro del producto —`<title>` y el wordmark— sigue siendo `MDL-HARNESS`.
 - `MDL-THEME-01`, `MDL-THEME-02`: `theme_color` sigue siendo `#D40000`, y los temas claro, oscuro y sistema siguen funcionando en la app instalada.
 - `MDL-SEC-02`: no se abre ningún puerto ni se relaja un control de red; el acceso sigue pasando por Cloudflare Access y el plano privilegiado sigue respondiendo solo por loopback.
 - `MDL-UPSTREAM-01`: el cambio es aditivo —cuatro etiquetas `meta`, una entrada de icono y una prueba— sobre archivos compartidos con upstream.
@@ -61,11 +62,12 @@ Fecha: 2026-11-07. Entorno: checkout local, Node 22, sin navegadores de Playwrig
 | Prueba del artefacto de instalación | Aprobada | `npx vitest run --config vitest.web.config.ts apps/web/tests/pwa-manifest.e2e.ts`: 3 de 3. Antes del cambio esa prueba fallaba porque esperaba el manifest anterior a SPEC-009 |
 | HTML y manifest servidos por `dsh web` | Aprobado | `dsh web --port 3099` en un `DSH_HOME` temporal y `curl`: las cuatro etiquetas `meta` en la respuesta y el manifest con el icono de 180 px, `content-type: application/manifest+json` |
 | Iconos servidos con su tipo | Aprobado | `curl -o /dev/null`: `apple-touch-icon.png` 200 `image/png`, `icon-192.png` 200 `image/png`, `favicon-32.png` 200 `image/png` |
-| `IOS-05`: instalación en el iPhone | Pendiente | Requiere el dispositivo y la imagen desplegada con este cambio |
+| `IOS-02`: etiqueta `NIM` servida | Aprobado | Frontend reconstruido y `dsh web --port 3099` en un `DSH_HOME` temporal: `apple-mobile-web-app-title` vale `NIM` y el manifest sirve `name`/`short_name` `NIM` con `<title>` intacto |
+| `IOS-05`: instalación en el iPhone | Parcial | El usuario confirmó la instalación y el funcionamiento con la etiqueta anterior; la etiqueta `NIM` requiere borrar el icono y volver a añadirlo, todavía no verificado |
 | Prueba de navegador sobre el shell | Pendiente | Este entorno no tiene navegadores de Playwright; `pnpm run test:web` no se ejecutó |
 
 ## Resultado y pendientes
 
-- Resultado: el shell declara las etiquetas de instalación de iOS y el manifest declara el icono de 180 px; la prueba del artefacto fija las dos cosas. La instalación en el dispositivo queda pendiente.
-- Pendientes o excepciones aceptadas: `IOS-05` en el iPhone; `pnpm run test:web` sin ejecutar por falta de navegadores; el hostname público solo sirve el cambio después de reconstruir y recrear el contenedor.
+- Resultado: el shell declara las etiquetas de instalación de iOS, el manifest declara el icono de 180 px y la app se instala y funciona desde `dsh.devmedel.com` con la etiqueta `NIM`; la prueba del artefacto fija las tres cosas.
+- Pendientes o excepciones aceptadas: falta reinstalar el icono en el iPhone para ver la etiqueta nueva; `pnpm run test:web` sin ejecutar por falta de navegadores; el hostname público solo sirve el cambio después de reconstruir y recrear el contenedor.
 - Decisión de salida: pendiente hasta la validación en dispositivo; estado de la especificación `En implementación`.

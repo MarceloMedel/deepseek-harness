@@ -15,8 +15,8 @@ it('ships install metadata with the built web application', async () => {
   const manifest: unknown = JSON.parse(await readFile(join(DIST_ROOT, 'manifest.webmanifest'), 'utf8'))
   expect(manifest).toEqual({
     id: '/',
-    name: 'MDL-HARNESS',
-    short_name: 'MDL-HARNESS',
+    name: 'NIM',
+    short_name: 'NIM',
     start_url: '/',
     scope: '/',
     display: 'standalone',
@@ -46,11 +46,11 @@ it('ships install metadata with the built web application', async () => {
   })
 })
 
-it('ships the iOS home-screen tags: label, standalone launch, page below the status bar', async () => {
+it('ships the iOS home-screen tags: install label, standalone launch, page below the status bar', async () => {
   const index = await readFile(join(DIST_ROOT, 'index.html'), 'utf8')
   expect(index).toContain('<meta name="apple-mobile-web-app-capable" content="yes" />')
   expect(index).toContain('<meta name="mobile-web-app-capable" content="yes" />')
-  expect(index).toContain('<meta name="apple-mobile-web-app-title" content="MDL-HARNESS" />')
+  expect(index).toContain('<meta name="apple-mobile-web-app-title" content="NIM" />')
   // `default`, never `black-translucent`: the conversation header and the frame
   // menu reserve the width of the frame's own control, not the status bar.
   expect(index).toContain('<meta name="apple-mobile-web-app-status-bar-style" content="default" />')
