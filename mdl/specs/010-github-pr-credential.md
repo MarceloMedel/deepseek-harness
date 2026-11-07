@@ -15,6 +15,8 @@ La imagen ya instala `gh` y el contenedor alcanza `api.github.com`; lo que falta
 
 El registro de la sesión es durable y compartido, así que una variable con el token en el entorno del proceso la expondría a cualquier volcado accidental de `env` dentro del agente. Por eso el token no entra en el entorno: solo en el proceso `gh` que lo usa.
 
+El alcance del token pasó de este repositorio a todos los repositorios de la cuenta en la Fase 11 ([SPEC-011](011-git-config-file.md)); el almacenamiento, la exposición y la rotación no cambian.
+
 El token vive en `~/.config/mdl-harness/gh/token` del host y no en `/srv/projects/secrets`, aunque ese directorio sea el almacén de secretos del host: `SPEC-007` define `secrets` como el almacén que el usuario del contenedor no puede leer, y un token que el contenedor debe leer pertenece al lado contrario de esa frontera. La deploy key de `SPEC-008` ya ocupa ese mismo lugar fuera del almacén, y montar un archivo desde dentro de `secrets` obligaría a abrirlo al uid 1000 o a copiarlo en cada arranque. El coste aceptado es que el token no entra en el backup diario, que solo archiva los volúmenes: si el host se pierde, se reemite.
 
 ## Alcance

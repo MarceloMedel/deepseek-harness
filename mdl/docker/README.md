@@ -32,36 +32,31 @@ El contenedor monta `${MDL_PROJECTS_DIR:-/srv/projects}` en la misma ruta absolu
 
 Los proyectos no entran en el backup diario: se respaldan por git. El volumen `mdl-workspace` sigue disponible para sesiones sin proyecto.
 
-## Credencial git
+## Identidad git y credenciales
 
-El contenedor usa una deploy key SSH de escritura limitada a `MarceloMedel/pipay-sii`. Vive en `/home/ubuntu/.config/mdl-harness/git/` (`MDL_GIT_DIR` cambia el origen), se monta en `/etc/mdl-harness/git` como solo lectura y la reescritura de URL aplica únicamente al remoto exacto de ese repo. El remoto del host sigue en HTTPS.
+El contenedor autentica todo por HTTPS con el token de GitHub de la sección anterior: clonar, empujar y abrir PR funcionan en **cualquier repositorio** al que ese token alcance, sin configuración por repositorio. El token debe emitirse con acceso a todos los repositorios, con `Contents: Read and write`, `Pull requests: Read and write`, `Issues: Read and write` y `Metadata: Read`.
 
-No está en la imagen, ni en el volumen `DSH_HOME`, ni en el backup. Para rotarla o revocarla: GitHub → repo → Settings → Deploy keys, y después borrar el directorio del host y regenerar el par.
+La imagen no sabe de ningún repositorio: solo aporta el mecanismo en `/etc/gitconfig`.
 
-## Credencial de GitHub para push y PR
-
-El agente puede empujar ramas y abrir pull requests. La credencial es un token fine-grained limitado a `MarceloMedel/deepseek-harness` con `Contents: Read and write`, `Pull requests: Read and write`, `Issues: Read and write` y `Metadata: Read`; `Workflows` queda fuera a propósito. Vive en `/home/ubuntu/.config/mdl-harness/gh/token` (modo `0600`, dueño `ubuntu`), `MDL_GH_DIR` cambia el origen y se monta en `/etc/mdl-harness/gh` como solo lectura.
-
-El token no se expone como variable de entorno. La imagen coloca `/usr/local/bin/gh`, que lee el archivo en cada invocación y delega en `/usr/bin/gh`, y registra un helper de credenciales para que `git push` por HTTPS use el mismo token. El helper responde únicamente a `github.com`. Consecuencia práctica: rotar el token es reemplazar el archivo, sin reiniciar el contenedor.
-
-Creación, en el host:
-
-```sh
-install -d -m 0700 /home/ubuntu/.config/mdl-harness/gh
-# Pegar el token emitido en GitHub → Settings → Developer settings →
-# Fine-grained tokens, con los permisos de arriba y solo el repo del fork.
-install -m 0600 /dev/stdin /home/ubuntu/.config/mdl-harness/gh/token
-sudo docker compose -f mdl/docker/compose.yml up -d --build
+```ini
+[credential]
+	helper = /usr/local/bin/mdl-git-credential
+[include]
+	path = /etc/mdl-harness/git/gitconfig
 ```
 
-Validación, dentro del contenedor:
+Ese `include` es el punto de extensión y vale para cualquier aplicación desplegada con Docker. Un `include` cuyo archivo no existe se ignora, así que un despliegue que no necesita nada más no monta nada. El que sí lo necesita monta un fragmento en solo lectura con sus propias reglas, por ejemplo un alias SSH y una clave por repositorio:
 
-```sh
-sudo docker exec -it -u node mdl-harness-mdl-harness-1 gh api user --jq .login
-sudo docker exec -it -u node mdl-harness-mdl-harness-1 gh pr list --repo MarceloMedel/deepseek-harness
+```ini
+[url "ssh://github-otro-repo/OWNER/REPO.git"]
+	insteadOf = https://github.com/OWNER/REPO.git
+[core]
+	sshCommand = ssh -F /etc/mdl-harness/git/ssh_config
 ```
 
-Sin el archivo, `gh` termina con código 78 y un mensaje que nombra la ruta esperada; nunca imprime el token. El token queda legible para el agente, igual que la deploy key: por eso el alcance es de un solo repositorio y la rotación es inmediata.
+Añadir un repositorio es añadir ese bloque en el host y reiniciar el contenedor; no se reconstruye ninguna imagen ni se toca `compose.yml`.
+
+El contenedor ya no lleva deploy keys ni variables `GIT_CONFIG_*`. La reescritura a SSH de `pipay-sii` de `SPEC-008` se retiró en la Fase 11: ese repositorio, como cualquier otro, usa el token.
 
 ## Sandbox
 
