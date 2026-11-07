@@ -4,6 +4,17 @@
 # Run it as the host user that owns the mount, never with sudo: the container
 # runs as uid 1000 and must be able to read the file, so a root-owned token
 # would install cleanly and then fail at the first `gh` call with exit 78.
+# Re-exec under bash when invoked as `sh install-gh-token.sh`: several `sh`
+# implementations accept `pipefail` and then reject `read -s`, which is the only
+# way to keep a pasted token off the screen. The shebang covers direct execution.
+if [ -z "${BASH_VERSION:-}" ]; then
+  if command -v bash >/dev/null 2>&1; then
+    exec bash "$0" "$@"
+  fi
+  echo "this installer needs bash (read -s keeps the token hidden); run: bash $0" >&2
+  exit 1
+fi
+
 set -euo pipefail
 
 target_dir=${MDL_GH_DIR:-$HOME/.config/mdl-harness/gh}
