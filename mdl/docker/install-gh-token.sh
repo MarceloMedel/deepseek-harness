@@ -17,8 +17,11 @@ fi
 
 set -euo pipefail
 
-target_dir=${MDL_GH_DIR:-$HOME/.config/mdl-harness/gh}
-target=$target_dir/token
+# Optional first argument: the destination file. The default is the token the
+# container mounts; pass another path for a second credential (for example a
+# read-only token used to verify that an insufficient scope fails cleanly).
+target=${1:-${MDL_GH_DIR:-$HOME/.config/mdl-harness/gh}/token}
+target_dir=$(dirname -- "$target")
 compose_file=$(cd -- "$(dirname -- "$0")" && pwd)/compose.yml
 
 if [ "$(id -u)" -eq 0 ]; then
@@ -50,7 +53,7 @@ chmod 0600 "$tmp"
 mv -f "$tmp" "$target"
 trap - EXIT
 
-if [ -f "$compose_file" ]; then
+if [ -f "$compose_file" ] && [ "$target" = "${MDL_GH_DIR:-$HOME/.config/mdl-harness/gh}/token" ]; then
   echo "installed $target ($(stat -c '%a %U:%G' "$target"))"
   echo "next: sudo docker compose -f $compose_file up -d --build"
   echo "then: docker exec -u node <container> gh api user --jq .login"
