@@ -15,6 +15,8 @@ La imagen ya instala `gh` y el contenedor alcanza `api.github.com`; lo que falta
 
 El registro de la sesión es durable y compartido, así que una variable con el token en el entorno del proceso la expondría a cualquier volcado accidental de `env` dentro del agente. Por eso el token no entra en el entorno: solo en el proceso `gh` que lo usa.
 
+El token vive en `~/.config/mdl-harness/gh/token` del host y no en `/srv/projects/secrets`, aunque ese directorio sea el almacén de secretos del host: `SPEC-007` define `secrets` como el almacén que el usuario del contenedor no puede leer, y un token que el contenedor debe leer pertenece al lado contrario de esa frontera. La deploy key de `SPEC-008` ya ocupa ese mismo lugar fuera del almacén, y montar un archivo desde dentro de `secrets` obligaría a abrirlo al uid 1000 o a copiarlo en cada arranque. El coste aceptado es que el token no entra en el backup diario, que solo archiva los volúmenes: si el host se pierde, se reemite.
+
 ## Alcance
 
 - Token fine-grained limitado a `MarceloMedel/deepseek-harness`, guardado en el host fuera del repositorio y montado en solo lectura.
@@ -29,6 +31,7 @@ El registro de la sesión es durable y compartido, así que una variable con el 
 - Permisos de administración, `workflows`, secretos de Actions o cualquier alcance sobre otros repositorios.
 - Sustituir la credencial de `pipay-sii` de `SPEC-008`, que sigue siendo una clave SSH independiente.
 - Protección de rama, revisión obligatoria o reglas de merge en GitHub.
+- Restaurar los permisos de `/srv/projects/secrets`: la desviación respecto a `SPEC-007` se corrige en el host y se registra por separado.
 - Que el agente fusione su propio PR: la fusión sigue siendo una decisión humana.
 
 ## Requisitos y validación prevista
@@ -42,6 +45,7 @@ El registro de la sesión es durable y compartido, así que una variable con el 
 | `GH-05` | Con un token sin `Contents: write`, el empuje falla con el error de GitHub y ningún volcado del secreto | Token de solo lectura de prueba |
 | `GH-06` | El helper de credenciales no responde a ningún host que no sea `github.com` | Ejecución del helper con `host=example.com` |
 | `GH-07` | Rotar el token es reemplazar el archivo, sin reiniciar el contenedor | Reemplazo y nueva llamada a `gh` |
+| `GH-08` | El token no vive en `/srv/projects/secrets` ni en los volúmenes, y `secrets` conserva su contrato de inaccesibilidad | Inspección de rutas y de permisos del almacén |
 
 ## Restricciones
 
