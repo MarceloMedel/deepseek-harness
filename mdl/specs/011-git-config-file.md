@@ -1,6 +1,6 @@
 # SPEC-011 — Identidad git genérica por token HTTPS
 
-Estado: Aprobada
+Estado: Validada
 Fase: 11
 Commit base: `d6eec40fc3`
 Aprobación: usuario en sesión Web, `Solo HTTPS con token para todos los repositorios` + `Retirar la deploy key`
@@ -63,10 +63,15 @@ La decisión es no perseguir qué componente descarta esa variable y eliminar la
 | `CFG-05` | Aprobado | Con `GIT_CONFIG_SYSTEM` apuntando a un archivo cuyo `include` no existe, `git config --get credential.helper` devuelve el helper y `exit 0` |
 | Semántica del `include` | Aprobado | El mismo archivo con el `include` presente devuelve el valor del fragmento incluido |
 | Causa del fallo anterior | Aprobado | `git config --list` con el entorno del contenedor → `exit 128`; con `GIT_CONFIG_COUNT=0` → `exit 0` |
-| `CFG-01` a `CFG-04`, `CFG-06`, `CFG-07` | Pendiente | Requieren el token ampliado, la reconstrucción y el reinicio del contenedor |
+| `CFG-01` | Aprobado | Sin variables `GIT_CONFIG_*` en el proceso, `git config --list` → `exit 0` y muestra `credential.helper` e `include.path` |
+| `CFG-02` | Aprobado | `git status` y `git log` operan desde la sesión sin limpiar el entorno |
+| `CFG-03` | Aprobado | `gh api user --jq .login` → `MarceloMedel`, sin `env -u` |
+| `CFG-04` | Aprobado | Clonado, commit vacío, `push` y borrado de una rama de prueba en `MarceloMedel/pipay-sii` desde el contenedor |
+| `CFG-06` | Aprobado | El entrypoint imprime el estado de la configuración de git al arrancar |
+| `CFG-07` | Aprobado | El `compose.yml` no menciona ningún repositorio ni clave SSH; `/etc/mdl-harness` ya no contiene el directorio `git` |
 
 ## Resultado y pendientes
 
-- Resultado: pendiente de la reconstrucción.
+- Resultado: validado. `git` y `gh` funcionan en el contenedor sin limpiar el entorno, y una sola credencial por HTTPS cubre cualquier repositorio al que el token alcance.
 - Pendientes o excepciones aceptadas: el token pasa a tener escritura sobre todos los repositorios de la cuenta, decisión del usuario registrada arriba; la causa de la desaparición de `GIT_CONFIG_KEY_0` no se confirmó.
-- Decisión de salida: pendiente.
+- Decisión de salida: la Fase 11 se cierra como Validada; la deploy key de `SPEC-008` queda retirada y su limpieza en el host es una tarea de operación.

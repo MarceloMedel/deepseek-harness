@@ -17,7 +17,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 8 | Credencial git para pipay-sii | [SPEC-008](specs/008-git-deploy-key.md) | Validada (credencial retirada en la Fase 11) |
 | 9 | Shell móvil para el teléfono | [SPEC-009](specs/009-mobile-shell.md) | Validada |
 | 10 | Credencial de GitHub para push y PR | [SPEC-010](specs/010-github-pr-credential.md) | Validada |
-| 11 | Identidad git genérica por token HTTPS | [SPEC-011](specs/011-git-config-file.md) | Aprobada |
+| 11 | Identidad git genérica por token HTTPS | [SPEC-011](specs/011-git-config-file.md) | Validada |
 
 ## Dependencias
 
