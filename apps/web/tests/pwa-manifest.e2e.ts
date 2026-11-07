@@ -19,8 +19,15 @@ it('ships install metadata with the built web application', async () => {
     short_name: 'MDL-HARNESS',
     start_url: '/',
     scope: '/',
-    display: 'fullscreen',
+    display: 'standalone',
+    theme_color: '#D40000',
+    background_color: '#F9FAFB',
     icons: [{
+      src: '/apple-touch-icon.png?v=cat-1',
+      sizes: '180x180',
+      type: 'image/png',
+      purpose: 'any',
+    }, {
       src: '/icon-192.png?v=cat-1',
       sizes: '192x192',
       type: 'image/png',
@@ -37,6 +44,18 @@ it('ships install metadata with the built web application', async () => {
       purpose: 'maskable',
     }],
   })
+})
+
+it('ships the iOS home-screen tags: label, standalone launch, page below the status bar', async () => {
+  const index = await readFile(join(DIST_ROOT, 'index.html'), 'utf8')
+  expect(index).toContain('<meta name="apple-mobile-web-app-capable" content="yes" />')
+  expect(index).toContain('<meta name="mobile-web-app-capable" content="yes" />')
+  expect(index).toContain('<meta name="apple-mobile-web-app-title" content="MDL-HARNESS" />')
+  // `default`, never `black-translucent`: the conversation header and the frame
+  // menu reserve the width of the frame's own control, not the status bar.
+  expect(index).toContain('<meta name="apple-mobile-web-app-status-bar-style" content="default" />')
+  // The phone layout reaches the notch and the home indicator itself.
+  expect(index).toContain('viewport-fit=cover')
 })
 
 it('ships PNG application and touch icons at their declared dimensions', async () => {

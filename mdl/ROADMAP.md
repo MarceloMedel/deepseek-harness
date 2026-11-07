@@ -19,6 +19,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 10 | Credencial de GitHub para push y PR | [SPEC-010](specs/010-github-pr-credential.md) | Validada |
 | 11 | Identidad git genérica por token HTTPS | [SPEC-011](specs/011-git-config-file.md) | Validada |
 | 12 | Operar el agente desde el teléfono | [SPEC-012](specs/012-mobile-agent-surfaces.md) | En implementación |
+| 14 | Instalar la interfaz en la pantalla de inicio del iPhone | [SPEC-014](specs/014-instalacion-ios.md) | En implementación |
 
 ## Dependencias
 
@@ -32,6 +33,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 - La Fase 9 parte del commit validado de la Fase 8 y termina con la interfaz usable desde un teléfono de 390 px de ancho.
 - La Fase 12 completa la interfaz móvil de la Fase 9 con el detalle de una llamada y las tarjetas de aprobación y pregunta.
 - La Fase 13 queda reservada para ajustes a pantalla completa y el bloque contenedor que rompe los paneles fijos en móvil.
+- La Fase 14 parte de la Fase 9 validada y agrega metadatos de instalación sin tocar la composición; se valida en el teléfono sobre el hostname público.
 - La Fase 10 parte del commit validado de la Fase 9 y termina con el agente capaz de empujar una rama y abrir un PR sin que la credencial entre en la imagen, el repositorio o la sesión.
 
 ## Próxima acción

@@ -9,6 +9,18 @@
          composer. theme-color is the MDL brand primary (MDL-THEME-01). -->
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="theme-color" content="#D40000" />
+    <!-- Installed-app metadata (SPEC-014). iOS takes the home-screen label from
+         apple-mobile-web-app-title and hides Safari's chrome because of
+         apple-mobile-web-app-capable, which the web manifest's display alone
+         does not guarantee on older iOS versions. The status bar keeps the
+         `default` style so iOS lays the page out below it and derives the
+         glyph color from the system appearance the theme already follows;
+         `black-translucent` would slide the header under the clock with white
+         glyphs over a light conversation. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="MDL-HARNESS" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=cat-1" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=cat-1" />
