@@ -1,6 +1,6 @@
 # SPEC-016 — Densidad de la conversación
 
-Estado: Aprobada
+Estado: Validada
 Fase: 16
 Commit base: `fdaeb34d10`
 Aprobación: usuario en sesión Web, `continue` sobre la propuesta de la Fase 15
@@ -65,10 +65,10 @@ Ejecutada el 2026-11-07 en la rama `change/016-densidad-conversacion`.
 | `DENS-07` | Aprobado | `live-activity.client.spec.tsx` sin cambios: la línea no lee la densidad |
 | `pnpm run test:gui` | Aprobado | 3815 pruebas aprobadas, 1 omitida |
 | `tsc -b tsconfig.client.json` y oxlint del paquete | Aprobado | Sin errores de tipos ni hallazgos de lint |
-| Revisión visual de la fila de ajustes y de los tres niveles | Pendiente | Requiere navegador: el entorno del agente no inicia ninguno |
+| Revisión visual de la fila de ajustes y de los tres niveles | Aprobado | Confirmado por el usuario en la sesión Web el 2026-11-07, sobre la imagen construida desde `change/015-016-conversacion-compacta` |
 
 ## Resultado y pendientes
 
-- Resultado: los tres niveles existen, se persisten en el documento de ajustes del Host y se aplican en la vista de chat.
-- Pendientes o excepciones aceptadas: la revisión visual de la fila y de cada nivel queda pendiente por falta de navegador.
-- Decisión de salida: pendiente de la revisión visual antes de fusionar.
+- Resultado: validado; los tres niveles existen, se persisten en el documento de ajustes del Host y se aplican en la vista de chat.
+- Pendientes o excepciones aceptadas: el replay de snapshots del navegador sigue en manos de CI, igual que en `SPEC-015`.
+- Decisión de salida: fusionada a `main` por el PR #5.

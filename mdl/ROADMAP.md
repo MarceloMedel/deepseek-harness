@@ -20,8 +20,8 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 11 | Identidad git genérica por token HTTPS | [SPEC-011](specs/011-git-config-file.md) | Validada |
 | 12 | Operar el agente desde el teléfono | [SPEC-012](specs/012-mobile-agent-surfaces.md) | En implementación |
 | 14 | Instalar la interfaz en la pantalla de inicio del iPhone | [SPEC-014](specs/014-instalacion-ios.md) | En implementación |
-| 15 | Conversación compacta con detalle a demanda | [SPEC-015](specs/015-conversacion-compacta.md) | En implementación |
-| 16 | Densidad de la conversación elegible | [SPEC-016](specs/016-densidad-conversacion.md) | En implementación |
+| 15 | Conversación compacta con detalle a demanda | [SPEC-015](specs/015-conversacion-compacta.md) | Validada |
+| 16 | Densidad de la conversación elegible | [SPEC-016](specs/016-densidad-conversacion.md) | Validada |
 
 ## Dependencias
 
@@ -42,7 +42,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 
 ## Próxima acción
 
-Las fases 1 a 11 están validadas y el fork se reproduce desde un clon limpio de `main` sin afectar la instancia viva. La Fase 9 se validó en un teléfono sobre la imagen reconstruida desde la rama `feat/mobile-shell`, y las fases 9, 10 y 11 llegaron a `main` por los PR #1, #2 y #3 del fork, con el agente empujando y abriendo el PR desde el contenedor. Queda por decidir si la interfaz móvil continúa con detalles, ajustes y aprobaciones como hoja a pantalla completa, y si se crea un tag local de release.
+Las fases 1 a 11 están validadas y el fork se reproduce desde un clon limpio de `main` sin afectar la instancia viva. Las fases 15 y 16 se validaron sobre el despliegue HTTPS y llegaron a `main` por el PR #5. La Fase 9 se validó en un teléfono sobre la imagen reconstruida desde la rama `feat/mobile-shell`, y las fases 9, 10 y 11 llegaron a `main` por los PR #1, #2 y #3 del fork, con el agente empujando y abriendo el PR desde el contenedor. Queda por decidir si la interfaz móvil continúa con detalles, ajustes y aprobaciones como hoja a pantalla completa, y si se crea un tag local de release.
 
 ## Decisiones del despliegue VPS
 

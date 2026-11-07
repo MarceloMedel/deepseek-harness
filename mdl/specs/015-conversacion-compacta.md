@@ -1,6 +1,6 @@
 # SPEC-015 — Conversación compacta
 
-Estado: En implementación
+Estado: Validada
 Fase: 15
 Commit base: `fdaeb34d10`
 
@@ -42,7 +42,7 @@ El host ya publica la presentación de cada llamada ([ToolCallView.title/descrip
 | `CALM-05` | Mientras un turno corre, una línea sobre el composer muestra la herramienta en curso con su título y el tiempo transcurrido; sin herramienta en curso muestra el aviso de que el agente sigue trabajando | Test jsdom con `runningCalls` |
 | `CALM-06` | La línea viva desaparece al terminar el turno y no queda ningún indicador de actividad dentro del flujo | Test jsdom y `DSH_SNAPSHOT=replay pnpm run test:web` |
 | `CALM-07` | Mensajes del usuario, prosa, errores, aprobaciones, preguntas, interrupciones, compactaciones y reintentos nunca se pliegan | Test jsdom sobre un turno mixto |
-| `CALM-08` | A 390 px la fila de actividad y la línea viva ocupan una sola línea cada una, se truncan sin desbordar y no alteran la geometría del composer | Revisión en dispositivo |
+| `CALM-08` | A 390 px la fila de actividad y la línea viva ocupan una sola línea cada una, se truncan sin desbordar y no alteran la geometría del composer | Revisión del usuario sobre el despliegue HTTPS |
 | `CALM-09` | Seleccionar una llamada desde el panel de detalles abre el bloque que la contiene, de modo que el enlace existente sigue revelando la fila señalada | Test jsdom de la selección externa |
 
 ## Restricciones
@@ -74,10 +74,11 @@ Ejecutada el 2026-11-07 en la rama `change/015-conversacion-compacta`.
 | `pnpm run test:gui` | Aprobado | 3807 pruebas aprobadas, 1 omitida |
 | `tsc -b tsconfig.client.json` y oxlint del paquete | Aprobado | Sin errores de tipos ni hallazgos de lint |
 | `verify-agent-note-format` y `verify-md-wrap` | Aprobado | 544 notas conformes; 1862 archivos con prosa bien envuelta |
-| Pruebas de snapshots del navegador | Pendiente | `DSH_SNAPSHOT=replay pnpm run test:web` no se ejecutó: requiere reconstruir el bundle y el entorno no dispone de navegador |
+| `CALM-08` (revisión visual) | Aprobado | Confirmado por el usuario en la sesión Web el 2026-11-07, sobre la imagen construida desde `change/015-016-conversacion-compacta` |
+| Pruebas de snapshots del navegador | Pendiente (trasladada a CI) | `DSH_SNAPSHOT=replay pnpm run test:web` no se ejecutó: el entorno del agente no inicia navegador |
 
 ## Resultado y pendientes
 
-- Resultado: implementado; un turno largo se lee como respuestas más una fila por bloque de trabajo, con la acción en curso en una línea fija sobre el composer.
-- Pendientes o excepciones aceptadas: la revisión visual a 390 px y la prueba de snapshots del navegador quedan pendientes por falta de navegador en el entorno.
-- Decisión de salida: pendiente de la revisión visual antes de fusionar.
+- Resultado: validado; un turno largo se lee como respuestas más una fila por bloque de trabajo, con la acción en curso en una línea fija sobre el composer.
+- Pendientes o excepciones aceptadas: la prueba de snapshots del navegador no se ejecutó en el entorno del agente y queda en manos de CI.
+- Decisión de salida: fusionada a `main` por los PR #5, con la revisión visual registrada.
