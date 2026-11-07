@@ -56,7 +56,9 @@ El plano privilegiado de DSH (`settings.*`, `credentials.*`, `llm.discoverModels
 
 El contenedor monta `/srv/projects` en lectura-escritura en la misma ruta (`MDL_PROJECTS_DIR` cambia el origen). Para trabajar sobre un repo, elegí esa carpeta como workspace desde la GUI por loopback; el sandbox confina las escrituras al workspace elegido y `secrets` sigue inaccesible para el usuario `node`. Los proyectos no forman parte del backup diario.
 
-`pipay-sii` tiene una deploy key SSH de escritura limitada a ese repositorio, montada como archivo de solo lectura desde `/home/ubuntu/.config/mdl-harness/git` (`MDL_GIT_DIR`). El contenedor puede hacer `fetch`, `pull` y `push`; otros repos privados no autentican con esa clave. Para revocarla: GitHub → Settings → Deploy keys, y borrar el directorio del host.
+El contenedor autentica git y `gh` con un único token de GitHub por HTTPS, montado en solo lectura desde `/home/ubuntu/.config/mdl-harness/gh/token` (`MDL_GH_DIR` cambia el origen). Ese token está limitado a la cuenta y alcanza cualquier repositorio al que se le dé acceso; con él funcionan `clone`, `push` y la apertura de PR, sin configuración por repositorio. Para revocarlo: GitHub → Settings → Developer settings → Fine-grained tokens, y reemplazar el archivo del host.
+
+No hay deploy keys ni claves SSH en el contenedor. La reescritura a SSH que usaba `pipay-sii` se retiró: ese repositorio, como cualquier otro, pasa por el token.
 
 ## Sandbox
 

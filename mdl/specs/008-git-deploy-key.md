@@ -1,6 +1,7 @@
 # SPEC-008 — Credencial git para pipay-sii
 
 Estado: Validada
+Sustituida: la credencial de esta fase se retiró en la Fase 11 ([SPEC-011](011-git-config-file.md)); ese repositorio usa ahora el token de GitHub por HTTPS.
 Fase: 8
 Commit base: `353252b67e`
 Aprobación: usuario en el VPS, `Lectura y escritura` + `La agrego yo por gh`

@@ -19,6 +19,16 @@ else
   echo "mdl-harness: no GitHub credential at /etc/mdl-harness/gh/token; gh and HTTPS pushes will refuse (see mdl/docker/README.md)"
 fi
 
+# Visibility only (SPEC-011): an unreadable or malformed git configuration makes
+# every `git` invocation fail with exit 128, and `gh` fails with it because it
+# shells out. Reporting it here keeps that from looking like a credential problem
+# the first time an agent pushes.
+if git config --list >/dev/null 2>&1; then
+  echo "mdl-harness: git configuration reads cleanly"
+else
+  echo "mdl-harness: git configuration is unreadable; git and gh will fail (check /etc/gitconfig and the mounted gitconfig)" >&2
+fi
+
 dsh_args=(--profile web --host 127.0.0.1 --port 3080)
 if [[ -n "${DSH_TRUSTED_HOST:-}" ]]; then
   dsh_args+=(--trusted-host "$DSH_TRUSTED_HOST")
