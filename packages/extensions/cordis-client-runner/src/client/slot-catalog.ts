@@ -84,10 +84,10 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     kind: 'single',
     scope: 'session-maybe',
     summary: 'The whole center column, across both the no-session hero and a live conversation.',
-    doc: 'The whole center column, across both the no-session hero and a live\nconversation. OCCUPIED by ui-conversation\'s ConversationRoot, which\ndeclares the session body, composer, and input seats inside it —\nregistering here replaces the entire conversation surface (and removes\nevery seat it declares) rather than adding to it.\n\nCurrent-session-optional: the occupant owns both states without\nchanging its React identity, so it keeps its own state across a session\nswitch. It receives no owner props; session facts arrive through the\nframework hooks of the `session-maybe` scope.',
+    doc: 'The whole center column, across both the no-session hero and a live\nconversation. OCCUPIED by ui-conversation\'s ConversationRoot, which\ndeclares the session body, composer, and input seats inside it —\nregistering here replaces the entire conversation surface (and removes\nevery seat it declares) rather than adding to it.\n\nCurrent-session-optional: the occupant owns both states without\nchanging its React identity, so it keeps its own state across a session\nswitch. Its owner share carries the frame\'s chrome geometry (the phone\nmenu reservation and the layout tier); session facts arrive through the\nframework hooks of the `session-maybe` scope.',
     registerOptions: [],
     ownerProps: [
-      '/** Conversation owner share: business state and actions belong to the registrant. */\nexport interface ConvOwnerProps {}',
+      '/**\n * Conversation owner share: the frame\'s chrome geometry that the column has\n * to clear. Business state and actions belong to the registrant.\n */\nexport interface ConvOwnerProps {\n  /**\n   * Leading inset in px the column must reserve before its own content, so the\n   * phone layout\'s floating menu control does not sit on the session title.\n   * The frame owns the control, so it owns the number (0 on wider layouts).\n   */\n  headerInset: number\n  /**\n   * True when the frame is in its phone layout. The conversation reduces itself\n   * to one view there; the frame decides the layout, so the frame reports it.\n   */\n  mobile: boolean\n}',
     ],
     ownerPropsReferences: [],
     standardProps: [
@@ -108,7 +108,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'conversation\', () => ctx.slots.register(\n      { name: \'conversation\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/client/ui-layout/src/client/index.ts:62',
+    source: 'packages/client/ui-layout/src/client/index.ts:71',
   },
   {
     key: 'conversation.chat.assistant-actions',
@@ -813,7 +813,9 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     summary: 'The entire body of one session: taking this seat means rendering that session\'s conversation yourself.',
     doc: 'The entire body of one session: taking this seat means rendering that\nsession\'s conversation yourself. The occupant also owns the per-session\ndraft mirror and the active view ring, so a replacement inherits both\nduties and an empty one leaves a blank session pane — nothing here\ndegrades gracefully. To ADD rather than replace, take a seat inside the\nflow instead: `conversation.view` for a whole tab, the input regions for\ncomposer chrome.',
     registerOptions: [],
-    ownerProps: [],
+    ownerProps: [
+      '/** Owner share of the strict session content seat. */\nexport interface ConversationSessionOwnerProps {\n  /**\n   * True while the frame is in its phone layout. The phone offers one view per\n   * session — the ring is reduced to Chat — because that column has no width to\n   * give a full-width event ledger.\n   */\n  mobile: boolean\n  /**\n   * Wrap the view ring in the transcript scrollport that also hosts the\n   * sticky composer seat (whole `\'conversation.composer\'` chain output).\n   * Supplied for every real session (hero/settling/active) so the composer\n   * keeps one tree seat across the blank → active flip; the header stays\n   * outside that wrapper as ordinary column chrome (`flex: none`), while\n   * active CSS sticks the seat to the bottom of the same scrollport so wheel\n   * over the footer scrolls the flow.\n   * @param view - the session view-ring content (null while blank chrome is hidden).\n   * @returns the scrollport containing `view` and the sticky composer seat.\n   */\n  wrapActiveBody?: (view: ReactNode) => ReactNode\n}',
+    ],
     ownerPropsReferences: [],
     standardProps: [
       'useSessions: SnapshotSelectorHook<SessionListState>',
@@ -842,7 +844,9 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     summary: 'The strip above the session\'s scrollport: title, view tabs, and the action row.',
     doc: 'The strip above the session\'s scrollport: title, view tabs, and the\naction row. Taking this seat means rendering all three yourself, and it\nalso collapses `conversation.session.header.actions` — that additive\nseat is declared by whoever occupies this one, so replacing the header\ntakes every action entry down with it.',
     registerOptions: [],
-    ownerProps: [],
+    ownerProps: [
+      '/**\n * Owner share of the session header strip: the same phone-layout fact the body\n * receives, because the tab strip is rendered here and must not offer a view\n * the body refuses to show.\n */\nexport interface ConversationHeaderOwnerProps {\n  /** True while the frame is in its phone layout (one view per session). */\n  mobile: boolean\n}',
+    ],
     ownerPropsReferences: [],
     standardProps: [
       'useSessions: SnapshotSelectorHook<SessionListState>',
@@ -1046,7 +1050,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'details\', () => ctx.slots.register(\n      { name: \'details\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/client/ui-layout/src/client/index.ts:72',
+    source: 'packages/client/ui-layout/src/client/index.ts:81',
   },
   {
     key: 'root',
@@ -1472,7 +1476,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     occupants: [],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'shell.overlay\', () => ctx.slots.register(\n      { name: \'shell.overlay\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/client/ui-layout/src/client/index.ts:83',
+    source: 'packages/client/ui-layout/src/client/index.ts:92',
   },
   {
     key: 'sidebar',
@@ -1498,7 +1502,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     ],
     replaceRisk: 'shadows-shipped-ui',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'sidebar\', () => ctx.slots.register(\n      { name: \'sidebar\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
-    source: 'packages/client/ui-layout/src/client/index.ts:49',
+    source: 'packages/client/ui-layout/src/client/index.ts:57',
   },
   {
     key: 'sidebar.footer.action',

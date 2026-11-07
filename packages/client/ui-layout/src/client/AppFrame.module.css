@@ -117,3 +117,83 @@
 .overlayLayer > * {
   pointer-events: auto;
 }
+
+/* ===== Phone layout (viewport <= MOBILE_MAX, data-mobile) =====
+   One column: the conversation takes the viewport, the sidebar column leaves
+   the grid flow for a sliding drawer, and the details column stays at its
+   resolved zero width. Stacking inside the frame: shell overlay (20) < scrim
+   (21) < menu (22) < drawer (23), so the shell's own floating surfaces stay
+   under the drawer and the menu stays reachable while the drawer is closed. */
+
+/* The scrim covers the conversation and closes the drawer on tap; it exists
+   only while the drawer is open. */
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 21;
+  background: var(--dsw-alias-bg-mask-1);
+  backdrop-filter: var(--dsw-mask-blur);
+}
+
+/* Menu control: 38px box at a 10px inset, clear of the notch. The open drawer
+   covers it, and both the drawer's own toggle and the scrim close that. */
+.menu {
+  position: absolute;
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  left: 10px;
+  z-index: 22;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 11px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-primary);
+  box-shadow: var(--dsw-shadow-lv2);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.menu:active {
+  transform: scale(0.94);
+}
+
+.frame[data-mobile] .sidebarCol {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 23;
+  width: min(86vw, 320px);
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: var(--dsw-specific-sidebar-fill);
+  border-right: 1px solid var(--dsw-alias-border-l1);
+  box-shadow: var(--dsw-shadow-lv3);
+  transform: translateX(-102%);
+  transition: transform var(--ds-transition-duration-slow) var(--ds-ease-in-out);
+  will-change: transform;
+}
+
+.frame[data-mobile][data-drawer-open] .sidebarCol {
+  transform: translateX(0);
+}
+
+/* The column is narrower than the slot's rendered width on a small phone:
+   the occupant fills the drawer instead of overhanging it. */
+.frame[data-mobile] .sidebarCol > div {
+  width: 100% !important;
+}
+
+/* The details column keeps its zero-width track (never unmounted), so its
+   border must not paint a seam. */
+.frame[data-mobile] .detailsCol {
+  border-left: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frame[data-mobile] .sidebarCol {
+    transition: none;
+  }
+}

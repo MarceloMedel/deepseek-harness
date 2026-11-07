@@ -2,26 +2,33 @@
  * Three-column shell frame, registered into the built-in 'root' slot (the web
  * shell renders only 'root'). Owns the grid tracks (sidebar | center |
  * details), the drag handles (pointer capture + rAF throttle), the concession
- * chain (columns.ts), and the child-slot render decisions: the sidebar slot
- * renders HERE with live parameters from the concession solve, and the
- * session-aware occupants render in fixed column positions; strict entries
- * gate themselves on current-session availability while session-maybe
- * entries retain identity. Pure component: everything arrives
- * through the three framework shares — zero cordis or framework imports,
- * zero self-made hooks.
+ * chain (columns.ts), the phone layout (one column plus a sidebar drawer, its
+ * scrim, and the menu control that opens it), and the child-slot render
+ * decisions: the sidebar slot renders HERE with live parameters from the
+ * concession solve, and the session-aware occupants render in fixed column
+ * positions; strict entries gate themselves on current-session availability
+ * while session-maybe entries retain identity. Pure component: everything
+ * arrives through the four framework shares — zero cordis or framework
+ * imports, zero self-made hooks.
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { PropsRenderSlots, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
-import { computeColumns, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT } from './columns.ts'
+import type {
+  PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore,
+} from '@deepseek-ai/dsh-client-ui-slots'
+import {
+  computeColumns, computeMobileColumns, MOBILE_MAX, MOBILE_MENU_RESERVED,
+  SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT,
+} from './columns.ts'
 import type { createLayoutStore } from './stores.ts'
 import css from './AppFrame.module.css'
 
-/** Full composed props: runtime share + child-slot render share + store share. */
+/** Full composed props: runtime share + child-slot render share + store share + frame copy. */
 export type AppFrameProps =
   & PropsRuntime<'root'>
   & PropsRenderSlots<'sidebar' | 'conversation' | 'details' | 'shell.overlay'>
   & PropsStore<ReturnType<typeof createLayoutStore>>
+  & PropsLocale<'layout'>
 
 /** Center column grid item (session-body building block). */
 function CenterColumn(props: { children?: ReactNode }) {
@@ -89,6 +96,7 @@ export function AppFrame({
   useSessions,
   actions,
   renderSlot,
+  t,
 }: AppFrameProps) {
   const panels = useStore(s => s)
   const detailsSession = useSessions((s) => {
@@ -127,6 +135,13 @@ export function AppFrame({
     }
   }, [])
 
+  // The phone layout is the shell's third tier: one column, the sidebar as a
+  // drawer, no drag handles. It is decided from the frame's own measured width
+  // (never from the window at large) and mirrored into the store so
+  // toggleSidebar flips the drawer instead of a width preference (stores.ts).
+  const mobile = viewport <= MOBILE_MAX
+  useEffect(() => { actions.setMobile(mobile) }, [actions, mobile])
+
   // Narrow viewports auto-collapse the sidebar; the store mirror keeps
   // toggleSidebar's semantics right (narrow toggles flip the manual
   // re-expand override, stores.ts). Collapsed is decided here, so the
@@ -135,13 +150,28 @@ export function AppFrame({
   // absorbs the squeeze.
   const narrow = viewport < SIDEBAR_AUTO_COLLAPSE
   useEffect(() => { actions.setNarrow(narrow) }, [actions, narrow])
-  const sidebarCollapsed = narrow ? !panels.narrowExpanded : panels.sidebar === 0
+  // The drawer always holds the WIDE sidebar: the rail is a desktop affordance
+  // whose 56px would come out of the conversation's width.
+  const sidebarCollapsed = mobile ? false : narrow ? !panels.narrowExpanded : panels.sidebar === 0
   const sidebarPreference = sidebarCollapsed
     ? 0
     : panels.sidebar === 0 ? SIDEBAR_DEFAULT : panels.sidebar
-  const cols = computeColumns(viewport, sidebarPreference, detailsSession === undefined ? 0 : panels.details)
+  const cols = mobile
+    ? computeMobileColumns(viewport)
+    : computeColumns(viewport, sidebarPreference, detailsSession === undefined ? 0 : panels.details)
   const colsRef = useRef(cols)
   colsRef.current = cols
+
+  // Choosing a session is what the drawer is for, so the phone closes it on
+  // that gesture. Self-contained here: the frame already reads the session
+  // list, and the drawer state belongs to the same store.
+  const currentSession = useSessions(s => s.current)
+  const lastCurrentSession = useRef(currentSession)
+  useEffect(() => {
+    if (lastCurrentSession.current === currentSession) return
+    lastCurrentSession.current = currentSession
+    actions.closeDrawer()
+  }, [actions, currentSession])
 
   // The drag base is the rendered width captured at drag start (grabbing a
   // concession-clamped panel must not jump back to the stored preference);
@@ -165,8 +195,17 @@ export function AppFrame({
     <div
       ref={frameRef}
       className={css.frame}
-      style={{ gridTemplateColumns: `${cols.sidebar}px minmax(0, 1fr) ${cols.details}px` }}
-      data-sidebar-collapsed={sidebarCollapsed || undefined}
+      style={{
+        // The phone keeps all three tracks: the sidebar column is fixed (out
+        // of flow) and the details column is empty, so an explicit one-column
+        // template would push them into implicit rows.
+        gridTemplateColumns: mobile
+          ? 'minmax(0, 1fr) 0px 0px'
+          : `${cols.sidebar}px minmax(0, 1fr) ${cols.details}px`,
+      }}
+      data-mobile={mobile || undefined}
+      data-drawer-open={(mobile && panels.drawerOpen) || undefined}
+      data-sidebar-collapsed={(!mobile && sidebarCollapsed) || undefined}
       data-details-collapsed={cols.details === 0 || undefined}
       data-dragging={dragging || undefined}
     >
@@ -175,7 +214,9 @@ export function AppFrame({
             sidebar keeps the mounted slot at the compact-rail width, and the
             component sees its rendered state as owner params decided here
             (collapsed follows the resolved rail, so a derived auto-collapse
-            renders the rail UI too). */}
+            renders the rail UI too). On the phone the drawer holds the wide
+            column at every drawer state: the column slides, its content does
+            not fold. */}
         {renderSlot('sidebar', {
           collapsed: sidebarCollapsed,
           width: cols.sidebar,
@@ -187,15 +228,41 @@ export function AppFrame({
             the shell's own pending rendering. The conversation
             is session-maybe; the strict details entry naturally renders
             empty while no session is current. */}
-        <CenterColumn>{renderSlot('conversation', {})}</CenterColumn>
+        <CenterColumn>{renderSlot('conversation', { headerInset: mobile ? MOBILE_MENU_RESERVED : 0, mobile })}</CenterColumn>
         <DetailsColumn>{renderSlot('details', {})}</DetailsColumn>
       </>
       <div className={css.overlayLayer} data-shell-overlay>
         {renderSlot('shell.overlay', {})}
       </div>
-      {/* The collapsed rail is fixed-width: no resize handle while closed. */}
-      {!sidebarCollapsed && <DragHandle side="sidebar" left={cols.sidebar} onStart={onSidebarStart} onDrag={onSidebarDrag} onEnd={onDragEnd} />}
-      {cols.details > 0 && <DragHandle side="details" left={viewport - cols.details} onStart={onDetailsStart} onDrag={onDetailsDrag} onEnd={onDragEnd} />}
+      {/* Phone chrome: the drawer's own scrim and the one control that opens
+          it. Both are frame territory — the sidebar column is a sibling, so
+          nothing here has to reach across a component boundary. The menu sits
+          under the drawer (the drawer's own toggle and this scrim both close
+          it) and above the scrim. The scrim exists only while the drawer is
+          open: a click-through layer over the conversation would swallow every
+          tap on the phone. */}
+      {mobile && (
+        <>
+          {panels.drawerOpen && <div className={css.scrim} data-mobile-scrim="" onClick={() => { actions.closeDrawer() }} />}
+          <button
+            type="button"
+            className={css.menu}
+            aria-label={t('menu.open')}
+            aria-expanded={panels.drawerOpen}
+            onClick={() => { actions.toggleSidebar() }}
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M3 5.5h14M3 10h14M3 14.5h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+          </button>
+        </>
+      )}
+      {/* The collapsed rail is fixed-width: no resize handle while closed.
+          The phone has no drag tracks at all — a column edge cannot be
+          dragged where the columns overlap, and an 8px strip only steals
+          taps from the conversation underneath it. */}
+      {!mobile && !sidebarCollapsed && <DragHandle side="sidebar" left={cols.sidebar} onStart={onSidebarStart} onDrag={onSidebarDrag} onEnd={onDragEnd} />}
+      {!mobile && cols.details > 0 && <DragHandle side="details" left={viewport - cols.details} onStart={onDetailsStart} onDrag={onDetailsDrag} onEnd={onDragEnd} />}
     </div>
   )
 }

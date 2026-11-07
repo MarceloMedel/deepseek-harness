@@ -4,6 +4,8 @@ English | [中文](README.zh.md)
 
 Web Session-log download control over the host-streamed ZIP endpoint owned by `dsh-host-apiproxy`. The Host half registers `/export`; the browser half owns a 111×32 `Session log` action in the Session Header, one download controller, and one modal shared by that button and the slash command. ZIP generation, raw JSONL/zstd reads, descendants, attachments, backpressure, and HTTP error semantics remain owned by the [ApiProxy download implementation](../../host/apiproxy/README.md).
 
+The download capsule is not offered on the phone layout (`@media (max-width: 767px)`); the `/export` command stays registered, so a phone can still export by typing it.
+
 ## Command contract
 
 | Input | Result |

@@ -41,7 +41,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * flow instead: `conversation.view` for a whole tab, the input regions for
      * composer chrome.
      */
-    'conversation.session': { kind: 'single'; scope: 'session' }
+    'conversation.session': { kind: 'single'; scope: 'session'; owner: ConversationSessionOwnerProps }
     /**
      * The strip above the session's scrollport: title, view tabs, and the
      * action row. Taking this seat means rendering all three yourself, and it
@@ -49,7 +49,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * seat is declared by whoever occupies this one, so replacing the header
      * takes every action entry down with it.
      */
-    'conversation.session.header': { kind: 'single'; scope: 'session' }
+    'conversation.session.header': { kind: 'single'; scope: 'session'; owner: ConversationHeaderOwnerProps }
     /**
      * One button in the session header's action row — the additive way to put
      * a per-session control beside the title without replacing the header.
@@ -249,6 +249,12 @@ export interface HeroAgentPresetOwnerProps {
 /** Owner share of the strict session content seat. */
 export interface ConversationSessionOwnerProps {
   /**
+   * True while the frame is in its phone layout. The phone offers one view per
+   * session — the ring is reduced to Chat — because that column has no width to
+   * give a full-width event ledger.
+   */
+  mobile: boolean
+  /**
    * Wrap the view ring in the transcript scrollport that also hosts the
    * sticky composer seat (whole `'conversation.composer'` chain output).
    * Supplied for every real session (hero/settling/active) so the composer
@@ -260,6 +266,16 @@ export interface ConversationSessionOwnerProps {
    * @returns the scrollport containing `view` and the sticky composer seat.
    */
   wrapActiveBody?: (view: ReactNode) => ReactNode
+}
+
+/**
+ * Owner share of the session header strip: the same phone-layout fact the body
+ * receives, because the tab strip is rendered here and must not offer a view
+ * the body refuses to show.
+ */
+export interface ConversationHeaderOwnerProps {
+  /** True while the frame is in its phone layout (one view per session). */
+  mobile: boolean
 }
 
 /** Header actions derive their state from the standard session/global kit. */

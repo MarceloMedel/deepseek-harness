@@ -3,6 +3,7 @@
 // no-session/session transitions — the bar renders inert via owner props.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import clsx from 'clsx'
 import type { WorkspaceId } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ConversationSlotProps, InputZone } from '../contract/slots.ts'
@@ -14,7 +15,7 @@ export type ConversationRootProps = ConversationSlotProps
 
 export function ConversationRoot({
   sessionId, useSession, useSessions, useWorkspaces, useInput, useComposerBlock,
-  renderSlot, renderSlotChain, selectWorkspace, t,
+  renderSlot, renderSlotChain, selectWorkspace, t, headerInset, mobile,
 }: ConversationRootProps) {
   const openState = useSession(s => s.openState)
   const composerPhase = useSession(s => s.composerPhase)
@@ -184,10 +185,17 @@ export function ConversationRoot({
   )
 
   return (
-    <div className={css.root} data-phase={phase}>
-      {renderSlot('conversation.session.header', {})}
+    <div
+      className={css.root}
+      data-phase={phase}
+      // The frame's phone chrome (its menu control) owns how much leading room
+      // the header must leave; it arrives as a number and travels to the header
+      // as a custom property so no intermediate component has to carry it.
+      style={{ '--dsh-header-inset': `${headerInset}px` } as CSSProperties}
+    >
+      {renderSlot('conversation.session.header', { mobile })}
       <div className={css.scrollBody} data-conversation-scroll="">
-        {renderSlot('conversation.session', {})}
+        {renderSlot('conversation.session', { mobile })}
         {composerSeat}
       </div>
     </div>

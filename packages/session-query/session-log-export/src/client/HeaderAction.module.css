@@ -34,3 +34,12 @@
 .sessionLogButton span {
   white-space: nowrap;
 }
+
+/* The phone layout (<=768px, docs/web-styling.md) drops the download capsule:
+   it is a 111px label in a header that has no room for one, and exporting a
+   session log is a desk task. */
+@media (max-width: 767px) {
+  .sessionLogButton {
+    display: none;
+  }
+}

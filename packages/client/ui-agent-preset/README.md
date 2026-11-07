@@ -4,6 +4,8 @@ English | [中文](README.zh.md)
 
 The agent-preset surfaces: a General-settings row choosing which [preset](../../preset/agent-presets/README.md) new sessions are composed from, a chip on the new-session screen choosing the next session's, a read-only label in the session header, and a settings section that manages the roster — copy, delete, default, and the way into a preset's own files.
 
+The header label is not offered on the phone layout (`@media (max-width: 767px)`): naming the running composition costs header width the session title needs more, and that layout has no way to act on the name.
+
 ## Why it is a new-session preference
 
 A session's preset is fixed when the session is created — the host refuses to adopt an existing session under a different one, because that session's history was produced under the first preset's tools. So this row cannot be a live switch, and it says so: changing it applies to sessions started afterwards while running sessions keep the composition they began with.
