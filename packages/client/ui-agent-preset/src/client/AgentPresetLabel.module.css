@@ -21,3 +21,12 @@
   flex: none;
   opacity: 0.7;
 }
+
+/* The phone layout (<=768px, docs/web-styling.md) shows the session title
+   alone: naming the running composition costs header width that the title
+   needs more, and the phone has no way to act on the name. */
+@media (max-width: 767px) {
+  .label {
+    display: none;
+  }
+}

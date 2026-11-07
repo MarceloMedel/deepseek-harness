@@ -474,3 +474,23 @@
   text-decoration: line-through;
   opacity: 0.7;
 }
+
+/* Phone layout (<=767px, docs/web-styling.md): a finger needs ~36px, so the
+   28px attach circle and access-mode select and the 34px send circle grow to
+   that floor. The card's 16px type is already the iOS focus-zoom floor; the
+   textarea inherits it (.card). */
+@media (max-width: 767px) {
+  .add {
+    width: 36px;
+    height: 36px;
+  }
+
+  .select {
+    height: 36px;
+  }
+
+  .primary {
+    width: 36px;
+    height: 36px;
+  }
+}

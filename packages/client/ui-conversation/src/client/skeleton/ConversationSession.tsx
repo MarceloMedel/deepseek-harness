@@ -54,16 +54,30 @@ function equalBreadcrumbs(left: readonly Breadcrumb[], right: readonly Breadcrum
 }
 
 /**
+ * The view ring this layout offers. The phone keeps Chat alone: the strip is
+ * rendered only when more than one view exists, and reducing the ring here —
+ * rather than hiding the strip in CSS — also makes the body's active-view
+ * resolution fall back to Chat instead of rendering a ledger the column cannot
+ * hold. Wider layouts offer every registered view.
+ * @param tabs - the registered view ring, in ascending order.
+ * @param mobile - true while the frame is in its phone layout.
+ * @returns the offered ring.
+ */
+function offeredViews(tabs: readonly ViewTab[], mobile: boolean): readonly ViewTab[] {
+  return mobile ? tabs.filter(tab => tab.id === DEFAULT_VIEW_ID) : tabs
+}
+
+/**
  * Renders Session header chrome above the resident conversation scrollport.
  * @param props - Strict Session store, view ledger, navigation, render, and locale shares.
  * @returns the hidden blank-session header or visible title and tabs.
  */
 export function ConversationSessionHeader({
   sessionId, useSession, useSessions, useStore, actions,
-  renderSlot, views, open, t,
+  renderSlot, views, open, t, mobile,
 }: ConversationSessionHeaderProps) {
   useSyncExternalStore(views.subscribe, views.version)
-  const tabs = views.list()
+  const tabs = offeredViews(views.list(), mobile)
   const selectedId = useStore(s => s.view)
   const active = resolveActiveView(tabs, selectedId)
   const ancestry = useSessions(s => deriveAncestry(s, sessionId), equalBreadcrumbs)
@@ -137,10 +151,10 @@ export function ConversationSessionHeader({
  */
 export function ConversationSession({
   sessionId, useSession, useInput, inputActions, useStore, actions,
-  renderSlot, views, bindDraftMirror, releaseSessionImages,
+  renderSlot, views, bindDraftMirror, releaseSessionImages, mobile,
 }: ConversationSessionProps) {
   useSyncExternalStore(views.subscribe, views.version)
-  const tabs = views.list()
+  const tabs = offeredViews(views.list(), mobile)
   const selectedId = useStore(s => s.view)
   const active = resolveActiveView(tabs, selectedId)
   const composerPhase = useSession(s => s.composerPhase)

@@ -28,7 +28,9 @@
 .header {
   position: relative;
   flex: none;
-  padding: 12px 28px 0 20px;
+  /* --dsh-header-inset carries the frame's phone chrome reservation (its menu
+     control); it is 0 on wider layouts, where the frame passes no inset. */
+  padding: 12px 28px 0 calc(20px + var(--dsh-header-inset, 0px));
   border-bottom: 1px solid transparent;
 }
 
@@ -362,4 +364,12 @@
    mounted but invisible so no wrong layout flashes before the phase lands. */
 .root[data-phase='settling'] .composerSeat {
   visibility: hidden;
+}
+
+/* Phone layout (<=767px): the composer sits on the viewport floor, where the
+   home indicator overlays content on notched devices. */
+@media (max-width: 767px) {
+  .composerSeat {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }

@@ -15,7 +15,9 @@ import { act, cleanup, render } from '@testing-library/react'
 import { useSyncExternalStore } from 'react'
 import { AppFrame } from '@deepseek-ai/dsh-client-ui-layout/src/client/AppFrame.tsx'
 import type { AppFrameProps } from '@deepseek-ai/dsh-client-ui-layout/src/client/AppFrame.tsx'
-import { SIDEBAR_COLLAPSED } from '@deepseek-ai/dsh-client-ui-layout/src/client/columns.ts'
+import {
+  MOBILE_DRAWER_WIDTH, MOBILE_MENU_RESERVED, SIDEBAR_COLLAPSED,
+} from '@deepseek-ai/dsh-client-ui-layout/src/client/columns.ts'
 import { createLayoutStore } from '@deepseek-ai/dsh-client-ui-layout/src/client/stores.ts'
 import type {
   SessionId, SessionListState, WorkspaceListState,
@@ -88,6 +90,7 @@ function mountFrame() {
       useSessions={useSessions}
       useWorkspaces={((sel: (s: WorkspaceListState) => unknown) => sel(workspaceState)) as never}
       SessionProvider={SessionProviderStub}
+      t={(key: string) => key}
     />
   )
   const utils = render(element())
@@ -150,7 +153,7 @@ describe('AppFrame', () => {
     expect(keys).toContain('conversation')
     expect(keys).toContain('details')
     expect(keys).not.toContain('conversation.empty')
-    expect(slotCalls.find(c => c.key === 'conversation')!.props).toEqual({})
+    expect(slotCalls.find(c => c.key === 'conversation')!.props).toEqual({ headerInset: 0, mobile: false })
     expect(slotCalls.find(c => c.key === 'details')!.props).toEqual({})
   })
 
@@ -394,5 +397,75 @@ describe('AppFrame — unmount with an in-flight resize frame', () => {
     frameWidth = 1250
     act(() => { fireResize?.(); fireResize?.(); vi.advanceTimersByTime(20) })
     expect(tracks(frame)).toEqual([280, 330])
+  })
+})
+
+describe('AppFrame — phone layout', () => {
+  // The frame reads its own box through the ResizeObserver stub; a phone frame
+  // is 390px wide, so the phone tier starts from the first measurement.
+  const PHONE = 390
+
+  function mountPhoneFrame() {
+    frameWidth = PHONE
+    const mounted = mountFrame()
+    act(() => { fireResize?.(); vi.advanceTimersByTime(20) })
+    return mounted
+  }
+
+  it('drops to one column with a full-width conversation and no rail', () => {
+    const { frame, slotCalls } = mountPhoneFrame()
+    expect(frame.getAttribute('data-mobile')).toBe('true')
+    expect(frame.style.gridTemplateColumns).toBe('minmax(0, 1fr) 0px 0px')
+    // The drawer holds the WIDE sidebar: a phone never renders the 56px rail.
+    expect(slotCalls.find(c => c.key === 'sidebar')!.props).toEqual({ collapsed: false, width: MOBILE_DRAWER_WIDTH })
+    // And the conversation is told to clear the floating menu control.
+    expect(slotCalls.find(c => c.key === 'conversation')!.props).toEqual({ headerInset: MOBILE_MENU_RESERVED, mobile: true })
+  })
+
+  it('opens the drawer from the menu control and closes it from the scrim', () => {
+    const { frame, instance, getByRole } = mountPhoneFrame()
+    expect(frame.hasAttribute('data-drawer-open')).toBe(false)
+    expect(frame.querySelector('[data-mobile-scrim]')).toBeNull()
+
+    act(() => { getByRole('button', { name: 'menu.open' }).click() })
+    expect(instance.getSnapshot().drawerOpen).toBe(true)
+    expect(frame.hasAttribute('data-drawer-open')).toBe(true)
+
+    act(() => { (frame.querySelector('[data-mobile-scrim]') as HTMLElement).click() })
+    expect(instance.getSnapshot().drawerOpen).toBe(false)
+    expect(frame.querySelector('[data-mobile-scrim]')).toBeNull()
+  })
+
+  it('closes the drawer when the current Session changes', () => {
+    const { instance, getByRole, rerenderFrame } = mountPhoneFrame()
+    act(() => { getByRole('button', { name: 'menu.open' }).click() })
+    expect(instance.getSnapshot().drawerOpen).toBe(true)
+
+    selectedSession.current = 's-other' as SessionId
+    act(() => { rerenderFrame() })
+    expect(instance.getSnapshot().drawerOpen).toBe(false)
+  })
+
+  it('renders no drag handles: a phone drags surfaces, not column edges', () => {
+    const { frame } = mountPhoneFrame()
+    expect(frame.querySelectorAll('[data-side]')).toHaveLength(0)
+  })
+
+  it('refuses the details panel on the phone', () => {
+    const { frame, instance } = mountPhoneFrame()
+    act(() => { instance.actions.openDetails() })
+    expect(instance.getSnapshot().details).toBe(0)
+    expect(frame.style.gridTemplateColumns).toBe('minmax(0, 1fr) 0px 0px')
+  })
+
+  it('restores the three-column layout and drops the phone chrome above the breakpoint', () => {
+    const { frame, getByRole, queryByRole } = mountPhoneFrame()
+    expect(getByRole('button', { name: 'menu.open' })).toBeTruthy()
+
+    frameWidth = 1280
+    act(() => { fireResize?.(); vi.advanceTimersByTime(20) })
+    expect(frame.hasAttribute('data-mobile')).toBe(false)
+    expect(queryByRole('button', { name: 'menu.open' })).toBeNull()
+    expect(tracks(frame)).toEqual([280, 0])
   })
 })

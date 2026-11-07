@@ -99,6 +99,8 @@ function mount(
     composerBlock?: { reason: string }
     /** Mutable view ledger used by registration-order regressions. */
     viewTabs?: ViewTab[]
+    /** Phone layout: the frame's one-view signal. */
+    mobile?: boolean
   } = {},
 ) {
   const root = sid('root')
@@ -125,6 +127,7 @@ function mount(
   const inputActions = wiring.actions
   const stop = vi.fn()
   const open = vi.fn()
+  const mobile = options.mobile ?? false
   const slotCalls: string[] = []
   const viewTabs = options.viewTabs ?? [
     { id: 'chat', label: 'Chat' },
@@ -159,6 +162,7 @@ function mount(
           actions={chat.actions}
           renderSlot={renderSlot as never}
           views={views}
+          mobile={mobile}
           open={open}
           t={t}
         />
@@ -179,6 +183,7 @@ function mount(
           actions={chat.actions}
           renderSlot={renderSlot as never}
           views={views}
+          mobile={mobile}
           releaseSessionImages={vi.fn()}
           bindDraftMirror={write => wiring.bindMirror(write)}
         />
@@ -248,6 +253,8 @@ function mount(
     renderSlotChain,
     selectWorkspace: retargetWorkspace,
     t,
+    headerInset: 0,
+    mobile,
   }
   const view = render(<ConversationRoot {...props} />)
   return {
@@ -466,6 +473,21 @@ describe('ConversationRoot resident composer', () => {
     expect(b.view.queryByTestId('view-new-view')).toBeNull()
     expect(b.view.getByRole('tab', { name: 'Chat' }).getAttribute('aria-selected')).toBe('true')
     expect(b.view.getByRole('tab', { name: 'New view' }).getAttribute('aria-selected')).toBe('false')
+  })
+
+  it('offers Chat alone on the phone: no tab strip and no other reachable view', () => {
+    // The bench registers Chat and Trajectory. The phone must not offer a
+    // choice it cannot serve: the ring is reduced to Chat, which both removes
+    // the strip (rendered only above one view) and keeps a selection carried
+    // over from a wider layout from rendering a full-width event ledger.
+    const b = mount(conversationSnapshot(), undefined, undefined, { mobile: true })
+    expect(b.view.queryByRole('tablist')).toBeNull()
+    expect(b.view.queryByRole('tab', { name: 'Chat' })).toBeNull()
+    expect(b.view.getByTestId('view-chat')).toBeTruthy()
+
+    act(() => { b.chat.actions.setView('trajectory') })
+    expect(b.view.getByTestId('view-chat')).toBeTruthy()
+    expect(b.view.queryByTestId('view-trajectory')).toBeNull()
   })
 
   it('rolls the pending workspace label back when switching fails', async () => {

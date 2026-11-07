@@ -11,7 +11,11 @@
 html,
 body,
 #root {
-  height: 100%;
+  /* 100vh is the fallback for engines without dvh; 100dvh follows the browser's
+     dynamic viewport, so a phone's collapsing URL bar never hides the composer
+     below the visible area. */
+  height: 100vh;
+  height: 100dvh;
   margin: 0;
 }
 

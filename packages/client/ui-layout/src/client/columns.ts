@@ -31,6 +31,16 @@ export const SIDEBAR_COLLAPSED = 56
  * LG breakpoint); a manual toggle below it re-expands over the squeezed center
  * (stores.ts narrowExpanded). */
 export const SIDEBAR_AUTO_COLLAPSE = 1024
+/** Viewport width at or below which the frame switches to the phone layout:
+ * one column, the sidebar as an off-canvas drawer, and the floating menu
+ * control (docs/web-styling.md owns the breakpoint contract). */
+export const MOBILE_MAX = 767
+/** Rendered width the sidebar slot is told to occupy inside the phone drawer;
+ * the drawer column itself is capped at 86vw by AppFrame.module.css. */
+export const MOBILE_DRAWER_WIDTH = 320
+/** Leading space the phone layout reserves in the conversation header for the
+ * floating menu control: its 38px box at a 10px inset plus a 10px gap. */
+export const MOBILE_MENU_RESERVED = 58
 /** Details drag clamp floor. */
 export const DETAILS_MIN = 300
 /** Details drag clamp ceiling. */
@@ -74,4 +84,17 @@ export function computeColumns(viewport: number, sidebar: number, details: numbe
   // Step 3: auto-close details (derived — preferences untouched); center
   // absorbs any remaining deficit (may drop below CENTER_MIN).
   return { sidebar: s, center: Math.max(0, viewport - s), details: 0 }
+}
+
+/**
+ * Solve the phone frame (viewport <= MOBILE_MAX). The sidebar column leaves
+ * the grid flow for the off-canvas drawer, so its width is what the slot is
+ * told to render rather than a grid track, the conversation takes the whole
+ * viewport, and the details column cannot open — the phone layout has one
+ * surface at a time.
+ * @param viewport - available frame width in px.
+ * @returns resolved widths for the phone layout.
+ */
+export function computeMobileColumns(viewport: number): Columns {
+  return { sidebar: MOBILE_DRAWER_WIDTH, center: viewport, details: 0 }
 }

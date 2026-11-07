@@ -15,6 +15,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 6 | Candidato reproducible en VPS | [SPEC-006](specs/006-reproducible-candidate.md) | Validada |
 | 7 | Proyectos del host como workspace | [SPEC-007](specs/007-host-projects-workspace.md) | Validada |
 | 8 | Credencial git para pipay-sii | [SPEC-008](specs/008-git-deploy-key.md) | Validada |
+| 9 | Shell móvil para el teléfono | [SPEC-009](specs/009-mobile-shell.md) | Validada |
 
 ## Dependencias
 
@@ -25,10 +26,11 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 - La Fase 4 parte del commit validado en Fase 3 y termina con el producto completo ejecutándose en Docker.
 - La Fase 5 exige persistencia, separación de secretos y sandbox validado.
 - La Fase 6 reproduce el candidato desde un clon limpio en el VPS.
+- La Fase 9 parte del commit validado de la Fase 8 y termina con la interfaz usable desde un teléfono de 390 px de ancho.
 
 ## Próxima acción
 
-Todas las fases están validadas. El fork se reproduce desde un clon limpio de `main`, restaura el backup y ejecuta el agente sin afectar la instancia viva. Queda por decidir si se crea un tag local de release.
+Las fases 1 a 9 están validadas y el fork se reproduce desde un clon limpio de `main` sin afectar la instancia viva. La Fase 9 se validó en un teléfono sobre la imagen reconstruida desde la rama `feat/mobile-shell`. Queda por decidir si la interfaz móvil continúa con detalles, ajustes y aprobaciones como hoja a pantalla completa, y si se crea un tag local de release.
 
 ## Decisiones del despliegue VPS
 

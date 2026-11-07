@@ -2,7 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- viewport-fit=cover lets the layout reach the notch and home-indicator
+         safe areas, which the phone layout pays back with
+         env(safe-area-inset-*); interactive-widget asks Android Chrome to
+         resize the viewport when the keyboard opens instead of overlaying the
+         composer. theme-color is the MDL brand primary (MDL-THEME-01). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="theme-color" content="#D40000" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=cat-1" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=cat-1" />

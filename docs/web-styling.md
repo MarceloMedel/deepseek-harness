@@ -10,6 +10,10 @@ This reference defines styling ownership and component rules for browser client 
 
 Global style sheets belong in `ui-theme/src/styles/`. Component styles live beside their component as CSS Modules. A component may define a local custom property when its value is part of that component's layout or presentation contract; shared colors, typography, elevation, and motion belong to the theme package.
 
+## Phone breakpoint
+
+`ui-layout` owns the single phone breakpoint: a frame at or below 767px (`MOBILE_MAX`) is the phone layout, and a feature stylesheet expresses the same boundary as `@media (max-width: 767px)`. `AppFrame` measures its own box rather than the window, so an embedded column narrows with its container. A surface the phone does not offer hides itself in the package that owns the element; a surface whose behavior changes takes an owner prop from the frame instead of selecting across packages.
+
 ## Component rules
 
 - Use CSS Modules and `clsx`; do not add a component library or Tailwind.
