@@ -44,9 +44,14 @@ describe('MDL-HARNESS brand palette', () => {
   it('keeps a lighter brand accent in dark mode and preserves semantic state colors', () => {
     expect(css).toContain('--dsw-alias-brand-primary: var(--dsw-static-deepseek-400);')
     expect(css).toContain('--dsw-alias-brand-text: var(--dsw-static-deepseek-300);')
-    expect(css).toContain('--dsw-alias-state-error-primary: var(--dsw-static-red-400);')
     expect(css).toContain('--dsw-alias-state-warn-primary: var(--dsw-static-amber-500);')
     expect(css).toContain('--dsw-alias-state-success-primary: var(--dsw-static-green-500);')
+  })
+
+  it('carries error states on fuchsia in light mode and yellow in dark mode', () => {
+    expect(css).toContain('--dsw-alias-state-error-primary: var(--dsw-static-fuchsia-600);')
+    expect(css).toContain('--dsw-alias-state-error-secondary: var(--dsw-static-fuchsia-500);')
+    expect(css.match(/--dsw-alias-state-error-(?:primary|secondary): var\(--dsw-static-yellow-400\);/g)).toHaveLength(2)
   })
 
   it('retains AA contrast for primary text and primary button pairs', () => {
@@ -54,5 +59,7 @@ describe('MDL-HARNESS brand palette', () => {
     expect(contrast('#18181B', '#F4F4F5')).toBeGreaterThanOrEqual(4.5)
     expect(contrast('#FF6363', '#18181B')).toBeGreaterThanOrEqual(4.5)
     expect(contrast('#FFA0A0', '#111113')).toBeGreaterThanOrEqual(4.5)
+    expect(contrast('#C026D3', '#FFFFFF')).toBeGreaterThanOrEqual(4.5)
+    expect(contrast('#FACC15', '#18181B')).toBeGreaterThanOrEqual(4.5)
   })
 })
