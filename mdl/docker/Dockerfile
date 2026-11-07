@@ -1,7 +1,9 @@
 # syntax=docker/dockerfile:1.7
 
 ARG NODE_IMAGE=node:22-bookworm
+ARG NODE_RUNTIME_IMAGE=node:22-bookworm-slim
 
+# ── build: the whole workspace, development dependencies included ────────────
 FROM ${NODE_IMAGE} AS build
 
 ENV PNPM_HOME=/pnpm \
@@ -29,13 +31,51 @@ RUN corepack pnpm install --frozen-lockfile \
     && find native/landlock-run/packages -path '*/bin/landlock-run' -type f -executable | grep -q . \
     && corepack pnpm run build
 
-FROM ${NODE_IMAGE} AS runtime
+# ── runtime-tree: the same tree with only what the product serves ────────────
+#
+# Three independent reductions, in order, each verified by the build itself:
+#
+# 1. Development-only workspace members leave before the install. `examples/`
+#    mounts every leaf composition, `packages/test-support/*` carries the test
+#    runtime, `packages/typert/generator` carries TypeScript for the build-time
+#    generator, `website/` is the VitePress projection, and `python/sdk-runtime`
+#    is the Python SDK's deploy root. Between them they pull vitest, vite, the
+#    test toolchain, the docs toolchain, and a full provider SDK closure. No
+#    shipped composition names any of them, and the frozen lockfile stays valid
+#    because the remaining importers are unchanged.
+# 2. `pnpm install --prod` installs the runtime dependency closure. It skips the
+#    devDependencies through which every harness package resolves its peer
+#    framework packages, so the next step restores exactly those links.
+# 3. `link-workspace-peers.mjs` links each member's workspace peers into its own
+#    node_modules. This is what makes a production-only tree boot; without it the
+#    first import of `@deepseek-ai/cordis` fails with ERR_MODULE_NOT_FOUND, which
+#    is why SPEC-004 abandoned `pnpm deploy --prod` for a full snapshot.
+#
+# The residue sweep then drops everything the runtime never reads: sources, tests,
+# declaration files, source maps, generated documentation, and the coverage
+# report. `.agents/skills/` stays — the skill plugin reads it at runtime.
+FROM build AS runtime-tree
+
+RUN rm -rf examples website python packages/test-support packages/typert/generator \
+    && rm -rf node_modules \
+    && corepack pnpm install --prod --frozen-lockfile \
+    && node scripts/link-workspace-peers.mjs . \
+    && test -e node_modules/@deepseek-ai/cordis
+
+RUN rm -rf coverage docs website mdl scripts .github .vscode .gitlab-ci.yml \
+    && rm -rf .agents/notes \
+    && find packages apps vendor -type d \( -name tests -o -name stress-tests -o -name src \) -prune -exec rm -rf {} + \
+    && find packages apps vendor -path '*/lib/*' \( -name '*.map' -o -name '*.d.ts' \) -delete \
+    && find . -name '*.tsbuildinfo' -delete \
+    && find apps/web/dist -name '*.map' -delete \
+    && rm -rf apps/web/src apps/web/public apps/web/stress-tests apps/web/tests apps/web/index.html \
+    && rm -rf apps/cli/src apps/cli/tests apps/cli/reference
+
+# ── runtime: what the container actually serves ─────────────────────────────
+FROM ${NODE_RUNTIME_IMAGE} AS runtime
 
 ENV DSH_HOME=/data/dsh \
-    DSH_PERMISSION_MODE=workspace-write \
-    UV_TOOL_DIR=/opt/uv/tools \
-    UV_TOOL_BIN_DIR=/usr/local/bin \
-    UV_PYTHON_DOWNLOADS=never
+    DSH_PERMISSION_MODE=workspace-write
 
 RUN printf '%s\n' \
         'Acquire::Retries "8";' \
@@ -45,8 +85,8 @@ RUN printf '%s\n' \
     && sed -i 's|http://deb.debian.org|https://mirror.rackspace.com|g' /etc/apt/sources.list.d/debian.sources \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
-        bash bubblewrap ca-certificates curl git jq less nginx-light openssh-client \
-        python3 python3-pip python3-venv tini \
+        bash bubblewrap ca-certificates curl git jq less nginx-light \
+        python3 tini \
     && install -m 0755 -d /etc/apt/keyrings \
     && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
         -o /etc/apt/keyrings/githubcli-archive-keyring.gpg \
@@ -54,17 +94,10 @@ RUN printf '%s\n' \
     && printf '%s\n' \
         "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
         > /etc/apt/sources.list.d/github-cli.list \
-    && curl -fsSL https://download.docker.com/linux/debian/gpg \
-        -o /etc/apt/keyrings/docker.asc \
-    && chmod a+r /etc/apt/keyrings/docker.asc \
-    && printf '%s\n' \
-        "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian bookworm stable" \
-        > /etc/apt/sources.list.d/docker.list \
     && apt-get update \
-    && apt-get install -y --no-install-recommends gh docker-ce-cli \
+    && apt-get install -y --no-install-recommends gh \
     && curl -LsSf https://astral.sh/uv/0.9.5/install.sh \
         | env UV_INSTALL_DIR=/usr/local/bin sh \
-    && uv tool install --python /usr/bin/python3 graphifyy==0.9.91 \
     && rm -rf /var/lib/apt/lists/* /root/.cache
 
 RUN mkdir -p /data/dsh /workspace \
@@ -90,7 +123,7 @@ RUN printf '%s\n' \
         > /etc/gitconfig \
     && chmod 0644 /etc/gitconfig
 
-COPY --from=build /app /app
+COPY --from=runtime-tree /app /app
 COPY mdl/docker/nginx.conf /etc/nginx/nginx.conf
 COPY mdl/docker/entrypoint.sh /usr/local/bin/mdl-entrypoint
 RUN chmod 0755 /usr/local/bin/mdl-entrypoint \

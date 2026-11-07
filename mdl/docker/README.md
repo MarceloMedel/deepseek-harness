@@ -58,6 +58,26 @@ Añadir un repositorio es añadir ese bloque en el host y reiniciar el contenedo
 
 El contenedor ya no lleva deploy keys ni variables `GIT_CONFIG_*`. La reescritura a SSH de `pipay-sii` de `SPEC-008` se retiró en la Fase 11: ese repositorio, como cualquier otro, usa el token.
 
+## Herramientas de la imagen
+
+La imagen de runtime instala solo lo que el agente usa de verdad ([SPEC-017](../specs/017-optimizacion-imagen.md) reemplaza el inventario de `DOCKER-03` de `SPEC-004`):
+
+| Herramienta | Para qué |
+|---|---|
+| `bash`, `git`, `curl`, `jq`, `less`, `ca-certificates` | Herramienta bash, clonado y trabajo sobre repositorios, `gh` |
+| `bubblewrap`, `tini`, `nginx-light` | Cadena de sandbox, entrypoint y proxy de `SPEC-004` |
+| `python3` + `uv` | Trabajo sobre proyectos Python; `uv` cubre `pip` y `venv` |
+| `gh` | PR y credencial de GitHub de `SPEC-010` a través del wrapper |
+
+Estas herramientas se retiraron porque ningún consumidor las necesita en runtime; reponer cualquiera es volver a agregarla a la lista de `apt` del `Dockerfile`:
+
+- `graphifyy` (con su venv de `uv`): herramienta de grafos de documentación, sin consumidor en la ruta del agente.
+- `docker-ce-cli`: el despliegue no monta el socket por `MDL-DOCKER-02` ni define `DOCKER_HOST`, así que el binario no puede operar ningún daemon.
+- `openssh-client`: todo el Git va por HTTPS con token desde `SPEC-011` y no se monta ningún fragmento SSH.
+- `python3-pip`, `python3-venv`: `uv` cubre ambos.
+
+El backend de subagentes `subagent-claude-code` ya no arrastra el SDK oficial completo: `@anthropic-ai/claude-agent-sdk` es un peer opcional. Montar ese preset sin instalarlo falla con un mensaje que nombra el paquete, no con un `ERR_MODULE_NOT_FOUND` durante el arranque.
+
 ## Sandbox
 
 La cadena Linux de `dsh-sandbox-local` prueba `bwrap` y recurre a Landlock. Dentro del contenedor `bwrap` no puede crear user namespaces por el perfil AppArmor, así que el runner efectivo es Landlock. La imagen compila el launcher (`native/landlock-run`) durante la build; sin ese binario el sandbox se queda sin runners y `bash` falla cerrado.
