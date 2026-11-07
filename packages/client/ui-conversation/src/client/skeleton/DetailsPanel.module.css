@@ -92,3 +92,18 @@
 .code[data-error] {
   color: var(--dsw-alias-state-error-primary);
 }
+
+/* Phone layout (<=767px, docs/web-styling.md): the panel is a full-screen sheet
+   in the frame's details column, so it drops the column edge and gives its close
+   control a fingertip-sized box. */
+@media (max-width: 767px) {
+  .root {
+    border-left: none;
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .close {
+    width: 36px;
+    height: 36px;
+  }
+}

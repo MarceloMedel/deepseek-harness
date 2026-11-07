@@ -1,6 +1,6 @@
 # SPEC-012 — Operar el agente desde el teléfono
 
-Estado: Aprobada
+Estado: En implementación
 Fase: 12
 Commit base: `a307029372`
 Aprobación: usuario en sesión Web, `aprobado el spec`
@@ -55,12 +55,20 @@ La Fase 9 dejó el teléfono con una sola superficie: la conversación, con el d
 
 ## Validación ejecutada
 
+Ejecutada el 2026-11-07 en la rama `change/012-mobile-agent-surfaces`.
+
 | Comprobación | Resultado | Evidencia |
 |---|---|---|
-| Pendiente | No ejecutada | Pendiente |
+| `AGENT-01` (mecanismo) | Aprobado | `openDetails()` en la fase móvil escribe la preferencia de ancho y `AppFrame` publica `data-details-open`; el `grid` sigue en una columna (`minmax(0, 1fr) 0px 0px`) |
+| `AGENT-02` (cierre) | Aprobado en jsdom | `closeDetails()` retira `data-details-open`; el cierre del panel crece a 36 px en el breakpoint |
+| `AGENT-04` | Aprobado | Cambiar de sesión con la hoja abierta la cierra: escenario nuevo en `app-frame.client.spec.tsx` |
+| `AGENT-05` y `AGENT-06` (estilos) | Aprobado | Reglas de 767 px: acciones de la aprobación en columna a ancho completo y tope `min(50dvh, …)`; pregunta y revisión de plan a `min(60dvh, 520px)` con pie que refluye |
+| `AGENT-03`, `AGENT-05` y `AGENT-06` (geometría real) | Pendiente | Requieren navegador y dispositivo: el entorno del agente no arranca Chromium |
+| `AGENT-07` | Parcial | `npm run test:gui` verde (3773 pruebas); el replay de snapshots no se ejecutó por la misma causa |
+| `npm run typecheck`, oxlint, `verify-md-wrap` | Aprobados | Sin errores en las dos caras, 0 hallazgos de lint y 1860 archivos con prosa bien envuelta |
 
 ## Resultado y pendientes
 
-- Resultado: pendiente de aprobación e implementación.
+- Resultado: implementado y verificado por pruebas unitarias y de tipos; la comprobación en dispositivo queda pendiente.
 - Pendientes o excepciones aceptadas: ninguno por defecto.
-- Decisión de salida: pendiente.
+- Decisión de salida: pendiente de la validación en teléfono antes de fusionar.

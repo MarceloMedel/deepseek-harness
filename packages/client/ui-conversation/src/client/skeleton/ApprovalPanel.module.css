@@ -101,3 +101,19 @@
   color: var(--dsw-alias-state-error-primary);
   border-color: transparent;
 }
+
+/* Phone layout (<=767px, docs/web-styling.md): the two answers stack at full
+   width, with the primary at the bottom where the thumb is, and the justification
+   body is capped against the live viewport so the answers never leave the screen
+   when the keyboard is open. */
+@media (max-width: 767px) {
+  .actionRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .body {
+    max-height: min(50dvh, var(--dsh-composer-text-max-height));
+  }
+}

@@ -16,7 +16,7 @@ import { useSyncExternalStore } from 'react'
 import { AppFrame } from '@deepseek-ai/dsh-client-ui-layout/src/client/AppFrame.tsx'
 import type { AppFrameProps } from '@deepseek-ai/dsh-client-ui-layout/src/client/AppFrame.tsx'
 import {
-  MOBILE_DRAWER_WIDTH, MOBILE_MENU_RESERVED, SIDEBAR_COLLAPSED,
+  DETAILS_DEFAULT, MOBILE_DRAWER_WIDTH, MOBILE_MENU_RESERVED, SIDEBAR_COLLAPSED,
 } from '@deepseek-ai/dsh-client-ui-layout/src/client/columns.ts'
 import { createLayoutStore } from '@deepseek-ai/dsh-client-ui-layout/src/client/stores.ts'
 import type {
@@ -451,11 +451,30 @@ describe('AppFrame — phone layout', () => {
     expect(frame.querySelectorAll('[data-side]')).toHaveLength(0)
   })
 
-  it('refuses the details panel on the phone', () => {
+  it('answers a details request with a full-screen sheet, not a column', () => {
     const { frame, instance } = mountPhoneFrame()
+    expect(frame.hasAttribute('data-details-open')).toBe(false)
+
     act(() => { instance.actions.openDetails() })
-    expect(instance.getSnapshot().details).toBe(0)
+    expect(instance.getSnapshot().details).toBe(DETAILS_DEFAULT)
+    // The flag is the same width preference; the frame reports it as the sheet
+    // state and the grid stays one column.
+    expect(frame.getAttribute('data-details-open')).toBe('true')
     expect(frame.style.gridTemplateColumns).toBe('minmax(0, 1fr) 0px 0px')
+
+    act(() => { instance.actions.closeDetails() })
+    expect(frame.hasAttribute('data-details-open')).toBe(false)
+  })
+
+  it('closes the details sheet when the current Session changes', () => {
+    const { frame, instance, rerenderFrame } = mountPhoneFrame()
+    act(() => { instance.actions.openDetails() })
+    expect(frame.getAttribute('data-details-open')).toBe('true')
+
+    selectedSession.current = 's-next' as SessionId
+    act(() => { rerenderFrame() })
+    expect(frame.hasAttribute('data-details-open')).toBe(false)
+    expect(instance.getSnapshot().details).toBe(0)
   })
 
   it('restores the three-column layout and drops the phone chrome above the breakpoint', () => {

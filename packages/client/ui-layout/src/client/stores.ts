@@ -100,10 +100,12 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
       },
       openDrawer: (d) => { if (d.mobile) d.drawerOpen = true },
       closeDrawer: (d) => { d.drawerOpen = false },
-      // The phone has no details column: showing one surface at a time means
-      // a details request there is answered with nothing, not with a squeeze.
+      // The phone answers a details request with a sheet instead of a column,
+      // so the flag is the same width preference: any non-zero value means the
+      // detail is showing (AppFrame.module.css turns it into a full-screen
+      // surface there).
       openDetails: (d) => {
-        if (d.mobile || d.details !== 0) return
+        if (d.details !== 0) return
         d.details = DETAILS_DEFAULT
       },
       closeDetails: (d) => { d.details = 0 },

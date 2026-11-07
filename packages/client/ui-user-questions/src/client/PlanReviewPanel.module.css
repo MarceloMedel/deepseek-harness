@@ -24,6 +24,7 @@
      hidden): cap the card against the viewport and scroll the plan, so the
      strip and the decision row stay reachable on a long plan. */
   max-height: min(60vh, 520px);
+  max-height: min(60dvh, 520px);
   border: 1px solid var(--dsw-alias-state-warn-secondary);
   border-radius: 20px;
   background: var(--dsw-specific-input-major);
@@ -119,5 +120,14 @@
   .footer {
     align-items: flex-end;
     padding: 8px 12px 10px;
+  }
+}
+
+/* Phone layout (<=767px, docs/web-styling.md): the footer reflows like the
+   question composer's, so the review actions never run past the card edge. */
+@media (max-width: 767px) {
+  .footer {
+    flex-wrap: wrap;
+    row-gap: 8px;
   }
 }
