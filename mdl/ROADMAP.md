@@ -26,6 +26,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 18 | Payload del cliente web y móvil | [SPEC-018](specs/018-payload-cliente.md) | En implementación |
 | 19 | Idiomas: inglés y español, sin chino | [SPEC-019](specs/019-idiomas-en-es.md) | En implementación |
 | 20 | Diferir el chunk `vendor` del primer render | [SPEC-020](specs/020-diferir-chunk-vendor.md) | Aprobada |
+| 21 | Bundles de plugin: lo que se descarga antes de usarlo | [SPEC-021](specs/021-bundles-de-plugin.md) | Borrador |
 
 ## Dependencias
 
@@ -44,6 +45,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 - La Fase 15 no depende de una fase anterior: cambia solo la presentación de la conversación y conserva el detalle en las superficies que ya existen.
 - La Fase 16 parte de la Fase 15: convierte su comportamiento único en una preferencia de tres niveles sobre la misma presentación.
 - Las fases 17, 18 y 19 son independientes entre sí y se validan por separado: 17 reduce la imagen, 18 el payload del navegador y 19 los idiomas publicados.
+- Las fases 20 y 21 nacen de los dos objetivos que la fase 18 no cumplió y se validan por separado: 20 saca el chunk `vendor` de la ruta crítica del primer render, y 21 reduce los bundles de plugin que el arranque descarga.
 
 ## Próxima acción
 
