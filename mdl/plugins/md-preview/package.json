@@ -1,0 +1,28 @@
+{
+  "name": "dsh-md-preview",
+  "version": "1.0.0",
+  "description": "Markdown viewer for DSH: serves the session workspace's .md files and the agent's replies, and renders them in a floating panel with the conversation's own renderer",
+  "type": "module",
+  "main": "host.mjs",
+  "exports": {
+    ".": "./host.mjs",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "host.mjs",
+    "client.js",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "license": "MIT",
+  "private": true
+}
