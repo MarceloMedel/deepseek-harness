@@ -1,7 +1,8 @@
 # SPEC-021 — Bundles de plugin: lo que el navegador descarga antes de usarlo
 
-Estado: Borrador — el alcance necesita re-aprobación: el mecanismo de `B2` no existe en el contrato actual de bundles
+Estado: En implementación
 Fase: 21
+Aprobación para iniciar: usuario, 2026-11-08 — aprobada la variante de montaje perezoso de filas tras descartar el troceado dentro de un bundle
 Commit base: `07bbe0d6e1`
 
 ## Objetivo
@@ -25,8 +26,8 @@ El objetivo de `WEB-01` (≤400 KB) no es alcanzable sólo con esta fase ni con 
 ## Alcance
 
 - `B1` Atribuir los bytes: tabla por paquete y por módulo de los cuatro bundles mayores, generada desde el metafichero del build, registrada en la validación.
-- `B2` Partir cada bundle grande donde su propio código ya distingue superficies: un import dinámico dentro del paquete cliente para el código que sólo alcanza una vista concreta (detalle de trayectoria, ajustes de modelos, selector de carpetas), de modo que se emita un chunk propio con hash y se pida al abrir esa vista.
-- `B3` Revisar el roster de arranque con la tabla de `B1` y retirar del arranque el código que ninguna superficie inicial usa, empezando por los paquetes cuyo bundle completo se activa al abrir un panel de ajustes.
+- `B2` Montar las filas del cliente cuando su superficie se necesita, no cuando arranca el shell: una fila marcada como diferible no se materializa hasta que algo pide su servicio o su slot, y su bundle se descarga en ese momento.
+- `B3` Elegir qué filas son diferibles con la tabla de `B1` y el grafo de servicios y slots: una fila que otra necesita en el arranque no puede diferirse, y el criterio queda registrado fila por fila.
 - `B4` Servir una sola copia de los ayudantes compartidos que hoy entran en varios bundles (`clsx` en 12 de 33), sólo si `B1` demuestra que el ahorro supera el costo de un chunk compartido; si no, registrarlo como no rentable y no hacerlo.
 - `B5` Mantener la semántica de caché de [SPEC-018](018-payload-cliente.md): todo chunk nuevo lleva hash en el nombre y responde inmutable; ningún chunk depende de la sesión.
 - `B6` Medir antes y después en el navegador, con caché vacía, la primera carga y la carga del arranque de una sesión.
@@ -35,7 +36,7 @@ El objetivo de `WEB-01` (≤400 KB) no es alcanzable sólo con esta fase ni con 
 
 - Diferir el chunk `vendor` del primer render: [SPEC-020](020-diferir-chunk-vendor.md) lo posee.
 - Comprimir con brotli o cambiar de servidor: no hay módulo brotli en `nginx-light` de Debian, y esa decisión pertenece a [SPEC-018](018-payload-cliente.md) si alguna vez se reabre.
-- Volver perezoso el montaje de las filas del Loader (no crear una entrada hasta que su superficie se abra). Es la palanca que más se acerca a 400 KB y también la que cambia el modelo de composición: merece su propia especificación con el análisis de servicios y slots que exige.
+- Extender el contrato de bundles a varios archivos por plugin (salida ESM con chunks, rutas nuevas en el host y resolución de chunks en la fábrica): queda como alternativa si el montaje perezoso no alcanza, y se especifica por su cuenta.
 - Reducir el conjunto de gramáticas de shiki ni retirar features de la interfaz.
 - Cachear en un service worker.
 - Cambiar el texto, el diseño o el comportamiento de las superficies: esta fase mueve bytes, no producto.
@@ -49,6 +50,7 @@ El objetivo de `WEB-01` (≤400 KB) no es alcanzable sólo con esta fase ni con 
 | `PLG-03` | Los bundles pedidos al arrancar suman ≤400 KB | Panel de red con una sesión recién abierta, sin abrir paneles |
 | `PLG-04` | Abrir una vista concreta no descarga los bundles de las demás | Panel de red: abrir sólo la conversación y comprobar que no aparecen los bundles de ajustes |
 | `PLG-05` | La interfaz se comporta igual: mismas superficies, mismo contenido | `test:gui`, `DSH_SNAPSHOT=replay pnpm run test:web` y `test:snapshot` |
+| `PLG-09` | Una fila diferida se materializa cuando algo pide su servicio o su slot, y una que el arranque necesita nunca se difiere | Pruebas del cliente y `test:web` en replay: cada superficie de una fila diferida sigue apareciendo al abrirse |
 | `PLG-06` | La recarga con caché tibia no empeora | Panel de red: ≤86,7 KB, la cifra registrada en [SPEC-018](018-payload-cliente.md) |
 | `PLG-07` | Cada chunk nuevo es inmutable y con hash | `curl -I` sobre el chunk: `cache-control: public, max-age=31536000, immutable` |
 | `PLG-08` | La transferencia queda registrada antes y después | Tabla con las dos mediciones y el commit de cada una |
@@ -69,7 +71,7 @@ El objetivo de `WEB-01` (≤400 KB) no es alcanzable sólo con esta fase ni con 
 - `apps/web/vite.config.ts`: ajustes de partición que impidan que un chunk compartido vuelva a entrar en la ruta crítica.
 - `mdl/ROADMAP.md`: fila de la fase al validar, según `SPEC-000`.
 
-## Hallazgo que bloquea el alcance aprobado
+## Hallazgo que reencuadró el alcance
 
 `B2` suponía que un bundle de cliente podía partirse en varios archivos. No puede, en el contrato actual:
 
@@ -80,7 +82,7 @@ Partir un bundle exige, entonces, extender ese contrato en tres piezas a la vez:
 
 Al verificar la otra mitad del diagnóstico, la duplicación tampoco sostiene un atajo: los wire layers que el build permite inline (sesión, herramientas, `host-apiproxy`, marca) casi no aparecen en los bundles (`SESSION_FORMAT_VERSION` en 0 de 33, `dsh/tools` en 0 de 33, `brand` en 10 con sólo constantes), así que los 350–440 KB de los cuatro grandes son código propio de sus vistas, no copias de dependencias.
 
-Con eso, la única palanca que queda es no descargar el bundle de una fila que el usuario no abrió, es decir el **montaje perezoso de filas del Loader** que este documento había dejado fuera de alcance por costo. La alternativa intermedia —partir un paquete grande en dos paquetes de plugin, núcleo y detalle— tampoco sirve mientras todas las filas se monten al arrancar: el segundo bundle se descargaría igual.
+Con eso, la única palanca que queda es no descargar el bundle de una fila que el usuario no abrió, es decir el **montaje perezoso de filas del Loader**. La alternativa intermedia —partir un paquete grande en dos paquetes de plugin, núcleo y detalle— tampoco sirve mientras todas las filas se monten al arrancar: el segundo bundle se descargaría igual. La decisión del usuario fue implementar ese montaje perezoso en esta fase y dejar la extensión del contrato de bundles como alternativa posterior.
 
 ## Validación ejecutada
 
