@@ -27,13 +27,13 @@ La instalación en la pantalla de inicio del iPhone ([SPEC-014](014-instalacion-
 - `P3` Servir `/plugins/<id>/client.js` con `ETag` y respuesta `304` en `packages/client/modules`, conservando el 404 ruidoso cuando el bundle no está compilado.
 - `P4` Emitir sólo fuentes `woff2` en `apps/web/dist` y eliminar `woff`/`ttf` del build.
 - `P5` Recomprimir `icon-512.png` e `icon-maskable-512.png` para que el conjunto de iconos quede en 250 KB o menos, sin cambiar el arte de [SPEC-002](002-branding.md).
-- `P6` Diferir el chunk `vendor`: cargar KaTeX, shiki y el pipeline de markdown fuera de la ruta crítica del primer render.
 - `P7` No publicar sourcemaps de `apps/web/dist` en la imagen ni servirlos.
 
 ## Fuera del alcance
 
 - Cambiar la composición de plugins cargados en el arranque o retirar features de la interfaz.
 - Reducir el conjunto de idiomas: 654 cadenas en 26 catálogos equivalen a 47 KB (1,5%) de los bundles; [SPEC-019](019-idiomas-en-es.md) las reemplaza por español con el mismo peso.
+- Diferir el chunk `vendor` de la ruta crítica del primer render: [SPEC-020](020-diferir-chunk-vendor.md) lo posee, porque su verificación es de tiempo de pintado y necesita navegador.
 - Limitar las gramáticas de shiki a un conjunto menor de lenguajes: queda como trabajo posterior con su propia medición.
 - Cachear en un service worker o cambiar el modo de instalación de la PWA.
 - Sustituir Cloudflare o el túnel.
@@ -49,7 +49,6 @@ La instalación en la pantalla de inicio del iPhone ([SPEC-014](014-instalacion-
 | `WEB-05` | El traversal, el fallback SPA, el `octet-stream` y el 405 siguen respondiendo como hoy | Pruebas existentes de `frontend-static` y `client-modules` |
 | `WEB-06` | Sólo se sirven fuentes `woff2` | `find /app/apps/web/dist -name '*.woff' -o -name '*.ttf'` vacío |
 | `WEB-07` | Los iconos de instalación suman ≤250 KB | `du -ch /app/apps/web/dist/icon-*.png /app/apps/web/dist/apple-touch-icon.png` |
-| `WEB-08` | La matemática y el resaltado se ven correctos después de diferir `vendor` | Mensaje con fórmula y bloque de código, claro y oscuro, en escritorio y 390 px |
 | `WEB-09` | No se sirven sourcemaps en producción | `curl -I` sobre `/assets/index-*.js.map` no devuelve 200 |
 | `WEB-10` | Los snapshots de la interfaz siguen pasando | `pnpm run test:snapshot` y `pnpm run test:web` |
 
@@ -81,12 +80,10 @@ Fecha: `2026-11-07`/`2026-11-08`. Entornos: checkout del repositorio con Node `2
 | `P4` fuentes sólo `woff2` | Aprobada | Build de `apps/web`: las caras KaTeX quedan en 19 archivos `woff2` (250,2 KB); sobrevive un `woff`/`ttf` de 11,7 KB de otra familia sin `woff2`, que se conserva a propósito |
 | `P5` iconos | Aprobada | 507 KB → **228 KB** (icon-512 256,4→103,9; maskable 169,8→85,7; icon-192 41,3→17,3; apple-touch 36,7→15,3) por cuantización a 256 colores; PSNR 39,6–41,2 dB contra el original |
 | `P7` sin sourcemaps publicados | Aprobada | La etapa `runtime-tree` borra `apps/web/dist/**/*.map`; los archivos locales se conservan para depuración del build |
-| `P6` diferir el chunk `vendor` | **Pendiente** | Requiere cambiar el camino de render de matemática y resaltado y verificarlo en navegador; ver nota al final |
 | `WEB-01`/`WEB-02` transferencia | Parcial | Medido por `curl` con `Accept-Encoding: gzip`: el shell responde y un bundle transfiere 11 606 bytes. La suma de una primera carga completa y del roster entero necesita el panel de red del navegador |
 | `WEB-04` `ETag` y `304` | **Aprobada en el contenedor** | `curl -sI` devuelve `200` con `cache-control: no-cache` y un validador; la repetición con `If-None-Match: W/"9B1W4LdHDssa25YKWsfUbY8S8CA"` devuelve **304** |
 | `WEB-03` caché inmutable | **Aprobada en el contenedor** | `/assets/index-BHhrez7c.js` responde `cache-control: public, max-age=31536000, immutable` con `Content-Encoding: gzip` |
 | `WEB-05` semánticas previas | Aprobada | Las pruebas de traversal 403, SPA fallback, `octet-stream` y 405 siguen pasando |
-| `WEB-08` matemática y resaltado | **No ejecutada** | Depende de `P6` |
 | `WEB-10` snapshots | **No ejecutada** | `pnpm run test:snapshot` y `test:web` no se corrieron en este entorno |
 
 Pruebas ejecutadas: `packages/host/frontend-static` y `packages/client/modules` — 28 pruebas en verde, incluidas las del validador débil y de la lista de validadores; `oxlint` sin errores en los archivos tocados; build de `apps/web` y de los bundles de cliente completos.
@@ -94,14 +91,14 @@ Pruebas ejecutadas: `packages/host/frontend-static` y `packages/client/modules` 
 ## Resultado y pendientes
 
 - Resultado: `P1`–`P5` y `P7` implementados. En disco, `dist` baja ≈800 KB por fuentes y ≈280 KB por iconos, y los bundles de plugins dejan de reenviar su cuerpo en cada carga gracias al `ETag`.
-- `P6` no está implementado. Diferir el chunk `vendor` exige convertir el camino de render de matemática y resaltado en cargas diferidas y verificar el resultado en navegador; este entorno no tiene navegador ni inspección visual, y la política del repositorio exige un GIF grabado del servidor real para todo cambio visible de la GUI. Implementarlo sin esa verificación sería declarar validado algo no observado.
+- El chunk `vendor` queda fuera: su diferimiento pasó a [SPEC-020](020-diferir-chunk-vendor.md) al validarse esta fase, porque mide tiempo hasta el primer pintado y no bytes, y exige verificación en navegador.
 - Pendientes o excepciones aceptadas: la reducción del conjunto de gramáticas de shiki no entra en esta fase.
 - Decisión de salida: pendiente.
 
 ## Decisiones resueltas
 
 - El payload se valida como especificación propia, independiente de la imagen ([SPEC-017](017-optimizacion-imagen.md)) y de los idiomas ([SPEC-019](019-idiomas-en-es.md)).
-- Diferir el chunk `vendor` entra en esta fase (`P6`), después de medir con `WEB-01`.
+- El diferimiento del chunk `vendor` se separó a [SPEC-020](020-diferir-chunk-vendor.md) durante la validación.
 
 ## Estado de la validación
 
