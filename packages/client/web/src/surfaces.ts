@@ -71,6 +71,7 @@ export function createSurfaceOpener(seams: SurfaceSeams): ClientSurfaces {
     }
   }
   return {
+    has: (name: string): boolean => seams.rows.some(row => row.surface === name),
     open: (name: string): Promise<void> => {
       const existing = openings.get(name)
       if (existing !== undefined) return existing

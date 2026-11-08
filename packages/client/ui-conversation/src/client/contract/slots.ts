@@ -455,6 +455,11 @@ export interface ConversationSessionInjected {
     subscribe: (fn: () => void) => () => void
     version: () => number
   }
+  /**
+   * Activation handle for a view whose package is a surface row, or undefined
+   * when the view is registered (or its surface is not composed).
+   */
+  surfaceViewOf: (id: string) => { ensure: () => Promise<void> } | undefined
   /** Release historical image URLs when this rendered session scope unmounts. */
   releaseSessionImages: (sessionId: SessionId) => void
   /** Bind the input machine's draft persistence mirror to the session store. */
@@ -602,12 +607,13 @@ export type ConversationSlotProps =
   & InjectFace<ConversationInjected>
   & PropsLocale<'conversation'>
 
-/** Full strict-session body props: per-session store, view ring, and draft mirror. */
+/** Full strict-session body props: per-session store, view ring, draft mirror, and the shared copy seat its surface wait renders. */
 export type ConversationSessionSlotProps =
   PropsRuntime<'conversation.session'>
   & PropsRenderSlots<'conversation.view'>
   & PropsStore<ChatStore>
   & ConversationSessionInjected
+  & PropsLocale<'common'>
 
 /** Full strict-session header props: shared store, tabs/actions render shares, navigation, and locale. */
 export type ConversationSessionHeaderSlotProps =

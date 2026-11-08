@@ -35,4 +35,13 @@ export interface ClientSurfaces {
    * activate.
    */
   open: (name: string) => Promise<void>
+  /**
+   * Whether any graph row declares this surface, without mounting or fetching
+   * anything. A feature that offers an entry point into a surface uses this to
+   * decide whether to show it at all, so a deployment that does not compose the
+   * row does not offer a dead affordance.
+   * @param name - surface name, as declared by `dsh.client.surface`.
+   * @returns true when at least one row of the boot graph declares the surface.
+   */
+  has: (name: string) => boolean
 }

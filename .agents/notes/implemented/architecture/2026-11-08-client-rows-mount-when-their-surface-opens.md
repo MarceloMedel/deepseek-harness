@@ -28,9 +28,9 @@ Loading the settings rows when the browser is idle was rejected: it moves the by
 
 ## Consequences
 
-Deferring the settings surface moved a browser measurement from 745.1 KB to 671.4 KB of plugin payload and from 1155.6 KB to 1055.2 KB of first load, and it put the `WEB-02` budget (≤700 KB) under its ceiling for the first time. `WEB-01` (≤400 KB) is still far away: the four largest bundles — conversation, runtime, trajectory, connection — stay on the boot tier, and only trajectory is genuinely deferrable.
+Two surfaces are deferred today: the five settings rows that only fill its sections, and the trajectory view row (74.8 KB, the largest single win). Together they moved a browser measurement from 745.1 KB to 596.9 KB of plugin payload and from 1155.6 KB to 987.1 KB of first load. `WEB-02` (≤700 KB) is under its ceiling for the first time; `WEB-01` (≤400 KB) is still far away, because conversation, runtime and connection fill the first screen and cannot be deferred.
 
-Trajectory is the next surface and it needs a UI decision, not more mechanism: deferring it removes its tab from the conversation's view ring, because the ring projects registered views. That is a visible change in discoverability, so it stays out until the ring can offer a tab whose surface has not been mounted yet.
+A deferred row must not take its entry point with it. The settings trigger stays in an eager package and asks for the surface before painting, so its button is unchanged. The trajectory tab is different: the conversation's view ring projects registered views, so an unmounted row would silently remove a tab. The ring therefore offers a synthetic tab while the surface exists and no entry claims the view id — the label comes from the shared `common` catalog, the same key the trajectory package reads — and the body renders a wait that mounts the row. When the row registers, its entry takes the id and the synthetic tab disappears; the ring never holds two entries under one id, which the slot ledger would reject anyway.
 
 Every deferrable row costs a wait on first open (locally ~0.2 s for five bundles). A surface whose rows a boot-time surface already needs is not deferrable; `ui-directory-picker-browse` and `ui-model-selection` fill conversation and sidebar slots and stay on the boot tier for that reason.
 

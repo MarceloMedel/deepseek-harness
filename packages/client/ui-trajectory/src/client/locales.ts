@@ -5,7 +5,6 @@ export const NS = 'trajectory'
 
 /** The trajectory dictionary key set (the source of truth for both locales). */
 export type TrajectoryKey =
-  | 'view.trajectory'
   | 'toolbar.aria'
   | 'toolbar.duration'
   | 'toolbar.useActualDuration'
@@ -29,7 +28,6 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 
 /** English dictionary. */
 export const en = {
-  'view.trajectory':           'Trajectory',
   'toolbar.aria':              'Trajectory toolbar',
   'toolbar.duration':          'Duration',
   'toolbar.useActualDuration': 'Use actual duration',
@@ -47,7 +45,6 @@ export const en = {
 
 /** Spanish dictionary, checked complete against the English key set. */
 export const es = {
-  'view.trajectory':           'Trayectoria',
   'toolbar.aria':              'Barra de la trayectoria',
   'toolbar.duration':          'Duración',
   'toolbar.useActualDuration': 'Usar duración real',

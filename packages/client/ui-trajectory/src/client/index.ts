@@ -45,7 +45,7 @@ export function apply(ctx: Context): void {
     id: 'trajectory',
     order: 10,
     locale: NS,
-    label: () => t('view.trajectory'),
+    label: () => t('trajectory'),
     inject: (sessionId: SessionId): TrajectoryViewInjected => {
       const session = ctx.sessions.binding(sessionId)?.session
       if (session === undefined) {

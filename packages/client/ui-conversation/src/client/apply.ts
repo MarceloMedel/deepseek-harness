@@ -19,6 +19,7 @@ import type {
 import type { InputNotice } from './input/contract.ts'
 import { createChatStore } from './stores.ts'
 import { ConversationController, UnsupportedImageMediaTypeError } from './service.ts'
+import { TRAJECTORY_SURFACE, TRAJECTORY_VIEW_ID } from './trajectory-surface.tsx'
 import type { IConversation } from './service.ts'
 import { ComposerBlockRegistry } from './input/blocks.ts'
 import type { ComposerBlock } from './input/blocks.ts'
@@ -54,7 +55,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 /** Services required by the conversation plugin. */
 export const inject = [
   'slots', 'layout', 'sessions', 'workspaces', 'locale', 'connection', 'remote', 'settingsScope',
-  'conversationEvents', 'conversationViews',
+  'conversationEvents', 'conversationViews', 'clientSurfaces',
 ]
 
 // Static no-session sources for the composer-bar hooks compartment: module
@@ -166,12 +167,28 @@ export function apply(ctx: Context): void {
   // persisted: a fresh page load keeps the open-jump-to-bottom default.
   const chatScrollPositions = new Map<SessionId, ChatScrollPosition>()
 
+  // Surface-backed views: a row that declares `dsh.client.surface` is not
+  // mounted at boot, so its view entry is absent until something opens the
+  // surface. The ring offers its tab anyway and the body mounts the row when
+  // the tab is selected; the entry takes the tab over once it registers.
+  // The shared namespace name is literal here like a slot name: importing the
+  // locale package's value export would break the client bundle purity gate.
+  const tCommon = ctx.locale.bind('common')
+  const surfaceViewOf = (id: string): { ensure: () => Promise<void> } | undefined => {
+    if (id !== TRAJECTORY_VIEW_ID) return undefined
+    if (!ctx.clientSurfaces.has(TRAJECTORY_SURFACE)) return undefined
+    if (slots.entries('conversation.view').some(entry => entry.options.id === id)) return undefined
+    return { ensure: () => ctx.clientSurfaces.open(TRAJECTORY_SURFACE) }
+  }
   const viewTabs = (): ViewTab[] => {
     const tabs: ViewTab[] = []
     for (const entry of slots.entries('conversation.view')) {
       /* v8 ignore next -- unreachable: list registration validates id at load. */
       if (entry.options.id === undefined) continue
       tabs.push({ id: entry.options.id, label: resolveSlotLabel(entry.options.label) ?? entry.options.id })
+    }
+    if (surfaceViewOf(TRAJECTORY_VIEW_ID) !== undefined) {
+      tabs.push({ id: TRAJECTORY_VIEW_ID, label: tCommon('trajectory') })
     }
     return tabs
   }
@@ -258,10 +275,12 @@ export function apply(ctx: Context): void {
       'conversation.view': { kind: 'list', scope: 'session' },
     },
     store: chatStore,
+    locale: 'common',
     inject: (sessionId: SessionId, _actions: BoundActions<typeof chatStore>): ConversationSessionInjected => {
       const conversation = concreteConversation(ctx)
       return {
         views,
+        surfaceViewOf,
         releaseSessionImages: (id) => { conversation.releaseSessionImages(id) },
         bindDraftMirror: write => inputHub.shell(sessionId).bindMirror(write),
       }

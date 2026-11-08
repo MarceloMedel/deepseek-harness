@@ -24,6 +24,7 @@ export const en = {
   'unknown': 'Unknown',
   'none': 'None',
   'truncated': 'Truncated',
+  'trajectory': 'Trajectory',
 } satisfies Record<string, string>
 
 /** The common vocabulary key union (English is the key-set source of truth). */

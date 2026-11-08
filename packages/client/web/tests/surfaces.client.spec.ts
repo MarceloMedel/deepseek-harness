@@ -51,6 +51,15 @@ describe('createSurfaceOpener', () => {
     ]))
   })
 
+  it('reports whether any row declares a surface without mounting anything', () => {
+    const host = seams()
+    const opener = createSurfaceOpener(host)
+    expect(opener.has('settings')).toBe(true)
+    expect(opener.has('inspector')).toBe(false)
+    expect(host.prefetch).not.toHaveBeenCalled()
+    expect(host.create).not.toHaveBeenCalled()
+  })
+
   it('shares one attempt between concurrent callers of the same surface', async () => {
     const host = seams()
     const opener = createSurfaceOpener(host)

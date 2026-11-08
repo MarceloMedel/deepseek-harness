@@ -184,6 +184,8 @@ function mount(
           renderSlot={renderSlot as never}
           views={views}
           mobile={mobile}
+          surfaceViewOf={() => undefined}
+          t={(key: string) => key}
           releaseSessionImages={vi.fn()}
           bindDraftMirror={write => wiring.bindMirror(write)}
         />
