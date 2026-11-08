@@ -88,6 +88,19 @@ Fecha: `2026-11-07`/`2026-11-08`. Entornos: checkout del repositorio con Node `2
 
 Pruebas ejecutadas: `packages/host/frontend-static` y `packages/client/modules` — 28 pruebas en verde, incluidas las del validador débil y de la lista de validadores; `oxlint` sin errores en los archivos tocados; build de `apps/web` y de los bundles de cliente completos.
 
+### Snapshots
+
+`vitest run --config vitest.snapshot.config.ts`: 109 en verde, 1 omitida, 5 en rojo. Las mismas pruebas que fallan se ejecutaron sobre `origin/main` en el mismo entorno: fallan allí igual. Detalle:
+
+- `goal.snapshot.ts` ×2: `ExperimentalWarning: SQLite is an experimental feature` en stderr, que el snapshot espera vacío. Presente en la base; depende de la versión de Node.
+- `jsonrpc-agent/sdk.snapshot.ts`: diferencia en `tool/result` de PTY persistente. Presente en la base.
+- `acp.snapshot.ts`: `EACCES mkdtemp '/home/node/acp-snap-cwd-…'`, rechazo del sandbox de archivos de este entorno.
+- `headless.snapshot.ts`: expectativa de longitud 1 contra 2; pasa 14/14 en tres corridas aisladas, así que es inestabilidad bajo carga y no una regresión.
+
+Ninguno de los fixtures de snapshot fue modificado por esta rama: los únicos cambios bajo `examples/` y `packages/examples/` son los README `.zh.md` eliminados.
+
+`knip --treat-config-hints-as-errors` sale limpio, lo que confirma que retirar 17 scripts y 1906 archivos no dejó referencias muertas.
+
 ## Resultado y pendientes
 
 - Resultado: `P1`–`P5` y `P7` implementados. En disco, `dist` baja ≈800 KB por fuentes y ≈280 KB por iconos, y los bundles de plugins dejan de reenviar su cuerpo en cada carga gracias al `ETag`.

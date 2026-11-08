@@ -480,7 +480,7 @@ export class ClientModuleRegistry extends Service {
  * @param etag - the exact strong tag this response would carry.
  * @returns true when the client's copy still matches.
  */
-export function revalidates(header: string | undefined, etag: string): boolean {
+function revalidates(header: string | undefined, etag: string): boolean {
   if (header === undefined) return false
   return header.split(',').some(candidate => candidate.trim().replace(/^W\//, '') === etag)
 }
