@@ -25,7 +25,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 17 | Optimización de la imagen Docker | [SPEC-017](specs/017-optimizacion-imagen.md) | En implementación |
 | 18 | Payload del cliente web y móvil | [SPEC-018](specs/018-payload-cliente.md) | En implementación |
 | 19 | Idiomas: inglés y español, sin chino | [SPEC-019](specs/019-idiomas-en-es.md) | En implementación |
-| 20 | Diferir el chunk `vendor` del primer render | [SPEC-020](specs/020-diferir-chunk-vendor.md) | Borrador |
+| 20 | Diferir el chunk `vendor` del primer render | [SPEC-020](specs/020-diferir-chunk-vendor.md) | Aprobada |
 
 ## Dependencias
 

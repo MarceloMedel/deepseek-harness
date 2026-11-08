@@ -119,6 +119,12 @@ export default defineConfig({
   plugins: [rejectStandaloneServe(), react(), dropRedundantFonts()],
   build: {
     sourcemap: true,
+    // Fonts stay separate files: an inlined face puts its bytes in the
+    // render-blocking stylesheet, where no request can revalidate it, and it
+    // also hides the face from `dropRedundantFonts`, which matches formats by
+    // emitted file name — KaTeX_Size3's woff2 sits under Vite's 4 KB inline
+    // limit, so inlining left its dead woff and ttf pairs in the bundle.
+    assetsInlineLimit: filePath => (FONT_EXTENSIONS.some(ext => filePath.endsWith(ext)) ? false : undefined),
     rollupOptions: {
       output: {
         // Output layout: the two main chunks stay at assets/ root; lazy

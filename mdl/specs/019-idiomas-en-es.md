@@ -84,7 +84,7 @@ El chino dentro de la imagen desaparece con la poda de [SPEC-017](017-optimizaci
 
 ## Validación ejecutada
 
-Fecha: `2026-11-07`. Entorno: checkout del repositorio, Node `22.23.4`, pnpm `11.7.0` vía `corepack`, sin navegador ni daemon Docker.
+Fecha: `2026-11-07`/`2026-11-08`. Entornos: checkout del repositorio con Node `22.23.4` y pnpm `11.7.0` vía `corepack`, sin daemon Docker; y Chromium `131.0.6778.33` (Playwright `1.49.1`) contra el contenedor desplegado, para las comprobaciones de navegador, la auditoría de 390 px y el GIF.
 
 | Comprobación | Resultado | Evidencia |
 |---|---|---|
@@ -99,10 +99,11 @@ Fecha: `2026-11-07`. Entorno: checkout del repositorio, Node `22.23.4`, pnpm `11
 | `LANG-08` enlaces y sitio | Aprobado | `verify-md-links`: 969 archivos sin enlaces roto; el build de VitePress completa (`vitepress build .`, 56 s) |
 | `LANG-10` snapshots | Aprobado: sin regresiones atribuibles | Suite keyless de snapshots: 109 en verde, 1 omitida, 5 en rojo. Las mismas pruebas se corrieron sobre `origin/main` y fallan allí igual (aviso experimental de SQLite, diferencia de PTY persistente); el `EACCES` de ACP es del sandbox del entorno y el caso de headless pasa 14/14 en corridas aisladas. Detalle en [SPEC-018](018-payload-cliente.md#snapshots) |
 | `LANG-10` pruebas | Aprobado en lo que cubre el cambio | suite completa: **798 archivos y 13 310 pruebas en verde**. Las 28 pruebas restantes en 5 archivos (`fs-sandbox`, `terminal-bash`, `tool-terminal`, `tool-bash-persistent`, `subprocess-local/process-exit`) fallan por el entorno, no por este cambio: `EACCES mkdtemp '/home/node/…'` del sandbox de archivos y `forkpty(3) failed` del contenedor. En esos paquetes el cambio solo toca sus README |
-| `LANG-03` navegador no soportado → inglés | **Aprobada** | Confirmada por el usuario en navegador contra el contenedor |
-| `LANG-04` navegador en español → español | **Aprobada** | Confirmada por el usuario en navegador contra el contenedor |
-| `LANG-05` persistencia de la elección | Ejecutada, resultado no reportado | `docker compose down` + `up -d` recrea el contenedor y conserva el volumen; el primer intento falló por omitir `-f`. Falta registrar si la elección de idioma siguió seleccionada |
-| `LANG-09` revisión visual en español | Aprobada en escritorio | El usuario confirmó la interfaz en español; el ancho de 390 px no se revisó por separado |
+| `LANG-03` navegador no soportado → inglés | **Aprobada** | Confirmada por el usuario en navegador contra el contenedor, y reproducida después con Chromium `131.0.6778.33` y locale `fr-FR`: `<html lang>` queda en **`en`** |
+| `LANG-04` navegador en español → español | **Aprobada** | Confirmada por el usuario y reproducida con locale `es-ES`: `<html lang>` queda en **`es`** |
+| `LANG-05` persistencia de la elección | Mecanismo verificado; falta la recreación | Elegir español en Ajustes › Idioma escribe `locale:\n  preference: es` en `/data/dsh/settings.yaml`, el documento del volumen nombrado `mdl-dsh-home`, así que la elección vive en el volumen y no en el navegador. Falta observar que siga seleccionada después de `docker compose -f mdl/docker/compose.yml down` + `up -d` |
+| `LANG-09` revisión en escritorio y 390 px | Aprobada en escritorio y auditada a 390 px; falta confirmación visual | El usuario confirmó la interfaz en español en escritorio. A 390 px se auditaron seis estados (inicio, conversación con respuesta real, ajustes, en claro y en oscuro): **0 elementos que sangren a la derecha del viewport y 0 textos recortados** en botones, títulos, descripciones y compositor, con el sidebar fuera de pantalla como corresponde. Las capturas quedan en `.playwright-mcp/review-390/`; el modelo que ejecutó la auditoría no lee imágenes, así que la confirmación visual sigue siendo del usuario |
+| GIF de la interfaz | Grabado | `5` frames de una sola corrida contra el servidor real (commits `07bbe0d6e1`, imagen `mdl-harness:local`, Chromium `131.0.6778.33`, viewport 390×844, locale `es-ES`, modelo real por Ollama): inicio en español, menú de idioma, interfaz en inglés, vuelta a español y una respuesta real. Codificado en `.playwright-mcp/demo-idiomas.gif` (141 801 B, 560×1212, 10,5 s). Los frames viven en `.playwright-mcp/gif-frames-idiomas/` |
 
 Cambios de herramienta que la retirada del chino exigió, registrados aquí porque alteran compuertas compartidas:
 
@@ -113,13 +114,13 @@ Cambios de herramienta que la retirada del chino exigió, registrados aquí porq
 
 Pendientes:
 
-1. Verificar en navegador `LANG-03`, `LANG-04`, `LANG-05` y `LANG-09`, y grabar el GIF de la interfaz en español, como exige la política del repositorio para cambios visibles.
+1. Observar `LANG-05` tras recrear el contenedor sobre el mismo volumen, y dar la confirmación visual de `LANG-09` sobre las capturas de 390 px.
 2. Decidir si el sitio publicado debe dejar de duplicar cada página en dos rutas de locale, ahora que ambas leen la misma fuente.
 3. Regenerar los snapshots de la interfaz web (`DSH_SNAPSHOT=refresh`) sobre la app compilada.
 
-- Resultado: parcial — mecanismo completo, migración de pruebas y compuertas sin terminar.
+- Resultado: mecanismo, migración y compuertas completos; `LANG-01` a `LANG-04`, `LANG-06` a `LANG-08`, el GIF y la auditoría de 390 px registrados.
 - Estimación: 654 + 3 entradas a traducir; 1064 archivos `.zh.md` y 1082 manifiestos eliminados; ~10 scripts y 2 gates menos en `doc-sync`. El peso del navegador no cambia de forma apreciable (47 KB reemplazados por un peso equivalente en español).
-- Pendientes o excepciones aceptadas: la documentación en español queda fuera por decisión del usuario.
+- Pendientes o excepciones aceptadas: la documentación en español queda fuera por decisión del usuario; `LANG-05` necesita la recreación del contenedor y `LANG-09` la confirmación visual del usuario.
 - Decisión de salida: pendiente.
 
 ## Decisiones resueltas

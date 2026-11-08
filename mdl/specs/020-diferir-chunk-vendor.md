@@ -1,7 +1,8 @@
 # SPEC-020 — Diferir el chunk `vendor` del primer render
 
-Estado: Borrador
+Estado: Aprobada
 Fase: 20
+Aprobación para iniciar: usuario, 2026-11-08 — aprobada después de medir la primera carga con navegador real
 Commit base: `ac1643ba89`
 
 ## Objetivo
