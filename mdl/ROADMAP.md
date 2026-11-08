@@ -53,7 +53,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 
 Las fases 1 a 11 están validadas y el fork se reproduce desde un clon limpio de `main` sin afectar la instancia viva. Las fases 15 y 16 se validaron sobre el despliegue HTTPS y llegaron a `main` por el PR #5. La Fase 9 se validó en un teléfono sobre la imagen reconstruida desde la rama `feat/mobile-shell`, y las fases 9, 10 y 11 llegaron a `main` por los PR #1, #2 y #3 del fork, con el agente empujando y abriendo el PR desde el contenedor. Queda por decidir si la interfaz móvil continúa con detalles, ajustes y aprobaciones como hoja a pantalla completa, y si se crea un tag local de release.
 
-La Fase 22 tiene el visor publicado en el volumen y la fila compuesta en el perfil; falta reiniciar el contenedor para que el proceso vivo la monte y cerrar la comprobación visual.
+La Fase 22 está desplegada y en uso: el lector abre los documentos del workspace desde el escritorio y el teléfono, y las tres correcciones del uso real llegaron a `main` por los PR #10 y #11. Quedan sin ejercitar el salto desde el índice, la memoria de lectura, la tarjeta de `md_preview` en una conversación real y la observación tras recrear el contenedor.
 
 ## Decisiones del despliegue VPS
 
