@@ -101,7 +101,7 @@ Fecha: `2026-11-07`. Entorno: checkout del repositorio, Node `22.23.4`, pnpm `11
 | `LANG-10` pruebas | Aprobado en lo que cubre el cambio | suite completa: **798 archivos y 13 310 pruebas en verde**. Las 28 pruebas restantes en 5 archivos (`fs-sandbox`, `terminal-bash`, `tool-terminal`, `tool-bash-persistent`, `subprocess-local/process-exit`) fallan por el entorno, no por este cambio: `EACCES mkdtemp '/home/node/…'` del sandbox de archivos y `forkpty(3) failed` del contenedor. En esos paquetes el cambio solo toca sus README |
 | `LANG-03` navegador no soportado → inglés | **Aprobada** | Confirmada por el usuario en navegador contra el contenedor |
 | `LANG-04` navegador en español → español | **Aprobada** | Confirmada por el usuario en navegador contra el contenedor |
-| `LANG-05` persistencia de la elección | **Pendiente** | El reinicio se intentó sin `-f`, así que `docker compose` no encontró el archivo; falta repetirlo con `down` + `up -d` |
+| `LANG-05` persistencia de la elección | Ejecutada, resultado no reportado | `docker compose down` + `up -d` recrea el contenedor y conserva el volumen; el primer intento falló por omitir `-f`. Falta registrar si la elección de idioma siguió seleccionada |
 | `LANG-09` revisión visual en español | Aprobada en escritorio | El usuario confirmó la interfaz en español; el ancho de 390 px no se revisó por separado |
 
 Cambios de herramienta que la retirada del chino exigió, registrados aquí porque alteran compuertas compartidas:
