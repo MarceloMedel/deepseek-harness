@@ -14,7 +14,6 @@ import {
 } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
-import lefthookPackage from 'lefthook/package.json' with { type: 'json' }
 
 const MINIMUM_GIT = [2, 26, 0]
 const HOOKS_DIRECTORY = 'dsh-hooks'
@@ -597,9 +596,28 @@ function refuseScopedHooksPath(entry) {
 
 
 
+/**
+ * Read the installed lefthook manifest.
+ *
+ * `lefthook` is a devDependency: `pnpm install --prod` never installs it, and a
+ * production tree still runs this postinstall. Absence means there is nothing to
+ * configure, so it reports that instead of failing the install.
+ * @returns the package manifest, or undefined when the package is not installed.
+ */
+async function readLefthookPackage() {
+  try {
+    return (await import('lefthook/package.json', { with: { type: 'json' } })).default
+  } catch (error) {
+    if (error?.code === 'ERR_MODULE_NOT_FOUND') return undefined
+    throw error
+  }
+}
+
 async function main() {
-  if (process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true') return
-  if (typeof lefthookPackage.bin?.lefthook !== 'string') return
+  // `1` is the conventional CI value used by container builds; both spellings mean non-interactive.
+  if (['true', '1'].includes(process.env.CI) || process.env.GITHUB_ACTIONS === 'true') return
+  const lefthookPackage = await readLefthookPackage()
+  if (typeof lefthookPackage?.bin?.lefthook !== 'string') return
   const probe = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' })
   if (probe.status !== 0) return
   const root = stripGitLineTerminator(probe.stdout)
