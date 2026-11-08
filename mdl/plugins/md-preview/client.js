@@ -221,10 +221,22 @@ window.__ModuleLoader__.load({
       return `${location.origin}${ROUTE}/${encodeURIComponent(String(sessionId))}/${encodeRel(rel)}`
     }
 
-    /** Whether one link destination addresses something outside the workspace. */
+    /** Whether one destination is neither a workspace path nor a path relative to one. */
     function isAbsoluteDest(dest) {
       return dest.startsWith('#') || dest.startsWith('/') || dest.startsWith('//')
         || /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(dest)
+    }
+
+    /**
+     * Whether a link destination could name a workspace path at all: a scheme,
+     * a protocol-relative URL and a bare fragment cannot, while an absolute
+     * filesystem path still might, so it is left to {@link resolveTarget}.
+     * @param dest - the link destination.
+     * @returns true when the destination may resolve inside the workspace.
+     */
+    function isWorkspaceDest(dest) {
+      return dest !== '' && !dest.startsWith('#') && !dest.startsWith('//')
+        && !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(dest)
     }
 
     /** Split a link destination into its path body and its `?query`/`#fragment` suffix. */
@@ -235,8 +247,14 @@ window.__ModuleLoader__.load({
         : { body: dest.slice(0, cut), suffix: dest.slice(cut) }
     }
 
-    /** Resolve a document-relative path against its directory, or null when it leaves the workspace. */
+    /**
+     * Resolve a document-relative path against its directory, or null when it
+     * leaves the workspace. An absolute path is rejected rather than normalized:
+     * dropping its leading slash would silently turn `/a/b.md` into the
+     * workspace-relative `a/b.md`, which names a different file.
+     */
     function resolveRel(baseDir, rel) {
+      if (String(rel).startsWith('/')) return null
       const stack = baseDir === '' ? [] : String(baseDir).split('/')
       for (const part of String(rel).split('/')) {
         if (part === '' || part === '.') continue
@@ -268,14 +286,37 @@ window.__ModuleLoader__.load({
         const anchor = node.closest('a[href]')
         if (anchor === null || anchor.hasAttribute('download')) return
         const href = anchor.getAttribute('href') ?? ''
-        if (href === '' || isAbsoluteDest(href)) return
+        if (!isWorkspaceDest(href)) return
         const { body } = splitDest(href)
-        const resolved = resolveRel(dir, body)
+        const resolved = resolveTarget(store.get().root, dir, body)
         if (resolved === null) return
         event.preventDefault()
         if (DOC_EXT.test(resolved)) store.openFile(resolved)
         else window.open(assetUrl(sessionId, resolved), '_blank', 'noopener,noreferrer')
       }
+    }
+
+    /**
+     * Resolve what a link or a file token names into a workspace-relative path.
+     *
+     * A relative path resolves against `dir` (the document's directory). An
+     * absolute path resolves only when it sits under the session workspace root,
+     * which the listing reports; anything else — including an absolute path
+     * before this page has listed a workspace — resolves to null so the click
+     * keeps its own behaviour instead of opening a document that cannot exist.
+     * @param root - the session workspace's absolute path, or '' when unknown.
+     * @param dir - directory of the document the link sits in ('' at the root).
+     * @param raw - the link destination or token path.
+     * @returns the workspace-relative path, or null.
+     */
+    function resolveTarget(root, dir, raw) {
+      const value = String(raw).trim()
+      if (value === '') return null
+      if (!value.startsWith('/')) return resolveRel(dir, value)
+      if (root === '') return null
+      const base = root.endsWith('/') ? root : `${root}/`
+      if (!value.startsWith(base)) return null
+      return value.slice(base.length) || null
     }
 
     /**
@@ -418,7 +459,7 @@ window.__ModuleLoader__.load({
     const listeners = new Set()
     /** Reading positions, kept per document while the page lives. */
     const scrollMemo = new Map()
-    let state = { sessionId: '', open: false, target: null, locale: 'en' }
+    let state = { sessionId: '', open: false, target: null, locale: 'en', root: '' }
 
     /** Replace the state and notify every subscriber. */
     function publish(patch) {
@@ -445,6 +486,9 @@ window.__ModuleLoader__.load({
       },
       setLocale(locale) {
         if (typeof locale === 'string' && locale.length > 0 && locale !== state.locale) publish({ locale })
+      },
+      setRoot(root) {
+        if (typeof root === 'string' && root !== state.root) publish({ root })
       },
       toggle() {
         publish({ open: !state.open })
@@ -669,6 +713,7 @@ window.__ModuleLoader__.load({
         listWorkspace(current.sessionId).then((result) => {
           if (!alive) return
           setListing({ loading: false, files: result.files, root: result.root, truncated: result.truncated, error: result.error })
+          if (result.root !== '') store.setRoot(result.root)
         }).catch((error) => {
           if (!alive) return
           setListing({ loading: false, files: [], root: '', truncated: false, error: `${strings(store.get().locale).listError}: ${messageOf(error)}` })
@@ -979,7 +1024,7 @@ window.__ModuleLoader__.load({
       // against the document's directory rather than the workspace root.
       ctx.effect(() => {
         const openIfDocument = (path) => {
-          const resolved = resolveRel('', path)
+          const resolved = resolveTarget(store.get().root, '', path)
           const sessionId = store.get().sessionId
           if (resolved === null || sessionId === '' || !DOC_EXT.test(resolved)) return false
           store.openFile(resolved)
@@ -998,7 +1043,7 @@ window.__ModuleLoader__.load({
             const target = anchor.getAttribute('target')
             if (target !== null && target !== '') return
             const href = anchor.getAttribute('href') ?? ''
-            if (href === '' || isAbsoluteDest(href)) return
+            if (!isWorkspaceDest(href)) return
             if (openIfDocument(splitDest(href).body)) {
               event.preventDefault()
               event.stopPropagation()
