@@ -10,11 +10,13 @@ Three surfaces, all composed by slot registration from `client.js`:
 - The reader itself (`shell.overlay`) shows the workspace's Markdown files grouped by folder, the selected document, and its heading outline.
 - A card under each `md_preview` call (`tool.call.toolview`) renders the document the agent opened.
 
+A document link opens the reader from anywhere in the application, not only from inside it. A reply that links the report it just wrote renders a plain anchor, and the shell has no route for a workspace path, so the click navigated away; a file token — an inline-code mention or a produced-files chip — reached the chat view's OS file opener instead. One delegated click listener covers both, reading the attribute each control already publishes: the anchor's `href` and the button's `title`, which those controls set to the full path. It requires the title to be a bare path, so an unrelated control whose label merely ends in `.md` is untouched.
+
 Rendering goes through `MarkdownText` from `@deepseek-ai/dsh-client-ui-primitives`, which is a platform module: the bundle carries no Markdown engine, no highlighter and no React copy, so a preview is byte-for-byte the renderer the conversation uses. Copying uses the same package's `writeClipboard`, which falls back to `execCommand` where the async Clipboard API is missing.
 
 ## Two layouts, one state machine
 
-Wider than 760 px keeps the folder tree, the outline and the document side by side, with a labelled toolbar.
+Wider than 767 px keeps the folder tree, the outline and the document side by side, with a labelled toolbar.
 
 At or below 767 px the panel takes the viewport and shows **one pane at a time**: the folder tree first, then the document with a back button, a compact icon toolbar and the outline as a sheet over the text. Three columns on a phone leave no readable column, which is why the layout branches instead of shrinking.
 
