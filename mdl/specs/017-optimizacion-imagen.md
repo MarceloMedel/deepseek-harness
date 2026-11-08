@@ -85,14 +85,14 @@ Contexto relacionado: el payload del cliente móvil es [SPEC-018](018-payload-cl
 
 ## Validación ejecutada
 
-Fecha: `2026-11-07`. Entorno de análisis: checkout del repositorio, Node `22.23.4`, pnpm `11.7.0` vía `corepack`, **sin daemon Docker**. El árbol de runtime se reprodujo localmente ejecutando los mismos pasos que la etapa `runtime-tree` del `Dockerfile`.
+Fecha: `2026-11-07`/`2026-11-08`. Entornos: checkout del repositorio con Node `22.23.4` y pnpm `11.7.0` vía `corepack`, **sin daemon Docker**, donde el árbol de runtime se reprodujo ejecutando los mismos pasos que la etapa `runtime-tree` del `Dockerfile`; y **dentro del contenedor desplegado** en el VPS, para las comprobaciones que no necesitan crear ni recrear contenedores.
 
 | Comprobación | Resultado | Evidencia |
 |---|---|---|
 | Mecanismo `A1`: árbol sólo-producción | Aprobado | `pnpm install --prod --frozen-lockfile` + `node scripts/link-workspace-peers.mjs` (1293 enlaces en 227 miembros) sobre un stage del repositorio |
 | `A1` arranca el producto | Aprobado | `node apps/cli/lib/bin.js --profile web --port 3998`: shell `200` (13 709 B con `window.__DSH_BOOT__`), bundle de plugin `200` (52 153 B), manifest y `icon-192.png` servidos |
 | `A1` sin errores de import | Aprobado | Sin `ERR_MODULE_NOT_FOUND`; el primer intento sin reparación de peers falló exactamente así, y es lo que `SPEC-004` había encontrado con `pnpm deploy --prod` |
-| `IMG-02` `/app` ≤350 MB | **Aprobada en la imagen** | `docker run --entrypoint du`: **348 MB** (antes 1720 MB); `node_modules` 310 MB |
+| `IMG-02` `/app` ≤350 MB | **Aprobada en la imagen** | `docker run --entrypoint du`: **348 MB** (antes 1720 MB); `node_modules` 310 MB. Remedido después dentro del contenedor: `du -sh /app` **348 MB**, `node_modules` **310 MB** |
 | `C1` SDK de Claude opcional | Aprobado | `@anthropic-ai/claude-agent-sdk` sale de `dependencies` y queda como peer opcional + dev; el árbol de runtime informa `skipped non-workspace peers: @anthropic-ai/claude-agent-sdk` y ya no instala los 263 MB |
 | `C2` aviso explícito | Aprobado | `lib/index.js` compilado contiene sólo `import("@anthropic-ai/claude-agent-sdk")` diferido; `loadOfficialQuery` traduce `ERR_MODULE_NOT_FOUND` a `CLAUDE_SDK_MISSING` |
 | Pruebas del paquete modificado | Aprobadas | 27 pruebas de `subagent-claude-code` (incluye la real-product con CLI real) |
@@ -102,17 +102,17 @@ Fecha: `2026-11-07`. Entorno de análisis: checkout del repositorio, Node `22.23
 | `IMG-01` imagen ≤1,6 GB | **Aprobada** | `docker image ls`: **4,2 GB → 1,08 GB** (−74%); tamaño comprimido 952 MB → 226 MB |
 | `IMG-03` tabla de costo por herramienta | Aprobada | `docker history --no-trunc`: capa `COPY /app /app` 1,86 GB, apt + `gh` + `uv` **245 MB**, capa de Node 154 MB. La auditoría de herramientas de `B` dejó la cadena en 245 MB |
 | Fuga de estado en la imagen | Corregida | `COPY /app /app` medía 1,86 GB con `/app` a 345 MB: el contexto arrastraba `.sessions` (1,4 GB de registros de sesión del checkout, comprimidos a 9 MB en la transferencia) y el store de pnpm. `.dockerignore` los excluye y el barrido los elimina como segunda defensa |
-| `IMG-04` ausencia de residuos | Parcial | Los comandos de barrido se ejecutaron sobre `/app` local; su verificación dentro de la imagen queda pendiente |
+| `IMG-04` ausencia de residuos | **Aprobada en el contenedor** | `find /app -path /app/node_modules -prune -o \( -name '*.map' -o -name coverage -o -name '*.d.ts' -o -name '*.tsbuildinfo' \) -print`: **0 sourcemaps y 1 `.d.ts` fuera de `node_modules`**, el de `native/landlock-run/packages/entry/lib/`, que es un paquete publicado y no residuo. `coverage/`, `docs/`, `examples/`, `website/`, `mdl/`, `scripts/` y `.agents/notes/` ausentes; `.agents/skills/` conservado. El comando literal de la comprobación tampoco está vacío dentro de `node_modules` (13 406 archivos `.d.ts`/`.map` propios de dependencias de terceros), que es código de dependencias y no del build |
 | `IMG-05` producto operativo por proxy | **Aprobada** | El shell responde 200 por el proxy y una sesión real desde el navegador envía un turno, ejecuta `bash` (Landlock en el árbol de runtime nuevo) y abre el selector de carpeta sobre un proyecto |
 | `IMG-06` flujo de PR con `gh` | **Aprobada** | La sesión que lo ejecutó corría dentro del propio contenedor (PID 1 = `tini` → `mdl-entrypoint`, `/.dockerenv`, nginx en 8080 → DSH en 3080), así que el flujo usó el wrapper de credencial y el conjunto reducido de herramientas a la vez |
 | `IMG-08` persistencia tras reconstrucción | Ejecutada, resultado no reportado | `docker compose down` + `up -d` recreó el contenedor sobre el mismo volumen nombrado; falta registrar el estado observado del volumen |
-| `IMG-09` preset ACP sin peer | Parcial | La carga del bundle diferido está verificada; falta montar el preset dentro de un contenedor |
+| `IMG-09` preset ACP sin peer | **Aprobada** | Composición real montada sin el peer: perfil `dsh-base` + `dsh-headless` en un `DSH_HOME` aislado bajo `/tmp`, con `@deepseek-ai/dsh-subagent-claude-code` copiado al árbol de producción (sin `@anthropic-ai` resoluble en ningún ancestro) y su fila `tool-subagent-claude-code` insertada. La composición montó, y una delegación real devolvió, como resultado de la herramienta, `subagent-claude-code: the optional peer @anthropic-ai/claude-agent-sdk is not installed; install it in the deployment that mounts this subagent backend`. Ningún `ERR_MODULE_NOT_FOUND` en la carga ni en la ejecución |
 | `IMG-10` gates del repositorio | Parcial | Tipos y build ejecutados; `test` y `typecheck` completos quedan pendientes de la corrida en CI |
 
 ## Resultado y pendientes
 
-- Resultado: implementado y verificado en todo lo que no requiere daemon Docker. `/app` bajó de **1720 MB a 349 MB** (−80%) en la reproducción local del árbol de runtime, y ese árbol arranca el producto y sirve el shell y los bundles de plugins.
-- Sin medir: la imagen final. La etapa de runtime perdió `graphifyy`, `docker-ce-cli`, `openssh-client`, `python3-pip` y `python3-venv`, y pasó a `bookworm-slim`, así que la reducción debería superar la de `/app`; `IMG-01` necesita el host.
+- Resultado: implementado y verificado, incluida la imagen final medida en el host (**4,2 GB → 1,08 GB**). `/app` quedó en **348 MB** y el árbol sólo-producción arranca el producto, sirve el shell y los bundles de plugins, y monta un backend opcional sin su peer con un error explícito.
+- Sin medir: la persistencia del volumen tras recrear el contenedor (`IMG-08`) y la corrida completa de gates en CI (`IMG-10`).
 - Pendientes o excepciones aceptadas: ninguno por defecto.
 - Decisión de salida: pendiente.
 
@@ -124,4 +124,4 @@ Fecha: `2026-11-07`. Entorno de análisis: checkout del repositorio, Node `22.23
 
 ## Estado de la validación
 
-Pendiente: comprobaciones que requieren daemon Docker (`IMG-01`, `IMG-03`, `IMG-05`, `IMG-06`, `IMG-08`) y la corrida completa de gates en CI (`IMG-10`).
+Pendiente: la observación de persistencia tras recrear el contenedor (`IMG-08`) y la corrida completa de gates en CI (`IMG-10`). `IMG-01`, `IMG-03`, `IMG-05` y `IMG-06` se midieron en el host y quedan aprobadas en la tabla.

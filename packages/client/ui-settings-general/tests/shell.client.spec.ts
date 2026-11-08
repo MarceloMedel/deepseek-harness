@@ -22,7 +22,11 @@ async function bench() {
     isLoopback: false,
   } as never)
   ctx.provide('remote', { $on: () => () => {} } as never)
-  return { ctx, slots: ctx.get('slots') as SlotRegistry }
+  // Surface activation: the settings rows are surface rows, so the shell
+  // asks the kernel to mount them when the panel opens.
+  const surfaceOpens = vi.fn(async () => {})
+  ctx.provide('clientSurfaces', { open: surfaceOpens } as never)
+  return { ctx, slots: ctx.get('slots') as SlotRegistry, surfaceOpens }
 }
 
 function declare(slots: SlotRegistry): () => void {
@@ -49,7 +53,17 @@ const CHILD_SPECS = {
 
 describe('ui-settings apply', () => {
   it('declares only the slot registry (a pure composition face, no locale)', () => {
-    expect(inject).toEqual(['slots', 'locale', 'connection'])
+    expect(inject).toEqual(['slots', 'locale', 'connection', 'clientSurfaces'])
+  })
+
+  it('asks the kernel to mount the settings surface when the panel opens', async () => {
+    const mounted = await bench()
+    declare(mounted.slots)
+    await mounted.ctx.plugin({ inject: [...inject], apply }).await()
+    const injected = injectedOf(mounted.slots)
+    const ensureSections = injected.ensureSections
+    await ensureSections()
+    expect(mounted.surfaceOpens.mock.calls).toEqual([['settings']])
   })
 
   it('registers the shell and declares every child slot, before or after the declaration', async () => {

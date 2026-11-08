@@ -162,6 +162,8 @@ async function bench(snapshot: ConversationSnapshot) {
   // ui-theme's Appearance row binds a durable scope through these two.
   ctx.provide('remote', { $on: () => () => {} } as never)
   ctx.provide('settingsScope', { bind: () => stubSettingsScope().scope } as never)
+  // The conversation's trajectory tab is a surface row; these benches compose no surface.
+  ctx.provide('clientSurfaces', { has: () => false, open: async () => {} } as never)
   const locale = new LocaleRuntime(ctx)
   ctx.provide('locale', locale)
   slots.installLocale(locale)

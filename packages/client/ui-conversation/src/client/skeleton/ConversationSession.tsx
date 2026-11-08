@@ -7,6 +7,7 @@ import type {
   ConversationSessionHeaderSlotProps, ConversationSessionSlotProps,
 } from '../contract/slots.ts'
 import type { ViewTab } from '../contract/views.ts'
+import { TrajectorySurfacePending } from '../trajectory-surface.tsx'
 import css from './ConversationRoot.module.css'
 
 /** Full props composed from the strict session body contract. */
@@ -151,7 +152,7 @@ export function ConversationSessionHeader({
  */
 export function ConversationSession({
   sessionId, useSession, useInput, inputActions, useStore, actions,
-  renderSlot, views, bindDraftMirror, releaseSessionImages, mobile,
+  renderSlot, views, bindDraftMirror, releaseSessionImages, mobile, surfaceViewOf, t,
 }: ConversationSessionProps) {
   useSyncExternalStore(views.subscribe, views.version)
   const tabs = offeredViews(views.list(), mobile)
@@ -177,9 +178,13 @@ export function ConversationSession({
   }, [releaseSessionImages, sessionId])
 
   if (blank && composerPhase === 'blank') return null
+  // A surface-backed view has no entry until its row mounts, so the body pays
+  // the mount and reports the wait instead of rendering an empty slot.
+  const pending = active === undefined ? undefined : surfaceViewOf(active.id)
   return (
     <div className={css.viewArea}>
-      {active !== undefined && renderSlot('conversation.view', {
+      {pending !== undefined && <TrajectorySurfacePending ensureView={pending.ensure} t={t} />}
+      {pending === undefined && active !== undefined && renderSlot('conversation.view', {
         inspect,
         onInspectDone: () => { actions.setInspect(null) },
       }, { only: active.id })}

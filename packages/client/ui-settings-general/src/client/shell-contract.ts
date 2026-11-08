@@ -32,6 +32,13 @@ export interface SettingsOnboardingStep {
  * the shell reads no locale state and subscribes through the bound hook.
  */
 export type SettingsRootInjected = {
+  /**
+   * Mount the rows that fill this surface's slots before the panel renders
+   * them. Those rows are not boot rows: their packages declare
+   * `dsh.client.surface: 'settings'`, so the kernel leaves them unmounted until
+   * this resolves.
+   */
+  ensureSections: () => Promise<void>
   hooks: {
     /** settings.section ledger projected into ordered nav rows. */
     sections: HostObservable<readonly SettingsSectionRow[]>

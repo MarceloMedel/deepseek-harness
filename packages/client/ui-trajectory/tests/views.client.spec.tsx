@@ -291,6 +291,8 @@ function mount(slots: SlotRegistry, nodes: ConversationSnapshot['nodes'] = NODES
         renderSlot={renderSlot}
         views={views}
         mobile={false}
+        surfaceViewOf={() => undefined}
+        t={(key: string) => key}
         releaseSessionImages={vi.fn()}
         useInput={useInput}
         inputActions={inputActions}

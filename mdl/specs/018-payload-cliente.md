@@ -70,20 +70,25 @@ La instalación en la pantalla de inicio del iPhone ([SPEC-014](014-instalacion-
 
 ## Validación ejecutada
 
-Fecha: `2026-11-07`/`2026-11-08`. Entornos: checkout del repositorio con Node `22.23.4` y build de `apps/web` con Vite; y el contenedor `mdl-harness:local` en el VPS detrás de su proxy. Sin navegador en ninguno de los dos, así que las mediciones de transferencia salen de `curl` y no de una carga real.
+Fecha: `2026-11-07`/`2026-11-08`. Entornos: checkout del repositorio con Node `22.23.4` y build de `apps/web` con Vite; el contenedor `mdl-harness:local` en el VPS detrás de su proxy; y **un navegador real** (Chromium `131.0.6778.33` manejado por Playwright `1.49.1`, el mismo que `apps/web` declara) contra `http://127.0.0.1:8080`, la boca de nginx dentro del contenedor, con contexto nuevo y caché vacía.
 
 | Comprobación | Resultado | Evidencia |
 |---|---|---|
 | `P1` compresión `gzip` | **Aprobada en el contenedor** | `Content-Encoding: gzip` en el asset con hash y en el bundle de plugin; un bundle pasa de 52 153 a **11 606 bytes** transferidos |
 | `P2` caché inmutable | Aprobada | `cacheControlFor` en `frontend-static`: `/assets/*` responde `public, max-age=31536000, immutable` y los nombres estables `no-cache`; prueba real-composition afirma ambas |
 | `P3` `ETag` y `304` | **Aprobada en el contenedor, tras corregir un defecto** | La comparación exigía igualdad exacta con el validador fuerte, pero nginx publica `W/"…"` al comprimir, así que un navegador real nunca recibía `304`; la comparación ahora es débil, como pide RFC 9110 para `If-None-Match`, y el contenedor responde **304** ante `W/"9B1W…"` |
-| `P4` fuentes sólo `woff2` | Aprobada | Build de `apps/web`: las caras KaTeX quedan en 19 archivos `woff2` (250,2 KB); sobrevive un `woff`/`ttf` de 11,7 KB de otra familia sin `woff2`, que se conserva a propósito |
+| `P4` fuentes sólo `woff2` | **Corregida al medirla** | Ver `WEB-06`: la suposición de que el `woff`/`ttf` superviviente era de una familia sin `woff2` era falsa. El build deja ahora 20 caras `woff2` (300 KB) y ningún otro formato |
 | `P5` iconos | Aprobada | 507 KB → **228 KB** (icon-512 256,4→103,9; maskable 169,8→85,7; icon-192 41,3→17,3; apple-touch 36,7→15,3) por cuantización a 256 colores; PSNR 39,6–41,2 dB contra el original |
 | `P7` sin sourcemaps publicados | Aprobada | La etapa `runtime-tree` borra `apps/web/dist/**/*.map`; los archivos locales se conservan para depuración del build |
-| `WEB-01`/`WEB-02` transferencia | Parcial | Medido por `curl` con `Accept-Encoding: gzip`: el shell responde y un bundle transfiere 11 606 bytes. La suma de una primera carga completa y del roster entero necesita el panel de red del navegador |
+| `WEB-01` primera carga ≤400 KB | **No se cumple** | Panel de red con caché vacía contra el contenedor: **70 peticiones, 1 183 377 B (1155,6 KB)**. Desglose: documento 2,9 KB; chunks del shell y CSS 344,2 KB (`index` 143,7 KB, `vendor` 180,7 KB, CSS 19,8 KB); **bundles de plugin 745,1 KB en 37 peticiones**; `/api` 45,3 KB en 25 llamadas; `icon-192` 17,5 KB. El objetivo se cumple sólo si la primera carga se cuenta como los recursos estáticos de `index.html` (**343,9 KB**), que es lo que medía `curl` antes: el cliente pide además los bundles de plugin al arrancar |
+| `WEB-02` bundles de plugin ≤700 KB | **No se cumple** | En la misma carga, 37 bundles transfieren **745,1 KB**; por `curl`, el roster completo (38 entradas de `window.__DSH_BOOT__`) suma **733,0 KB**, de los cuales 249,4 KB corresponden a las 9 entradas marcadas `immediately`. La cifra supera el objetivo incluso sin abrir ninguna superficie |
+| Caché de una recarga real | **Aprobada** | Segunda carga en el mismo contexto tras la primera: **88 785 B (86,7 KB)** transferidos, es decir, el navegador revalida y no vuelve a bajar los 1155 KB. `P3` funciona en un navegador real, no sólo ante `curl` |
 | `WEB-04` `ETag` y `304` | **Aprobada en el contenedor** | `curl -sI` devuelve `200` con `cache-control: no-cache` y un validador; la repetición con `If-None-Match: W/"9B1W4LdHDssa25YKWsfUbY8S8CA"` devuelve **304** |
 | `WEB-03` caché inmutable | **Aprobada en el contenedor** | `/assets/index-BHhrez7c.js` responde `cache-control: public, max-age=31536000, immutable` con `Content-Encoding: gzip` |
 | `WEB-05` semánticas previas | Aprobada | Las pruebas de traversal 403, SPA fallback, `octet-stream` y 405 siguen pasando |
+| `WEB-06` fuentes servidas | **No se cumplía; corregido** | En el contenedor, `find /app/apps/web/dist \( -name '*.woff' -o -name '*.ttf' \)` devolvía `KaTeX_Size3-Regular-*.woff` y `-*.ttf` (12 KB). La causa no era la familia sin `woff2` que suponía `P4`: `KaTeX_Size3-Regular.woff2` (4,2 KB) cae bajo el límite de 4 KB de Vite y salía incrustado como `data:font/woff2;base64` en `vendor.css`, así que `dropRedundantFonts` no veía su nombre y no retiraba el par muerto. `assetsInlineLimit` en `apps/web/vite.config.ts` excluye ahora las fuentes del incrustado |
+| `WEB-07` iconos ≤250 KB | **Aprobada en el contenedor** | `du -ch /app/apps/web/dist/icon-*.png /app/apps/web/dist/apple-touch-icon.png`: **228 KB** |
+| `WEB-09` sin sourcemaps | **Aprobada, con la letra de la comprobación matizada** | `/assets/index-Bhrez7c.js.map` responde **200** con `content-type: text/html` y el cuerpo de `index.html`: es el fallback SPA, idéntico al de cualquier ruta inexistente, no un sourcemap. `ls /app/apps/web/dist/assets/*.map` no encuentra ninguno |
 | `WEB-10` snapshots | **No ejecutada** | `pnpm run test:snapshot` y `test:web` no se corrieron en este entorno |
 
 Pruebas ejecutadas: `packages/host/frontend-static` y `packages/client/modules` — 28 pruebas en verde, incluidas las del validador débil y de la lista de validadores; `oxlint` sin errores en los archivos tocados; build de `apps/web` y de los bundles de cliente completos.
@@ -103,9 +108,10 @@ Ninguno de los fixtures de snapshot fue modificado por esta rama: los únicos ca
 
 ## Resultado y pendientes
 
-- Resultado: `P1`–`P5` y `P7` implementados. En disco, `dist` baja ≈800 KB por fuentes y ≈280 KB por iconos, y los bundles de plugins dejan de reenviar su cuerpo en cada carga gracias al `ETag`.
+- Resultado: `P1`–`P5` y `P7` implementados; `P1`, `P2`, `P3` y `P7` cumplen. Los bundles de plugins dejan de reenviar su cuerpo en cada carga: una recarga real transfiere **86,7 KB** frente a los **1155,6 KB** de la primera visita.
+- Los dos objetivos de transferencia **no se cumplen**: la primera carga son **1155,6 KB** contra 400 KB, y sólo la parte estática de `index.html` (343,9 KB) queda por debajo. El roster de plugins, que el cliente pide al arrancar, aporta 745,1 KB por sí solo contra un objetivo de 700 KB. La estimación de `Contexto` (≈330 KB con `gzip`) contaba los tres recursos estáticos y no las 37 peticiones de plugin que el shell dispara después.
 - El chunk `vendor` queda fuera: su diferimiento pasó a [SPEC-020](020-diferir-chunk-vendor.md) al validarse esta fase, porque mide tiempo hasta el primer pintado y no bytes, y exige verificación en navegador.
-- Pendientes o excepciones aceptadas: la reducción del conjunto de gramáticas de shiki no entra en esta fase.
+- Pendientes o excepciones aceptadas: la reducción del conjunto de gramáticas de shiki no entra en esta fase. Cerrar `WEB-01` y `WEB-02` pide trabajo propio sobre los bundles de plugin, no sólo sobre el chunk `vendor`.
 - Decisión de salida: pendiente.
 
 ## Decisiones resueltas
@@ -115,4 +121,4 @@ Ninguno de los fixtures de snapshot fue modificado por esta rama: los únicos ca
 
 ## Estado de la validación
 
-Pendiente: `P6` (diferir el chunk `vendor`, que necesita verificación en navegador y GIF) y las mediciones contra el contenedor (`WEB-01`, `WEB-02`, `WEB-08`, `WEB-10`).
+Pendiente: `WEB-01` y `WEB-02`, que no se cumplen y necesitan reducir el payload de los bundles de plugin; `P6`, que vive en [SPEC-020](020-diferir-chunk-vendor.md); `WEB-08`; y `WEB-10`, cuyos snapshots siguen sin correrse en este entorno.

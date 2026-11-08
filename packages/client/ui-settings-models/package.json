@@ -37,7 +37,8 @@
         "@deepseek-ai/dsh-client-locale",
         "@deepseek-ai/dsh-api-remotes"
       ],
-      "platform": "web"
+      "platform": "web",
+      "surface": "settings"
     }
   },
   "scripts": {

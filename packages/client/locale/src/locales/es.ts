@@ -26,4 +26,5 @@ export const es = {
   'unknown': 'Desconocido',
   'none': 'Ninguno',
   'truncated': 'Truncado',
+  'trajectory': 'Trayectoria',
 } satisfies Record<CommonKey, string>

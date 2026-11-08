@@ -102,18 +102,35 @@ function SettingsPanel({ rows, renderSlot, activeId, onSelect, onClose }: PanelP
  * @returns the settings shell element tree.
  */
 export function SettingsRoot(props: SettingsRootComponentProps) {
-  const { wide, useSections, useOnboardingSteps, useSessions, renderSlot } = props
+  const { wide, useSections, useOnboardingSteps, useSessions, renderSlot, ensureSections } = props
   const [open, setOpen] = useState(false)
+  const [opening, setOpening] = useState(false)
   const [activeId, setActiveId] = useState<string | undefined>(undefined)
   const [completedOnboarding, setCompletedOnboarding] = useState<ReadonlySet<string>>(() => new Set())
   const close = useCallback(() => {
     setOpen(false)
     setActiveId(undefined)
   }, [])
+  // The panel's sections live in rows the kernel keeps unmounted until the
+  // surface opens, so the trigger pays that mount before painting. A failed
+  // mount is loud in the console and still opens the shell: the next open
+  // retries (the kernel forgets a failed attempt), and a panel that silently
+  // never opens would hide the failure behind an inert button.
+  const openPanel = useCallback(() => {
+    setOpening(true)
+    void ensureSections().then(() => {
+      setOpening(false)
+      setOpen(true)
+    }, (error: unknown) => {
+      console.error(error)
+      setOpening(false)
+      setOpen(true)
+    })
+  }, [ensureSections])
   const openSection = useCallback((id: string) => {
     setActiveId(id)
-    setOpen(true)
-  }, [])
+    openPanel()
+  }, [openPanel])
 
   // The ledger tick keeps the nav rows fresh: registrants re-register with
   // freshly localized text on locale change, and the trigger/header/close
@@ -146,7 +163,9 @@ export function SettingsRoot(props: SettingsRootComponentProps) {
         className={clsx(css.trigger, !wide && css.rail)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        onClick={() => { setOpen(true) }}
+        aria-busy={opening}
+        disabled={opening}
+        onClick={openPanel}
       >
         {renderSlot('settings.trigger', { wide })}
       </button>

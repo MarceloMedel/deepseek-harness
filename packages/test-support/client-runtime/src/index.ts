@@ -191,6 +191,11 @@ export class SlotTestRuntime {
   private readonly handles: FeatureHandle[] = []
   private disposed = false
   /** Auto-frame state ({@link SlotTestRuntime.declare} / {@link SlotTestRuntime.renderSlot}). */
+  /** Surface double the provided service delegates to; cases that exercise row activation replace it. */
+  private surfaces: { has: (name: string) => boolean; open: (name: string) => Promise<void> } = {
+    has: () => false,
+    open: async () => {},
+  }
   private readonly ownerCell = new OwnerPropsCell()
   private readonly autoDeclared = new Set<string>()
   private autoRootView: RenderResult | undefined
@@ -203,6 +208,13 @@ export class SlotTestRuntime {
     this.workspaces = new TestWorkspaces(this.stabilizer)
     ctx.provide('sessions', this.sessions)
     ctx.provide('workspaces', this.workspaces)
+    // Surface activation belongs to the web shell kernel, which a unit harness
+    // does not run: there is no boot graph to open a surface against, so the
+    // double resolves at once. A case that asserts the wait re-provides a gate.
+    ctx.provide('clientSurfaces', {
+      has: (name: string) => this.surfaces.has(name),
+      open: (name: string) => this.surfaces.open(name),
+    })
     // Capturing install: the production renderer does the rendering; the
     // wrapper only takes the host face for storeOf (no machinery copied).
     const renderer = createSlotRenderer()
@@ -227,6 +239,16 @@ export class SlotTestRuntime {
     await ctx.plugin(ConversationEventRegistry).await()
     await ctx.plugin(ConversationViewRegistry).await()
     return new SlotTestRuntime(ctx, ctx.get('slots') as SlotRegistry)
+  }
+
+  /**
+   * Replace the surface double the provided `clientSurfaces` delegates to. The
+   * service is provided once, at construction, so a case that needs a composed
+   * surface swaps the behavior instead of re-providing it.
+   * @param double - surface answers for this case (`has` per name, `open` per name).
+   */
+  useSurfaces(double: { has: (name: string) => boolean; open: (name: string) => Promise<void> }): void {
+    this.surfaces = double
   }
 
   /**

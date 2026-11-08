@@ -49,6 +49,9 @@ async function bench(isLoopback = true) {
     api: { settings: { describe: settingsDescribe, openDocument: settingsOpenDocument } },
     isLoopback,
   } as never)
+  // Surface activation: the settings rows are surface rows, so the shell asks
+  // the kernel to mount them when the panel opens.
+  ctx.provide('clientSurfaces', { open: async () => {} } as never)
   return { ctx, slots: ctx.get('slots') as SlotRegistry, locale, settingsDescribe, settingsOpenDocument }
 }
 
@@ -76,7 +79,7 @@ function generalEntry(slots: SlotRegistry) {
 
 describe('ui-settings-general apply', () => {
   it('declares the services it uses', () => {
-    expect(inject).toEqual(['slots', 'locale', 'connection'])
+    expect(inject).toEqual(['slots', 'locale', 'connection', 'clientSurfaces'])
   })
 
   it('fills all five seats for declarations before or after apply', async () => {

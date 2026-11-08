@@ -53,8 +53,9 @@ const NS = 'settings'
  * Required services (cordis fiber inject). The target slots are declared by
  * ui-settings' apply, whose activation order relative to this one is NOT
  * constrained; registrations depend on their slots through `slots.inject()`.
+ * `clientSurfaces` is provided by the shell kernel before any entry exists.
  */
-export const inject = ['slots', 'locale', 'connection']
+export const inject = ['slots', 'locale', 'connection', 'clientSurfaces']
 
 /**
  * Register the `settings` dictionaries, the chrome content, and the General
@@ -92,6 +93,9 @@ export function apply(ctx: ClientContext): void {
   let onboardingVersion = -1
   let onboardingSteps: readonly SettingsOnboardingStep[] = []
   const shellInjected = (): SettingsRootInjected => ({
+    // The settings sections and their panels are surface rows: opening the
+    // panel is what mounts them, so the shell asks for the surface first.
+    ensureSections: () => ctx.clientSurfaces.open('settings'),
     hooks: {
       sections: {
         getSnapshot: () => {

@@ -83,6 +83,44 @@ describe('client bundle activation', () => {
     expect(construct([currentName]).graph().entries.map(entry => entry.id)).toEqual([currentName])
   })
 
+  it('carries a surface declaration onto the graph row', () => {
+    const bootName = '@fixture/boot-row'
+    const surfaceName = '@fixture/surface-row'
+    for (const [name, declaration] of [
+      [bootName, { platform: 'web' }],
+      [surfaceName, { platform: 'web', surface: 'settings' }],
+    ] as const) {
+      const clientPath = writePackage(name, { dsh: { client: declaration } })
+      mkdirSync(dirname(clientPath), { recursive: true })
+      writeFileSync(clientPath, name)
+    }
+    const entries = construct([bootName, surfaceName]).graph().entries
+    expect(entries.map(entry => [entry.id, entry.surface])).toEqual([
+      [bootName, undefined],
+      [surfaceName, 'settings'],
+    ])
+  })
+
+  it('rejects a row that is both a surface row and an immediate prefetch row', () => {
+    const packageName = '@fixture/surface-conflict'
+    const clientPath = writePackage(packageName, {
+      dsh: { client: { platform: 'web', surface: 'settings', immediately: true } },
+    })
+    mkdirSync(dirname(clientPath), { recursive: true })
+    writeFileSync(clientPath, 'module.exports = {}\n')
+    expect(() => construct([packageName])).toThrow(
+      `${packageName} declares both dsh.client.surface and dsh.client.immediately`,
+    )
+  })
+
+  it('rejects a non-string surface declaration', () => {
+    const packageName = '@fixture/surface-invalid'
+    const clientPath = writePackage(packageName, { dsh: { client: { platform: 'web', surface: 7 } } })
+    mkdirSync(dirname(clientPath), { recursive: true })
+    writeFileSync(clientPath, 'module.exports = {}\n')
+    expect(() => construct([packageName])).toThrow(`${packageName} dsh.client.surface must be a non-empty string`)
+  })
+
   it('groups missing bundles under one source-build instruction with a package/path list', () => {
     const firstName = '@fixture/missing-first'
     const secondName = '@fixture/missing-second'

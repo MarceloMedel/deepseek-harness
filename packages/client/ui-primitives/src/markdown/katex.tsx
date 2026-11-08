@@ -17,7 +17,7 @@
 
 import { createElement } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import katex from 'katex'
+import { loadMathEngine, mathEngine } from './math-engine.ts'
 
 /**
  * Convert one inline `style` attribute string into React's style object.
@@ -64,6 +64,13 @@ function domToReact(node: ChildNode, key: number): ReactNode {
  * parse (colored with KaTeX's stock `errorColor`, matching rehype-katex).
  */
 export function renderTexToReact(value: string, displayMode: boolean): ReactNode {
+  const katex = mathEngine()
+  // The engine arrives on demand: the first formula starts its import and
+  // paints the TeX source meanwhile, and the message re-renders when it lands.
+  if (katex === undefined) {
+    void loadMathEngine()
+    return createElement(displayMode ? 'div' : 'span', { className: 'katex-pending', translate: 'no' }, value)
+  }
   let html: string
   try {
     html = katex.renderToString(value, { displayMode, throwOnError: true })

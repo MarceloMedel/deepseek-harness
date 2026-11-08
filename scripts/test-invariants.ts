@@ -5,6 +5,9 @@
  * service topology explicitly.
  */
 
+import { createRequire } from 'node:module'
+import { dirname, join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { expect } from 'vitest'
 import { FiberState, Inject, RegistryService, ValidationError } from '@deepseek-ai/cordis'
 import type { Context, Plugin } from '@deepseek-ai/cordis'
@@ -16,6 +19,14 @@ import type {
   StoredImageAttachment,
 } from '@deepseek-ai/dsh-attachment'
 import InvariantRegistry from '@deepseek-ai/dsh-invariants'
+
+// The shell build substitutes the KaTeX engine artifact's URL (see
+// apps/web/vite.config.ts). Tests point the same constant at KaTeX's ESM file so
+// the on-demand math path is the production path, not a test-only branch.
+const katexRequire = createRequire(import.meta.url)
+;(globalThis as { __DSH_MATH_ENGINE_URL__?: string }).__DSH_MATH_ENGINE_URL__ = pathToFileURL(
+  join(dirname(katexRequire.resolve('katex/package.json')), 'dist', 'katex.mjs'),
+).href
 
 declare global {
   interface ImportMeta {

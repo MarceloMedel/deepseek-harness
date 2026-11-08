@@ -4,11 +4,16 @@
 // mount of the same prefix shows, while reusing the frozen blocks' DOM nodes
 // instead of remounting them.
 import { cleanup, render } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, beforeAll } from 'vitest'
 import type { Root, RootContent } from 'mdast'
 import { MarkdownText } from '@deepseek-ai/dsh-client-ui-primitives'
+import { loadMathEngine } from '../src/markdown/math-engine.ts'
 import { IncrementalMarkdownParser } from '../src/markdown/incremental.ts'
 import { parseGfm } from '../src/markdown/parse.ts'
+
+// The engine loads on demand in production; these specs pin it so math
+// assertions read the rendered tree.
+beforeAll(async () => { await loadMathEngine() })
 
 afterEach(cleanup)
 
