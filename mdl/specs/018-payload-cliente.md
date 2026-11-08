@@ -83,7 +83,9 @@ Fecha: `2026-11-07`. Entorno: checkout del repositorio, Node `22.23.4`, build de
 | `P7` sin sourcemaps publicados | Aprobada | La etapa `runtime-tree` borra `apps/web/dist/**/*.map`; los archivos locales se conservan para depuración del build |
 | `P6` diferir el chunk `vendor` | **Pendiente** | Requiere cambiar el camino de render de matemática y resaltado y verificarlo en navegador; ver nota al final |
 | `WEB-01`/`WEB-02` transferencia | **No ejecutadas** | Requieren contenedor y panel de red |
-| `WEB-03`/`WEB-04` cabeceras | Aprobadas en servidor | Cubiertas por las pruebas citadas de `P2`/`P3`; falta la comprobación con `curl` contra la imagen |
+| `WEB-04` `ETag` y `304` | **Aprobada en el contenedor** | `curl -sI` sobre `/plugins/@deepseek-ai/dsh-typert-registry/client.js` devuelve `200` con `etag: "9B1W4LdHDssa25YKWsfUbY8S8CA"` y `cache-control: no-cache`; la repetición con `If-None-Match` devuelve **304** |
+| `WEB-03` caché inmutable | Pendiente de medición | La primera comprobación usó una URL con `assets/` duplicado y recibió el fallback SPA |
+| `WEB-06` compresión | Pendiente de medición | La petición no envió `Accept-Encoding`; `Vary: Accept-Encoding` confirma que nginx la considera |
 | `WEB-05` semánticas previas | Aprobada | Las pruebas de traversal 403, SPA fallback, `octet-stream` y 405 siguen pasando |
 | `WEB-08` matemática y resaltado | **No ejecutada** | Depende de `P6` |
 | `WEB-10` snapshots | **No ejecutada** | `pnpm run test:snapshot` y `test:web` no se corrieron en este entorno |

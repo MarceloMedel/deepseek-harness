@@ -92,7 +92,7 @@ Fecha: `2026-11-07`. Entorno de análisis: checkout del repositorio, Node `22.23
 | Mecanismo `A1`: árbol sólo-producción | Aprobado | `pnpm install --prod --frozen-lockfile` + `node scripts/link-workspace-peers.mjs` (1293 enlaces en 227 miembros) sobre un stage del repositorio |
 | `A1` arranca el producto | Aprobado | `node apps/cli/lib/bin.js --profile web --port 3998`: shell `200` (13 709 B con `window.__DSH_BOOT__`), bundle de plugin `200` (52 153 B), manifest y `icon-192.png` servidos |
 | `A1` sin errores de import | Aprobado | Sin `ERR_MODULE_NOT_FOUND`; el primer intento sin reparación de peers falló exactamente así, y es lo que `SPEC-004` había encontrado con `pnpm deploy --prod` |
-| `IMG-02` `/app` ≤350 MB | Aprobado | **349 MB** totales, `node_modules` 310 MB (antes: 1720 MB / 1533 MB) |
+| `IMG-02` `/app` ≤350 MB | **Aprobada en la imagen** | `docker run --entrypoint du`: **348 MB** (antes 1720 MB); `node_modules` 310 MB |
 | `C1` SDK de Claude opcional | Aprobado | `@anthropic-ai/claude-agent-sdk` sale de `dependencies` y queda como peer opcional + dev; el árbol de runtime informa `skipped non-workspace peers: @anthropic-ai/claude-agent-sdk` y ya no instala los 263 MB |
 | `C2` aviso explícito | Aprobado | `lib/index.js` compilado contiene sólo `import("@anthropic-ai/claude-agent-sdk")` diferido; `loadOfficialQuery` traduce `ERR_MODULE_NOT_FOUND` a `CLAUDE_SDK_MISSING` |
 | Pruebas del paquete modificado | Aprobadas | 27 pruebas de `subagent-claude-code` (incluye la real-product con CLI real) |
@@ -103,7 +103,7 @@ Fecha: `2026-11-07`. Entorno de análisis: checkout del repositorio, Node `22.23
 | `IMG-03` tabla de costo por herramienta | Aprobada | `docker history --no-trunc`: capa `COPY /app /app` 1,86 GB, apt + `gh` + `uv` **245 MB**, capa de Node 154 MB. La auditoría de herramientas de `B` dejó la cadena en 245 MB |
 | Fuga de estado en la imagen | Corregida | `COPY /app /app` medía 1,86 GB con `/app` a 345 MB: el contexto arrastraba `.sessions` (1,4 GB de registros de sesión del checkout, comprimidos a 9 MB en la transferencia) y el store de pnpm. `.dockerignore` los excluye y el barrido los elimina como segunda defensa |
 | `IMG-04` ausencia de residuos | Parcial | Los comandos de barrido se ejecutaron sobre `/app` local; su verificación dentro de la imagen queda pendiente |
-| `IMG-05` producto operativo por proxy | **No ejecutada** | El arranque y el shell se validaron locales; nginx, Landlock y el proxy pertenecen al contenedor |
+| `IMG-05` producto operativo por proxy | Parcial: shell servido | `docker compose up -d` arranca y `curl http://127.0.0.1:3081/` responde 200; la sesión con agente, `bash` bajo Landlock y el flujo de PR siguen pendientes |
 | `IMG-06` flujo de PR con `gh` | **No ejecutada** | Requiere el contenedor con el token montado |
 | `IMG-08` persistencia tras reconstrucción | **No ejecutada** | Requiere Docker y el volumen |
 | `IMG-09` preset ACP sin peer | Parcial | La carga del bundle diferido está verificada; falta montar el preset dentro de un contenedor |
