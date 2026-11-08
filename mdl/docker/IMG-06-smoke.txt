@@ -1,0 +1,5 @@
+IMG-06 — smoke test del flujo de PR con `gh` desde la imagen de runtime.
+
+Este archivo existe sólo para abrir un PR de prueba (SPEC-017, IMG-06) que
+ejercita el wrapper de credenciales (/usr/local/bin/gh y el credential helper de
+git) junto con el conjunto de herramientas podado de la imagen. No debe mergearse.
