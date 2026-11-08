@@ -77,12 +77,14 @@ FROM ${NODE_RUNTIME_IMAGE} AS runtime
 ENV DSH_HOME=/data/dsh \
     DSH_PERMISSION_MODE=workspace-write
 
+# The base image's own Debian sources are used as shipped: `bookworm-slim`
+# carries no ca-certificates, so an HTTPS mirror rewrite would leave apt unable
+# to verify anything, including the package that provides the certificates.
 RUN printf '%s\n' \
         'Acquire::Retries "8";' \
         'Acquire::http::Timeout "30";' \
         'Acquire::https::Timeout "30";' \
         > /etc/apt/apt.conf.d/80-retries \
-    && sed -i 's|http://deb.debian.org|https://mirror.rackspace.com|g' /etc/apt/sources.list.d/debian.sources \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         bash bubblewrap ca-certificates curl git jq less nginx-light \
