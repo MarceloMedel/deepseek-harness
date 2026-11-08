@@ -202,11 +202,11 @@ describe('session reference URI and inline mentions', () => {
     const uri = encodeSessionReferenceUri(sessionId)
     expect(decodeSessionReferenceUri(uri)).toBe(sessionId)
 
-    const mention = formatSessionReferenceMention({ sessionId, label: '源]会话' })
+    const mention = formatSessionReferenceMention({ sessionId, label: '源]Sesiones' })
     const parsed = parseSessionReferenceText(`compare ${mention} and ${uri}`)
-    expect(parsed.text).toBe(`compare @源]会话 and @${sessionId}`)
+    expect(parsed.text).toBe(`compare @源]Sesiones and @${sessionId}`)
     expect(parsed.references).toEqual([
-      { sessionId, label: '源]会话' },
+      { sessionId, label: '源]Sesiones' },
       { sessionId, label: sessionId },
     ])
     expect(formatSessionReferenceMention({ sessionId })).toContain(`@[${sessionId.replaceAll('\\', '\\\\').replaceAll(']', '\\]')}]`)

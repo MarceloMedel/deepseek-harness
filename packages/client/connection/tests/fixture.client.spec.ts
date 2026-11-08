@@ -65,7 +65,7 @@ describe('createFixtureApi', () => {
   it('searches current message text with literal unicode61-style token phrases', async () => {
     const api = createFixtureApi()
     const signal = new AbortController().signal
-    const phrase = await api.sessions.search(req({ query: 'FIXTURE 历史消息' }), signal)
+    const phrase = await api.sessions.search(req({ query: 'literal del usuario' }), signal)
     expect(phrase.result).toMatchObject({
       ok: true,
       value: {
@@ -74,7 +74,7 @@ describe('createFixtureApi', () => {
       },
     })
     if (!phrase.result.ok) throw new Error('search failed')
-    expect(phrase.result.value.items[0]?.snippet).toContain('fixture 历史消息')
+    expect(phrase.result.value.items[0]?.snippet).toContain('literal del usuario')
 
     timing().appendUser(
       'fx-alpha',
@@ -286,7 +286,7 @@ describe('createFixtureApi', () => {
     expect(list.result.value.items.some(s => s.sessionId === createdId)).toBe(true)
   })
 
-  it('prompt replays a full streamed turn and cancel mid-replay freezes with (已中断)', async () => {
+  it('prompt replays a full streamed turn and cancel mid-replay freezes with (Interrumpida)', async () => {
     const api = createFixtureApi()
     const created = await api.sessions.create(req({}))
     if (!created.result.ok) throw new Error('create failed')
@@ -334,7 +334,7 @@ describe('createFixtureApi', () => {
       && frame.key === 'contextBreakdown'
       && (frame.value as { messageTokens?: number }).messageTokens! > 0)).toBe(true)
     const finalize = frames.find((f): f is Extract<MuxFrame, { type: 'session/event' }> => f.type === 'session/event' && f.event.type === 'assistant/message')
-    expect(JSON.stringify(finalize?.event.data)).toContain('（已中断）')
+    expect(JSON.stringify(finalize?.event.data)).toContain(' (interrumpido)')
     // Idle cancel: no replay in flight, must not explode; running flips false.
     const idleCancel = await api.sessions.cancel(req({ sessionId: id }))
     expect(idleCancel.result).toMatchObject({ ok: true })
@@ -373,7 +373,7 @@ describe('createFixtureApi', () => {
     expect(first[0]?.payload).toMatchObject({ type: 'session/subscribed', sessionId: 'fx-alpha' })
     expect((first[0]?.payload as { lastSeq: number }).lastSeq).toBeGreaterThan(0)
     // Projection baseline frames follow subscribed (domain units + token usage).
-    expect(first[1]?.payload).toMatchObject({ type: 'session/projection', sessionId: 'fx-alpha', key: 'title', value: 'Fixture 历史会话' })
+    expect(first[1]?.payload).toMatchObject({ type: 'session/projection', sessionId: 'fx-alpha', key: 'title', value: 'Sesión histórica del fixture' })
     expect(first[2]?.payload).toMatchObject({ type: 'session/projection', sessionId: 'fx-alpha', key: 'todos' })
     expect(first[3]?.payload).toMatchObject({ type: 'session/projection', sessionId: 'fx-alpha', key: 'permissions' })
     expect(first[4]?.payload).toMatchObject({ type: 'session/projection', sessionId: 'fx-alpha', key: 'plan', value: { active: false, pending: false } })
@@ -620,7 +620,7 @@ describe('createFixtureApi', () => {
       const frames: MuxFrame[] = []
       for await (const envelope of api.events.mux(req({}), abort.signal)) {
         frames.push(envelope.payload)
-        if (frames.some(f => f.type === 'session/projection' && f.key === 'title' && f.value === '重命名')) abort.abort()
+        if (frames.some(f => f.type === 'session/projection' && f.key === 'title' && f.value === 'Renombrar')) abort.abort()
       }
       return frames
     })()
@@ -632,9 +632,9 @@ describe('createFixtureApi', () => {
     const blank = await api.sessions.rename(req({ sessionId: sid('fx-alpha'), title: '   ' }))
     expect(blank.result).toMatchObject({ ok: false, error: { code: 'title-invalid', details: { sessionId: 'fx-alpha' } } })
 
-    const renamed = await api.sessions.rename(req({ sessionId: sid('fx-alpha'), title: '  重命名  ' }))
+    const renamed = await api.sessions.rename(req({ sessionId: sid('fx-alpha'), title: '  Renombrar  ' }))
     if (!renamed.result.ok) throw new Error('rename failed')
-    expect(renamed.result.value.title).toBe('重命名')
+    expect(renamed.result.value.title).toBe('Renombrar')
     const acceptedSeq = renamed.result.value.seq
     // The response seq addresses the appended title event (the client plane
     // has no session/title in its event union — titles ride the projection —
@@ -644,12 +644,12 @@ describe('createFixtureApi', () => {
     const appended = history.result.value.events.find(entry => entry.event.seq === acceptedSeq)
     expect(appended?.event).toMatchObject({
       type: 'session/title',
-      data: { title: '重命名', messageSeqs: [], source: { kind: 'user' } },
+      data: { title: 'Renombrar', messageSeqs: [], source: { kind: 'user' } },
     })
     // Beyond the subscribe-time baseline replay, the append emitted exactly
     // one title projection frame carrying the new value at the response seq.
     const frames = await framesPromise
-    const titleFrames = frames.filter(f => f.type === 'session/projection' && f.key === 'title' && f.sessionId === sid('fx-alpha') && f.value === '重命名')
+    const titleFrames = frames.filter(f => f.type === 'session/projection' && f.key === 'title' && f.sessionId === sid('fx-alpha') && f.value === 'Renombrar')
     expect(titleFrames).toHaveLength(1)
     expect(titleFrames[0]).toMatchObject({ seq: acceptedSeq })
   })
@@ -897,7 +897,7 @@ describe('createFixtureApi', () => {
     await vi.waitFor(() => {
       expect(seen.some(f => f.type === 'session/event' && JSON.stringify(f.event.data).includes('正常直播'))).toBe(true)
       expect(seen.some(f => f.type === 'session/event' && (f.event as { type: string }).type === 'llm/retry')).toBe(true)
-      expect(seen.some(f => f.type === 'session/event' && JSON.stringify(f.event.data).includes('重试后的完整回复'))).toBe(true)
+      expect(seen.some(f => f.type === 'session/event' && JSON.stringify(f.event.data).includes('respuesta completa tras el reintento'))).toBe(true)
       expect(seen.some(f => f.type === 'session/event'
         && f.event.type === 'turn/end'
         && f.event.data.reason.kind === 'aborted')).toBe(true)
@@ -961,7 +961,7 @@ describe('createFixtureApi', () => {
           ? [frame.event.data.chunk.text]
           : []
       ))
-      expect(deltas).toEqual(['推理', '推理', `\n${marker}`])
+      expect(deltas).toEqual(['Razonamiento', 'Razonamiento', `\n${marker}`])
     } finally {
       abort.abort()
       vi.useRealTimers()

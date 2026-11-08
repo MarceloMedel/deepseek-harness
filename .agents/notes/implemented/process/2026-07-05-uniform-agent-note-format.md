@@ -2,15 +2,13 @@
 
 Status: implemented
 
-English | [中文](2026-07-05-uniform-agent-note-format.zh.md)
-
 ## Problem
 
 Agent Note paths encoded lifecycle and class, but file contents still mixed headings, status formats, ADR and proposal templates, and proposal-era sections in implemented records. Authors copied whichever neighbor they found, and lifecycle moves could skip the required rewrite because no gate enforced an in-file contract.
 
 ## Decision
 
-[README.md § The file format](../../README.md#the-file-format) is the in-file contract — the header block (`# Agent Note: <title>` plus a dateless, folder-agreeing `Status:` enum whose only content is the rejection reason), the per-lifecycle body skeleton (`Problem` opener everywhere; `Proposal`/`Acceptance criteria`/`Risks` in `proposed/`; present-tense `Decision`/`Consequences` with proposal-era headings banned in `implemented/`; frozen proposal shape in `rejected/`), a mandatory `Alternatives considered` section, and the canonical section vocabulary between which bespoke technical sections stay free-form. `pnpm run verify-agent-note-format` ([scripts/verify-agent-note-format.ts](../../../../scripts/verify-agent-note-format.ts)) enforces every mechanical clause as part of `doc-sync`, so a lifecycle move that skips its rewrite now fails CI instead of review memory.
+[README.md § The file format](../../README.md#the-file-format) is the in-file contract — the header block (`# Agent Note: <title>` plus a dateless, folder-agreeing `Status:` enum whose only content is the rejection reason), the per-lifecycle body skeleton (`Problem` opener everywhere; `Proposal`/`Acceptance criteria`/`Risks` in `proposed/`; present-tense `Decision`/`Consequences` with proposal-era headings banned in `implemented/`; frozen proposal shape in `rejected/`), a mandatory `Alternatives considered` section, and the canonical section vocabulary between which bespoke technical sections stay free-form. `pnpm run verify-agent-note-format` (scripts/verify-agent-note-format.ts) enforces every mechanical clause as part of `doc-sync`, so a lifecycle move that skips its rewrite now fails CI instead of review memory.
 
 The whole corpus was normalized in the same change that defined the format — the pre-release stance: no transition period, no dual-format tolerance. The one grandfather is content, not format: alternatives are recorded, never invented, so a pre-format Agent Note whose alternatives are not reconstructible from the record carries the exact `agent-note-format: alternatives-not-recorded` comment, which the gate accepts only for files dated before this Agent Note.
 

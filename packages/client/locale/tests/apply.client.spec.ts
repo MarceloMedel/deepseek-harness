@@ -74,9 +74,9 @@ function faceOf(slots: SlotRegistry) {
 
 describe('locale apply', () => {
   // A fresh service opens in the browser's language, so these wiring specs
-  // pin one to keep their zh baseline independent of the test environment.
+  // pin one to keep their es baseline independent of the test environment.
   beforeEach(() => {
-    vi.stubGlobal('navigator', { languages: ['zh-CN'], language: 'zh-CN' })
+    vi.stubGlobal('navigator', { languages: ['es-CN'], language: 'es-CN' })
   })
 
   afterEach(() => {
@@ -93,10 +93,10 @@ describe('locale apply', () => {
     await before.ctx.plugin({ inject: [...inject], apply }).await()
     const locale = before.ctx.get('locale') as LocaleRuntime
     // Base dictionaries are registered: the (ns, locale) seats are occupied.
-    expect(() => locale.register('common', 'zh', {})).toThrow('already has locale')
+    expect(() => locale.register('common', 'es', {})).toThrow('already has locale')
     expect(() => locale.register('common', 'en', {})).toThrow('already has locale')
-    locale.setLocale('zh')
-    expect(locale.bind(SETTINGS_NS)('language.title')).toBe('语言')
+    locale.setLocale('es')
+    expect(locale.bind(SETTINGS_NS)('language.title')).toBe('Idioma')
     const entry = before.slots.entries(SLOT).find(e => e.component === LanguageRow)!
     expect(entry.options).toMatchObject({ id: 'language', order: 0 })
 
@@ -115,15 +115,15 @@ describe('locale apply', () => {
     await b.ctx.plugin({ inject: [...inject], apply }).await()
     const locale = b.ctx.get('locale') as LocaleRuntime
     // An event ahead of any inject hits the unbound-actions arm.
-    locale.setLocale('zh')
+    locale.setLocale('es')
 
     const { entry, instance, face } = faceOf(b.slots)
     // The inject-time re-sync sealed the init window: the mirror is current.
-    expect(instance.getSnapshot().active).toBe('zh')
-    expect(instance.getSnapshot().options.map(o => o.id)).toEqual(['zh', 'en'])
+    expect(instance.getSnapshot().active).toBe('es')
+    expect(instance.getSnapshot().options.map(o => o.id)).toEqual(['en', 'es'])
     // Copy rides the standard locale seat: the entry declares the namespace.
     expect(entry.locale).toBe(SETTINGS_NS)
-    expect(locale.bind(SETTINGS_NS)('language.title')).toBe('语言')
+    expect(locale.bind(SETTINGS_NS)('language.title')).toBe('Idioma')
 
     face.setLocale('en')
     expect(locale.getLocale().active).toBe('en')
@@ -134,17 +134,17 @@ describe('locale apply', () => {
 
   it('loads and refreshes the explicit Host preference after nonblocking activation', async () => {
     const b = await bench()
-    b.setHostPreference('zh')
+    b.setHostPreference('es')
     declareItems(b.slots)
     await b.ctx.plugin({ inject: [...inject], apply }).await()
     const locale = b.ctx.get('locale') as LocaleRuntime
-    await vi.waitFor(() => { expect(locale.getLocale().active).toBe('zh') })
+    await vi.waitFor(() => { expect(locale.getLocale().active).toBe('es') })
     b.setHostPreference(undefined)
     b.ctx.remote.$dispatch('settings/document-updated', [LOCALE_SETTINGS_NAMESPACE, 0])
     await vi.waitFor(() => { expect(locale.getLocale().active).toBe('en') })
-    b.setHostPreference('zh')
+    b.setHostPreference('es')
     b.ctx.remote.$dispatch('settings/document-updated', [LOCALE_SETTINGS_NAMESPACE, 0])
-    await vi.waitFor(() => { expect(locale.getLocale().active).toBe('zh') })
+    await vi.waitFor(() => { expect(locale.getLocale().active).toBe('es') })
     expect(b.describe).toHaveBeenCalledTimes(3)
   })
 

@@ -15,7 +15,7 @@ export const REPO_ROOT = fileURLToPath(new URL('../../..', import.meta.url))
  * surface: with no stored preference the client derives its initial locale
  * from the browser, and Playwright's default browser asks for English.
  */
-export const ZH_BROWSER_LOCALE = 'zh-CN'
+export const ZH_BROWSER_LOCALE = 'es-CN'
 
 /**
  * Open the standard browser-test page advertising English before client boot.
@@ -90,7 +90,7 @@ export async function connectFreshWorkspace(page: Page, root: string, name = 'wo
 /**
  * {@link connectFreshWorkspace} over the product default Chinese locale: the
  * English helper's anchors assume the locale every other scenario boots, so a
- * scenario that deliberately keeps zh needs the localized picker copy.
+ * scenario that deliberately keeps es needs the localized picker copy.
  * @param page - the browser page under test.
  * @param root - workspace parent directory.
  * @param name - directory created under `root` and connected.

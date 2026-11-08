@@ -444,9 +444,20 @@ export class ClientModuleRegistry extends Service {
     }
     try {
       const body = await readFile(path)
+      // Content-derived validator: a rebuilt bundle changes the URL's `rev`, but
+      // a reload of the same revision must not re-download the body. `no-cache`
+      // keeps the revalidation (a stale registry never serves a dead bundle) while
+      // the ETag makes it cheap.
+      const etag = `"${createHash('sha1').update(body).digest('base64url')}"`
+      if (revalidates(req.headers['if-none-match'], etag)) {
+        res.writeHead(304, { 'cache-control': 'no-cache', etag })
+        res.end()
+        return
+      }
       res.writeHead(200, {
         'content-type': isSourceMap ? 'application/json; charset=utf-8' : 'text/javascript; charset=utf-8',
         'cache-control': 'no-cache',
+        etag,
       })
       res.end(body)
     } catch {
@@ -455,6 +466,23 @@ export class ClientModuleRegistry extends Service {
       res.end()
     }
   }
+}
+
+/**
+ * Decide whether a request already holds this bundle.
+ *
+ * The comparison is weak, as RFC 9110 requires for `If-None-Match` outside a
+ * Range request: a deployment that compresses the response turns the strong
+ * tag into `W/"…"` on the wire (nginx's gzip filter rewrites it), and the
+ * browser then echoes the weak form. Comparing the opaque value after dropping
+ * a leading `W/` is what keeps the 304 reachable behind compression.
+ * @param header - the request's `If-None-Match`, possibly a list or undefined.
+ * @param etag - the exact strong tag this response would carry.
+ * @returns true when the client's copy still matches.
+ */
+function revalidates(header: string | undefined, etag: string): boolean {
+  if (header === undefined) return false
+  return header.split(',').some(candidate => candidate.trim().replace(/^W\//, '') === etag)
 }
 
 export default ClientModuleRegistry

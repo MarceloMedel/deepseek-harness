@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-08-10-event-directed-pr-review-status.zh.md)
-
 ## Problem
 
 The Issue Project status records who owns the next step of resolving work. Aggregate pull-request review state answers whether GitHub considers the pull request mergeable, but it cannot represent that handoff: an earlier `CHANGES_REQUESTED` review can remain effective after the author fixes the code and requests review again.
@@ -22,7 +20,7 @@ The handler resolves only exact same-repository `Fixes`, `Closes`, or `Resolves`
 
 ## Verification
 
-[Issue-management tests](../../../../.github/issue-management/policy.test.mjs) pin the event-to-command mapping, the repeated-review-request transition after a changes-requested command, the changes-requested regression, terminal protection, and human override preservation. [Workflow tests](../../../../scripts/ci-workflow.spec.ts) pin the subscribed events, the changes-requested job condition, and the separate `ready_for_review` policy trigger.
+[Issue-management tests](../../../../.github/issue-management/policy.test.mjs) pin the event-to-command mapping, the repeated-review-request transition after a changes-requested command, the changes-requested regression, terminal protection, and human override preservation. Workflow tests pin the subscribed events, the changes-requested job condition, and the separate `ready_for_review` policy trigger.
 
 ## Alternatives considered
 

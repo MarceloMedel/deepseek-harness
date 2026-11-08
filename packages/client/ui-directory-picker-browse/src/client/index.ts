@@ -32,20 +32,20 @@ export function apply(ctx: ClientContext): void {
     // a failed activation must not squat the namespace's other locale.
     const disposers: (() => void)[] = []
     const dictionaries: [locale: string, dict: Record<string, string>][] = [
-      ['zh', {
-        'browser.title': '选择工作区目录',
-        'browser.home': '主目录',
-        'browser.newFolder': '新建文件夹',
-        'browser.folderName': '文件夹名称',
-        'browser.createIn': '在"{name}"中新建文件夹',
-        'browser.untitledFolder': '未命名文件夹',
-        'browser.create': '创建',
-        'browser.cancel': '取消',
-        'browser.open': '打开',
-        'browser.editPath': '编辑路径',
-        'browser.loading': '加载中…',
-        'browser.truncated': '文件夹过多，仅显示开头部分。',
-        'browser.showHidden': '显示隐藏文件',
+      ['es', {
+        'browser.title': 'Elegir carpeta del espacio de trabajo',
+        'browser.home': 'Inicio',
+        'browser.newFolder': 'Nueva carpeta',
+        'browser.folderName': 'Nombre de la carpeta',
+        'browser.createIn': 'Nueva carpeta en "{name}"',
+        'browser.untitledFolder': 'Carpeta sin nombre',
+        'browser.create': 'Crear',
+        'browser.cancel': 'Cancelar',
+        'browser.open': 'Abrir',
+        'browser.editPath': 'Editar ruta',
+        'browser.loading': 'Cargando…',
+        'browser.truncated': 'Hay demasiadas carpetas; se muestra solo el comienzo.',
+        'browser.showHidden': 'Mostrar archivos ocultos',
       }],
       ['en', {
         'browser.title': 'Select Workspace Directory',

@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-08-12-documentation-site-navigation-and-chrome.zh.md)
-
 ## Problem
 
 The reference sidebar rendered its 43 subsystem pages first, ahead of every other group: `sectionOrder` in the VitePress config listed no position for the subsystem groups, nor for the group holding the Python SDK page, so `indexOf` returned `-1` and sorted them ahead of the ordered sections. Clicking the `参考` navigation item landed on the architecture page whose own sidebar entry was link 44 of 62, 1549px down a 2478px sidebar — outside the viewport. Four subsystem pages carried `order` values already taken by other pages in the same section, resolved only by `Array.prototype.sort` stability and the order the manifest's arrays happened to be concatenated.
@@ -20,7 +18,7 @@ Subsystem pages are grouped by concern — overview, core and scopes, sessions a
 
 `landingLink(locale, collection)` derives each navigation item's target from `orderedPages`, the same ordering the sidebar renders, so an item always opens its collection's first published page.
 
-`projectedPageContent` in [scripts/project-doc-site.ts](../../../../scripts/project-doc-site.ts) drops the language-switcher line and the repository badge. The switcher match is confined to the first eight lines so a tutorial that shows the convention still renders its example.
+`projectedPageContent` in scripts/project-doc-site.ts drops the language-switcher line and the repository badge. The switcher match is confined to the first eight lines so a tutorial that shows the convention still renders its example.
 
 The navigation-bar title is the DeepSeek wordmark inlined into `siteTitle`, which VitePress renders as HTML. Inlining is what lets the mark's `currentColor` fills follow the active theme; `themeConfig.logo` renders an `<img>`, which freezes the mark at the colors its file declares and would need one asset per theme. The sidebar scrollbar rests invisible and appears while scrolling, marked by a `data-` attribute rather than a class because Vue rewrites `class` wholesale when it patches the element.
 

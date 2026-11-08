@@ -62,7 +62,7 @@ describe('MarkdownText', () => {
     // The ts fence routed through the shared CodeBlock: shiki token spans + banner.
     expect(container.querySelector('pre.shiki')).not.toBeNull()
     expect(screen.getByText('ts')).toBeTruthy()
-    expect(screen.getByRole('button', { name: '复制' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Copiar' })).toBeTruthy()
     expect(container.querySelector('br')).not.toBeNull()
     expect(screen.getByRole('link', { name: 'safe' }).getAttribute('target')).toBe('_blank')
     expect(screen.getByRole('link', { name: 'https://deepseek.com' })).toBeTruthy()
@@ -72,9 +72,9 @@ describe('MarkdownText', () => {
     const cases = [
       ['**注意：**内容', '注意：'],
       ['**Notice:**内容', 'Notice:'],
-      ['**事件中间件（waterfall）**实现', '事件中间件（waterfall）'],
+      ['**事件中间件 (waterfall)**实现', '事件中间件 (waterfall)'],
       ['**事件中间件(waterfall)**实现', '事件中间件(waterfall)'],
-      ['**句号。**后续', '句号。'],
+      ['**句号.**后续', '句号.'],
       ['**Period.**后续', 'Period.'],
       ['**提醒！**继续', '提醒！'],
       ['**Warning!**继续', 'Warning!'],
@@ -513,6 +513,6 @@ describe('JsonBlock', () => {
     const { container } = render(<JsonBlock label="x" payload={big} defaultOpen />)
     const body = container.querySelector('pre')!.textContent
     expect(body.length).toBeLessThan(30_000)
-    expect(body).toContain('截断')
+    expect(body).toContain('truncado')
   })
 })

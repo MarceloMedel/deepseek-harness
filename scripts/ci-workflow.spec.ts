@@ -391,7 +391,7 @@ describe('Issue lifecycle workflow', () => {
 })
 
 describe('Git hooks', () => {
-  it('leaves frozen Agent Note sidecars to the archive verifier', () => {
+  it('runs the archive verifier on archived Agent Notes instead of the retired pairing hook', () => {
     const lefthook = loadWorkflow('lefthook.yml')
 
     for (const hookName of ['pre-commit', 'pre-merge-commit']) {
@@ -399,11 +399,9 @@ describe('Git hooks', () => {
       if (!isRecord(hook) || !Array.isArray(hook.jobs)) {
         throw new TypeError(`lefthook must define ${hookName} jobs`)
       }
-      const pairing: unknown = hook.jobs.find(
-        (job: unknown) => isRecord(job) && job.name === 'translation pairing (staged records)',
-      )
-
-      expect(pairing).toMatchObject({ exclude: ['.agents/notes/archived/**'] })
+      const jobs = hook.jobs.filter(isRecord)
+      expect(jobs.some(job => job.name === 'translation pairing (staged records)')).toBe(false)
+      expect(jobs.some(job => job.name === 'archived agent notes')).toBe(true)
     }
   })
 })

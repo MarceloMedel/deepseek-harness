@@ -1,6 +1,0 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
-#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-11-07-web-activity-fold-and-live-line.md
-2026-11-07-web-activity-fold-and-live-line.md: 1a63f0e13cb0eac5200620c375eb66c45e1cf558
-2026-11-07-web-activity-fold-and-live-line.zh.md: d48680df0bdfe5db2d17481619889ef1627428d3

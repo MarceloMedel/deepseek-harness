@@ -87,7 +87,7 @@ describe('web e2e: settings modal and General preferences', () => {
     await expect.poll(() => openRequests, { timeout: 5_000 }).toBe(1)
     await expect.poll(() => openDocument.isEnabled(), { timeout: 5_000 }).toBe(true)
     await page.unroute('**/api/settings.openDocument')
-    // Golden of the freshly opened dialog (default zh, General active).
+    // Golden of the freshly opened dialog (default es, General active).
     const snapshot = await captureStableAria(page, '[role="dialog"]', scaffold.workspaceCwd)
     await compareOrRefreshGolden(DIALOG_EXPECTED, snapshot, MODE)
     // Section switch: aria-current moves (the Models page itself has its own scenario file).
@@ -413,7 +413,7 @@ describe('web e2e: settings modal and General preferences', () => {
     expect(await page.evaluate(() => localStorage.getItem('dsh.locale'))).toBeNull()
     await expect.poll(async () => readFile(join(scaffold.harnessHome, 'settings.yaml'), 'utf8'), { timeout: 5_000 })
       .toMatch(/locale:\n\s+preference: en/)
-    // Reload keeps English; then restore zh so shared page state (and the
+    // Reload keeps English; then restore es so shared page state (and the
     // other specs' 设置-anchored selectors + goldens) see the default again.
     const warningStart = tripwire.warnings.length
     await page.reload({ waitUntil: 'load' })
@@ -448,7 +448,7 @@ describe('web e2e: settings modal and General preferences', () => {
     await page.getByRole('dialog', { name: '设置' }).waitFor({ timeout: 10_000 })
     expect(await page.evaluate(() => localStorage.getItem('dsh.locale'))).toBeNull()
     await expect.poll(async () => readFile(join(scaffold.harnessHome, 'settings.yaml'), 'utf8'), { timeout: 5_000 })
-      .toMatch(/locale:\n\s+preference: zh/)
+      .toMatch(/locale:\n\s+preference: es/)
     await page.keyboard.press('Escape')
     expect(tripwire.pageErrors).toEqual([])
   }, 90_000)

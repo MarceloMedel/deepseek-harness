@@ -10,7 +10,7 @@ import { WorkspacePicker } from '../src/client/WorkspacePicker.tsx'
 
 // The service reads its initial locale from the browser; these specs assert
 // the shipped Chinese copy, so they state the browser they assume.
-usePinnedBrowserLanguages('zh-CN')
+usePinnedBrowserLanguages('es-CN')
 
 async function bench() {
   const ctx = new Context()
@@ -37,7 +37,7 @@ async function bench() {
   } as never)
   ctx.provide('sessions', { open, clear, search, searchResultLimit: 20, binding, fork } as never)
   const locale = new LocaleRuntime(ctx)
-  locale.setLocale('zh')
+  locale.setLocale('es')
   ctx.provide('locale', locale)
   return {
     ctx, slots: ctx.get('slots') as SlotRegistry, locale, create, startSession, rename,
@@ -66,7 +66,7 @@ describe('ui-workspace apply', () => {
     // Copy rides the standard locale seat: the entry declares the namespace
     // and apply registered both dictionaries.
     expect(before.slots.entries('sidebar.workspaces')[0]!.locale).toBe('workspace')
-    expect(before.locale.bind('workspace')('session.new')).toBe('新会话')
+    expect(before.locale.bind('workspace')('session.new')).toBe('Nueva sesión')
 
     const after = await bench()
     await after.ctx.plugin({ inject: [...inject], apply }).await()

@@ -78,12 +78,34 @@ export async function serveStatic(
   }
   try {
     const body = await readFile(target)
-    res.writeHead(200, { 'content-type': MIME[extname(target)] ?? 'application/octet-stream' })
+    res.writeHead(200, {
+      'content-type': MIME[extname(target)] ?? 'application/octet-stream',
+      'cache-control': cacheControlFor(target, distRoot),
+    })
     res.end(body)
   } catch {
     // Miss (ENOENT/EISDIR) falls back to index.html with 200 (SPA routing).
     await serveIndex()
   }
+}
+
+/**
+ * Cache directives for one dist file.
+ *
+ * The build writes every chunk, stylesheet, font, and grammar under `assets/`
+ * with a content hash in its name, so a given URL there never changes meaning
+ * and belongs to the browser indefinitely. Everything else — the index
+ * document, the manifest, the icons — keeps its name across builds and is
+ * revalidated instead.
+ * @param target - absolute path of the resolved file.
+ * @param distRoot - absolute dist root.
+ * @returns the `cache-control` header value for the response.
+ */
+export function cacheControlFor(target: string, distRoot: string): string {
+  // `sep`, not '/': the same Windows path rule as the traversal check above.
+  return target.slice(distRoot.length + 1).startsWith(`assets${sep}`)
+    ? 'public, max-age=31536000, immutable'
+    : 'no-cache'
 }
 
 /**

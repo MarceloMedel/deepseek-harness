@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-07-26-packed-chunk-rows-by-default.zh.md)
-
 ## Problem
 
 Provider streams produce many token-sized `assistant/chunk` delta events whose repeated JSON envelopes can outweigh their payloads. The session log must retain each chunk as a distinct logical event: live `session/event` delivery, sequence numbers, `sourceEventSeqs`, replay, cancellation evidence, and UI streaming all depend on those boundaries.
@@ -32,7 +30,7 @@ Focused package tests keep unpacked and mixed-layout inputs for reader compatibi
 
 ### In-flight branch convergence
 
-The temporary [`scripts/migrate-packed-session-fixtures.ts`](../../../../scripts/migrate-packed-session-fixtures.ts) command lets in-flight branches converge after merging current `master`: `pnpm run migrate:packed-session-fixtures` discovers the same repository-wide fixture set as the permanent gate, preserves each header line, decodes existing mixed records, writes the canonical packed body, proves decoded equality, and proves idempotence. It never calls a model or regenerates transcript and presentation outputs.
+The temporary `scripts/migrate-packed-session-fixtures.ts` command lets in-flight branches converge after merging current `master`: `pnpm run migrate:packed-session-fixtures` discovers the same repository-wide fixture set as the permanent gate, preserves each header line, decodes existing mixed records, writes the canonical packed body, proves decoded equality, and proves idempotence. It never calls a model or regenerates transcript and presentation outputs.
 
 The command remains linked from the testing policy and ACP snapshot README while older branches may carry fixture edits. The [removal proposal](../../proposed/process/2026-07-26-remove-packed-session-fixture-migrator.md) deletes the CLI, package command, this transitional section, and the documentation links, then replaces the permanent gate's command-specific remediation text once a live open-PR inventory shows that every affected branch is merged, closed, or canonical. The shared canonicalizer and snapshot gate remain permanent.
 

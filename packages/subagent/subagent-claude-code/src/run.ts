@@ -8,7 +8,6 @@
 
 import { randomUUID } from 'node:crypto'
 import {
-  query as officialQuery,
   type Options,
   type Query,
   type SDKMessage,
@@ -37,6 +36,39 @@ import {
 
 /** Default POSIX grace between subprocess termination tiers. */
 export const DEFAULT_DISPOSE_GRACE_MS = 3_000
+
+/** Reported when a deployment mounts this backend without installing its optional SDK peer. */
+export const CLAUDE_SDK_MISSING = 'subagent-claude-code: the optional peer @anthropic-ai/claude-agent-sdk '
+  + 'is not installed; install it in the deployment that mounts this subagent backend'
+
+/**
+ * Resolve the SDK's `query` entry on first use.
+ *
+ * `@anthropic-ai/claude-agent-sdk` ships the official Claude Code CLI
+ * distribution, which is the single largest install-time dependency of the
+ * workspace. It is an optional peer here: a deployment that never mounts this
+ * backend must not pay for it, while one that does gets an error naming the
+ * package instead of a bare ERR_MODULE_NOT_FOUND raised while the composition
+ * loaded. Only a real delegation reads the value, so the import happens here
+ * rather than at module load.
+ * @param importer - module loader; production passes the real dynamic import.
+ * @returns the SDK's `query` function.
+ */
+export async function loadOfficialQuery(
+  importer: () => Promise<typeof import('@anthropic-ai/claude-agent-sdk')> =
+    () => import('@anthropic-ai/claude-agent-sdk'),
+): Promise<typeof import('@anthropic-ai/claude-agent-sdk').query> {
+  try {
+    return (await importer()).query
+  } catch (error: unknown) {
+    // A missing module is the absent-peer case. Any other load failure (a broken
+    // install, a syntax error) says more than this message would, so it passes through.
+    if ((error as { code?: unknown } | undefined)?.code === 'ERR_MODULE_NOT_FOUND') {
+      throw new Error(CLAUDE_SDK_MISSING)
+    }
+    throw error
+  }
+}
 
 /* jscpd:ignore-start -- sibling providers intentionally keep product-private
  * run inputs and error normalization instead of adding a shared lifecycle owner. */
@@ -221,6 +253,7 @@ export async function startClaudeCodeRun(
   let child: SubprocessHandle | undefined
   let query: Query | undefined
   try {
+    const officialQuery = await loadOfficialQuery()
     query = officialQuery({
       prompt,
       options: claudeQueryOptions(spec, controller, (captured) => {

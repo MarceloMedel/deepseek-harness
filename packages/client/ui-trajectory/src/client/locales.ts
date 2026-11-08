@@ -27,38 +27,38 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   }
 }
 
-/** Simplified Chinese dictionary (the key-set source of truth). */
-export const zh: Record<TrajectoryKey, string> = {
-  'view.trajectory': '轨迹',
-  'toolbar.aria': '轨迹工具栏',
-  'toolbar.duration': 'Duration',
-  'toolbar.useActualDuration': 'Use actual duration',
-  'toolbar.useEqualWidth': 'Use equal-width operations',
-  'toolbar.actualTime': '实际时间',
-  'toolbar.turns': 'Turns',
-  'toolbar.expandTurns': 'Expand turns',
-  'toolbar.collapseTurns': 'Collapse turns',
-  'toolbar.calls': 'Calls',
-  'toolbar.expandCalls': 'Expand calls',
-  'toolbar.collapseCalls': 'Collapse calls',
-  'toolbar.search': '搜索轨迹',
-  'toolbar.searchPlaceholder': '搜索',
-}
-
 /** English dictionary. */
-export const en: Record<TrajectoryKey, string> = {
-  'view.trajectory': 'Trajectory',
-  'toolbar.aria': 'Trajectory toolbar',
-  'toolbar.duration': 'Duration',
+export const en = {
+  'view.trajectory':           'Trajectory',
+  'toolbar.aria':              'Trajectory toolbar',
+  'toolbar.duration':          'Duration',
   'toolbar.useActualDuration': 'Use actual duration',
-  'toolbar.useEqualWidth': 'Use equal-width operations',
-  'toolbar.actualTime': 'Actual time',
-  'toolbar.turns': 'Turns',
-  'toolbar.expandTurns': 'Expand turns',
-  'toolbar.collapseTurns': 'Collapse turns',
-  'toolbar.calls': 'Calls',
-  'toolbar.expandCalls': 'Expand calls',
-  'toolbar.collapseCalls': 'Collapse calls',
-  'toolbar.search': 'Search trajectory',
+  'toolbar.useEqualWidth':     'Use equal-width operations',
+  'toolbar.actualTime':        'Actual time',
+  'toolbar.turns':             'Turns',
+  'toolbar.expandTurns':       'Expand turns',
+  'toolbar.collapseTurns':     'Collapse turns',
+  'toolbar.calls':             'Calls',
+  'toolbar.expandCalls':       'Expand calls',
+  'toolbar.collapseCalls':     'Collapse calls',
+  'toolbar.search':            'Search trajectory',
   'toolbar.searchPlaceholder': 'Search',
-}
+} satisfies Record<TrajectoryKey, string>
+
+/** Spanish dictionary, checked complete against the English key set. */
+export const es = {
+  'view.trajectory':           'Trayectoria',
+  'toolbar.aria':              'Barra de la trayectoria',
+  'toolbar.duration':          'Duración',
+  'toolbar.useActualDuration': 'Usar duración real',
+  'toolbar.useEqualWidth':     'Usar operaciones de igual ancho',
+  'toolbar.actualTime':        'Tiempo real',
+  'toolbar.turns':             'Turnos',
+  'toolbar.expandTurns':       'Expandir turnos',
+  'toolbar.collapseTurns':     'Contraer turnos',
+  'toolbar.calls':             'Llamadas',
+  'toolbar.expandCalls':       'Expandir llamadas',
+  'toolbar.collapseCalls':     'Contraer llamadas',
+  'toolbar.search':            'Buscar en la trayectoria',
+  'toolbar.searchPlaceholder': 'Buscar',
+} satisfies Record<TrajectoryKey, string>

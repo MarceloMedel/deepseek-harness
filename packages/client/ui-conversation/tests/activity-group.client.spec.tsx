@@ -14,9 +14,9 @@ import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-web-react'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import type { SessionListState, WorkspaceListState } from '@deepseek-ai/dsh-client-runtime/client'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
+import { es as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/es.ts'
 import { ActivityGroup } from '../src/client/chat/ActivityGroup.tsx'
-import { zh } from '../src/client/locales.ts'
+import { es } from '../src/client/locales.ts'
 import { chatSnapshotFixture } from './chat-snapshot-fixture.client.ts'
 
 const SID = 's1' as never
@@ -101,7 +101,7 @@ function harness(nodes: Parameters<typeof chatSnapshotFixture>[0], selectedCallI
     actions: {},
     renderSlot,
     SessionProvider: ({ children }: { children: (id: never) => ReactNode }) => <>{children(SID)}</>,
-    t: makeTranslate(zh, commonZh),
+    t: makeTranslate(es, commonZh),
   }
   return { props: props as unknown as Parameters<typeof ActivityGroup>[0], store, chat, seats }
 }
@@ -122,8 +122,8 @@ describe('activity fold', () => {
     })
     const view = render(<ActivityGroup {...h.props} />)
     const row = view.getByRole('button', { expanded: false })
-    expect(row.textContent).toContain('2 个工具')
-    expect(row.textContent).toContain('1 段思考')
+    expect(row.textContent).toContain('2 llamadas a herramientas')
+    expect(row.textContent).toContain('1 razonamiento')
     expect(row.textContent).toContain('Read a.ts')
     expect(row.textContent).toContain('pnpm lint')
     expect(view.getByText('look at the test mock')).toBeTruthy()
@@ -210,10 +210,10 @@ describe('activity fold', () => {
     })
     const view = render(<ActivityGroup {...h.props} />)
     const row = view.getByRole('button', { expanded: false })
-    expect(row.textContent).toContain('1 个工具')
-    expect(row.textContent).not.toContain('个工具s')
+    expect(row.textContent).toContain('1 llamada a herramienta')
+    expect(row.textContent).not.toContain('个Herramientass')
     // A run whose records share one instant reports no duration at all.
-    expect(row.textContent).not.toContain('0秒')
+    expect(row.textContent).not.toContain('0s')
   })
 
   it('leaves a lone activity node as its own seat', () => {

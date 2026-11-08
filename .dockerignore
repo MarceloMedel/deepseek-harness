@@ -10,6 +10,14 @@
 !**/.env.example
 .DS_Store
 *.log
+# Runtime state that lives in the checkout: DSH session logs (prompts, tool output,
+# attachments) and pnpm's content-addressable store. Neither belongs in an image:
+# the store alone reached 1.4 GB in a working checkout, and session logs are user
+# data that must never be published.
+.sessions
+**/.sessions
+.pnpm-store
+**/.pnpm-store
 mdl/.runtime
 mdl/validation
 graphify-out
