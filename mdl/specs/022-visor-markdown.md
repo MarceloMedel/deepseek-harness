@@ -80,7 +80,9 @@ Una visita a un `.md` fuera de la aplicación obliga a cambiar de ventana, y el 
 
 ## Validación ejecutada
 
-Entorno: contenedor `mdl-harness` sobre `main` en `7bcd50c8`, 2026-11-08, con el paquete publicado en `/data/dsh/profiles/node_modules/dsh-md-preview` mediante `install.sh`. Los cambios de esta fase están en el árbol de trabajo, sin commit.
+Entorno: contenedor `mdl-harness` sobre `main`, 2026-11-08, con el paquete publicado en `/data/dsh/profiles/node_modules/dsh-md-preview` mediante `install.sh`. La implementación llegó a `main` por los PR #9, #10 y #11.
+
+El usuario confirmó en la GUI, en escritorio y en teléfono, que el visor lee los documentos, agrupa por carpeta, cambia de documento, copia, descarga y abre los enlaces a un `.md` desde la conversación. Las correcciones del 9 de noviembre (punto de corte y banda del menú, enlaces desde la conversación, rutas absolutas) se validaron en esa misma sesión de uso.
 
 La evidencia reproducible es `mdl/plugins/md-preview/check.mjs`, que monta la mitad host sobre el `FileSystem` real (`@deepseek-ai/dsh-fs-local`) y ejecuta la mitad cliente dentro de un DOM de jsdom con una tabla de módulos simulada; las 49 comprobaciones pasan. La composición se validó además arrancando una instancia real de `dsh --profile web` sobre un `DSH_HOME` aislado en el puerto 3099.
 
@@ -91,21 +93,21 @@ La evidencia reproducible es `mdl/plugins/md-preview/check.mjs`, que monta la mi
 | Listado del workspace sin `node_modules` ni enlaces que salen | Validado | Arnéscer: sólo `README.md` y `docs/guide.md`; un enlace simbólico a `/tmp/mdp-harness/outside.md` no aparece |
 | Cercado de rutas | Validado | `__doc?path=../../etc/passwd` y su forma codificada → `The path cannot leave the session workspace.`; enlace que sale → `That path is outside the session workspace.`; activo que sale → `403 outside the workspace`; sesión desconocida → `404`; NUL → `403 forbidden path` en la ruta viva |
 | Documento servido con su directorio y su título | Validado | Arnéscer: `README.md` → `dir: ""`, `title: "Title"`; `docs/guide.md` → `dir: "docs"` |
-| Panel: abrir, listar, renderizar, imágenes e índice | Validado en DOM, pendiente en la GUI | 13 comprobaciones del arnéscer: el botón abre el panel, la lista muestra el árbol, el Markdown se renderiza, `![logo](docs/img/logo.png)` llega como `http://127.0.0.1:3080/md-viewer/s1/docs/img/logo.png`, el índice lista `1:Project, 2:Install, 2:Usage` y su botón lo oculta |
-| Maqueta de teléfono: una sola columna | Validado en DOM, pendiente en el teléfono | El panel abre en la lista, elegir `guide.md` cambia al documento con su nombre y el botón de vuelta, el índice se abre como hoja y vuelve a la lista con la carpeta abierta |
-| Árbol de carpetas plegado | Validado en DOM, pendiente en la GUI | Al abrir sólo se ven `README.md` y la carpeta `docs` con `aria-expanded="false"`; abrirla muestra `guide.md` y la carpeta `deep`, y abrir `deep` muestra `api.md` |
-| Maqueta ancha: árbol, índice y documento | Validado en DOM, pendiente en la GUI | Con viewport ancho el panel vuelve a las tres columnas y a la barra de cinco botones |
-| Enlace relativo entre documentos | Validado en DOM, pendiente en la GUI | Pulsar el enlace a `README.md` cambia el documento en el panel y el índice pasa a `Project, Install, Usage` |
-| Enlace a un documento desde fuera del panel | Validado en DOM, pendiente en la GUI | Un ancla `docs/guide.md` colocada fuera del panel abre el visor; el botón `title="docs/guide.md"` también; un enlace `https://` y uno con `target="_blank"` no se interceptan, y un botón con el texto `Save as .md` tampoco |
-| Ruta absoluta | Validado en DOM, pendiente en la GUI | `/workspace/demo/docs/guide.md` abre el visor sobre `docs/guide.md`; `/srv/projects/homepage/test.md`, como enlace y como ficha, no se intercepta |
-| Copiar y descargar | Validado en DOM, pendiente en la GUI | El portapapeles recibe el documento íntegro y la etiqueta pasa a `Copied ✓`; la descarga usa el nombre del archivo |
-| `md_preview`: tarjeta con el documento | Validado en DOM, pendiente con el agente | La tarjeta lee la ruta de `argsRaw` y renderiza el documento |
-| Posición de lectura conservada | Pendiente | jsdom no calcula la maquetación, así que `scrollTop` no es observable; requiere la GUI real |
-| Aspecto visual del Markdown real | Pendiente | El arnéscer sustituye `MarkdownText`; falta la comprobación visual en la GUI |
-| El visor sobrevive al reinicio del proceso | Pendiente | Requiere reiniciar el contenedor para que el proceso vivo componga la fila |
+| Panel: abrir, listar, renderizar, imágenes e índice | Validado (uso real y arnéscer) | 13 comprobaciones del arnéscer: el botón abre el panel, la lista muestra el árbol, el Markdown se renderiza, `![logo](docs/img/logo.png)` llega como `http://127.0.0.1:3080/md-viewer/s1/docs/img/logo.png`, el índice lista `1:Project, 2:Install, 2:Usage` y su botón lo oculta |
+| Maqueta de teléfono: una sola columna | Validado (uso real en teléfono) | El panel abre en la lista, elegir `guide.md` cambia al documento con su nombre y el botón de vuelta, el índice se abre como hoja y vuelve a la lista con la carpeta abierta |
+| Árbol de carpetas plegado | Validado (uso real y arnéscer) | Al abrir sólo se ven `README.md` y la carpeta `docs` con `aria-expanded="false"`; abrirla muestra `guide.md` y la carpeta `deep`, y abrir `deep` muestra `api.md` |
+| Maqueta ancha: árbol, índice y documento | Validado (uso real y arnéscer) | Con viewport ancho el panel vuelve a las tres columnas y a la barra de cinco botones |
+| Enlace relativo entre documentos | Validado (uso real y arnéscer) | Pulsar el enlace a `README.md` cambia el documento en el panel y el índice pasa a `Project, Install, Usage` |
+| Enlace a un documento desde fuera del panel | Validado (uso real y arnéscer) | Un ancla `docs/guide.md` colocada fuera del panel abre el visor; el botón `title="docs/guide.md"` también; un enlace `https://` y uno con `target="_blank"` no se interceptan, y un botón con el texto `Save as .md` tampoco |
+| Ruta absoluta | Parcial: la ruta de fuera del workspace se validó en uso; la absoluta que sí está dentro, solo en el arnéscer | `/workspace/demo/docs/guide.md` abre el visor sobre `docs/guide.md`; `/srv/projects/homepage/test.md`, como enlace y como ficha, no se intercepta |
+| Copiar y descargar | Validado (arnéscer) | El portapapeles recibe el documento íntegro y la etiqueta pasa a `Copied ✓`; la descarga usa el nombre del archivo |
+| `md_preview`: tarjeta con el documento | Parcial | El arnéscer cubre la tarjeta; `Tool.listTools` confirma que la herramienta está registrada para el agente. Ningún agente la ha llamado, así que la tarjeta en una conversación real sigue sin observarse |
+| Posición de lectura conservada | Pendiente | Nadie la ha ejercitado: cerrar un documento desplazado y volver a abrirlo. jsdom no calcula la maquetación, así que el arnéscer no puede cubrirla |
+| Aspecto visual del Markdown real | Validado | El usuario leyó documentos con tablas, código y fórmulas en escritorio y en teléfono |
+| El visor sobrevive al reinicio del proceso | Pendiente | La fila compone y el `install.sh` corre en cada arranque, pero nadie ha recreado el contenedor después de esta fase para observarlo |
 
 ## Resultado y pendientes
 
-- Resultado: el paquete está publicado en el volumen, compuesto en el perfil y validado por mitades. La revisión del uso real retiró la lectura de respuestas, agrupó la lista por carpeta y agregó la maqueta de teléfono.
-- Pendientes: el reinicio del contenedor (MDV-10), la comprobación visual con el `MarkdownText` real (MDV-02), el salto desde el índice y la memoria de lectura (MDV-03, MDV-06), la llamada real del agente a `md_preview` (MDV-08) y la validación en un teléfono (MDV-07, MDV-14). Hasta entonces ninguna de ellas se reporta como exitosa.
-- Decisión de salida: en implementación.
+- Resultado: el lector está en uso. El paquete vive en el volumen, la fila compone en el perfil, el usuario lo valida en escritorio y en teléfono, y las tres correcciones que salieron de ese uso están en `main`.
+- Pendientes: el salto desde el índice y la posición de lectura (MDV-03, MDV-06), la tarjeta de `md_preview` en una conversación real (MDV-08) y la observación tras recrear el contenedor (MDV-10). Ninguna se reporta como exitosa.
+- Decisión de salida: en implementación hasta que se registren esos cuatro puntos; el producto ya es usable y está desplegado.
