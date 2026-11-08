@@ -1,6 +1,6 @@
 # SPEC-021 — Bundles de plugin: lo que el navegador descarga antes de usarlo
 
-Estado: Borrador
+Estado: Borrador — el alcance necesita re-aprobación: el mecanismo de `B2` no existe en el contrato actual de bundles
 Fase: 21
 Commit base: `07bbe0d6e1`
 
@@ -68,6 +68,19 @@ El objetivo de `WEB-01` (≤400 KB) no es alcanzable sólo con esta fase ni con 
 - `packages/client/web/src/boot.tsx`: sólo si `B3` demuestra que una fila puede dejar de importarse al arrancar.
 - `apps/web/vite.config.ts`: ajustes de partición que impidan que un chunk compartido vuelva a entrar en la ruta crítica.
 - `mdl/ROADMAP.md`: fila de la fase al validar, según `SPEC-000`.
+
+## Hallazgo que bloquea el alcance aprobado
+
+`B2` suponía que un bundle de cliente podía partirse en varios archivos. No puede, en el contrato actual:
+
+- `packages/client/tsdown.client.ts` emite cada bundle como **un solo archivo CommonJS** llamado `client.js`, envuelto en `window.__ModuleLoader__.load({ id, factory })`, con los módulos de plataforma resueltos por el `require` que inyecta la tabla de módulos. Un import dinámico propio no tiene dónde emitirse.
+- `packages/client/modules/src/index.ts` sirve exactamente dos rutas por plugin, `/plugins/<id>/client.js` y `/plugins/<id>/client.js.map`; cualquier otro archivo bajo `/plugins/` responde `404`.
+
+Partir un bundle exige, entonces, extender ese contrato en tres piezas a la vez: salida ESM con chunks con hash en `tsdown.client.ts`, rutas adicionales en el servidor de bundles del host, y una forma de que la fábrica pida sus chunks sin perder la resolución de externos por tabla. No es una configuración de build.
+
+Al verificar la otra mitad del diagnóstico, la duplicación tampoco sostiene un atajo: los wire layers que el build permite inline (sesión, herramientas, `host-apiproxy`, marca) casi no aparecen en los bundles (`SESSION_FORMAT_VERSION` en 0 de 33, `dsh/tools` en 0 de 33, `brand` en 10 con sólo constantes), así que los 350–440 KB de los cuatro grandes son código propio de sus vistas, no copias de dependencias.
+
+Con eso, la única palanca que queda es no descargar el bundle de una fila que el usuario no abrió, es decir el **montaje perezoso de filas del Loader** que este documento había dejado fuera de alcance por costo. La alternativa intermedia —partir un paquete grande en dos paquetes de plugin, núcleo y detalle— tampoco sirve mientras todas las filas se monten al arrancar: el segundo bundle se descargaría igual.
 
 ## Validación ejecutada
 
