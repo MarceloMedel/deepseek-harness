@@ -63,15 +63,21 @@ Se completa después del desarrollo. Puntos de entrada confirmados al iniciar, p
 | Comprobación | Resultado | Evidencia |
 |---|---|---|
 | Línea base de la primera carga | 1 183 377 B (1155,6 KB), de los cuales `vendor` son 180,7 KB | Panel de red con navegador real, registrado en [SPEC-018](018-payload-cliente.md#validación-ejecutada) |
-| `WEB-08`, `V-01` a `V-04` | No ejecutadas | Pendiente: requieren el desarrollo |
+| `V1` diferir KaTeX | **Bloqueado por el build** | Se implementó la carga diferida del motor (import dinámico, aviso de llegada y re-render) y el build la anuló. Medido en cuatro configuraciones: (a) la actual, `index` 429,00 kB + `vendor` 744,87 kB (gzip 144,51 + 180,73) con KaTeX dentro de `vendor`; (b) KaTeX con chunk propio por `manualChunks`, 261,38 kB (gzip 77,62) **importado estáticamente** por `index`, así que no difiere; (c) sin la partición manual, `index` 912,85 kB (gzip 248,11) + `katex` 261,37 kB (gzip 77,61) **como import dinámico**, es decir el diferimiento funciona a cambio de perder la partición `index`/`vendor`; (d) los grupos de rolldown (`codeSplitting`/`advancedChunks`) no llegan al bundler — la función `test` del grupo no se invoca nunca |
+| `V1` diferir el pipeline de markdown | No ejecutada | Comparte la restricción de KaTeX: el paquete tendría que salir de `vendor`, y la partición manual lo devuelve a la ruta crítica |
+| `WEB-08`, `V-01`, `V-02`, `V-03`, `V-04` | No ejecutadas | Pendiente: dependen de `V1` |
 
 ## Resultado y pendientes
 
-- Resultado: pendiente.
-- Estimación: 727 KB fuera de la ruta crítica del primer render.
-- Pendientes o excepciones aceptadas: ninguno por defecto.
+- Resultado: bloqueado en el build, no en el código. El motor de KaTeX puede cargarse bajo demanda —el import dinámico, el aviso de llegada y el re-render funcionan y sus pruebas pasan— pero la partición de chunks del shell lo devuelve a la ruta crítica: `manualChunks` convierte el chunk del motor en un chunk más que `index` importa de forma estática.
+- Ganancia medida si se resuelve: **77,6 kB comprimidos** (KaTeX, 36,7% de los bytes de fuente del chunk `vendor`) y 4,1 kB de CSS.
+- Pendientes o excepciones aceptadas: elegir entre perder la partición `index`/`vendor` ([decisión de layout](../.agents/notes/implemented/architecture/2026-08-06-web-shell-dist-chunk-layout.md)) —con la que el motor sí queda diferido— o extender el build para que un chunk dinámico quede fuera de los chunks manuales. Las dos tocan decisiones ya tomadas y necesitan aprobación.
 - Decisión de salida: pendiente.
 
 ## Decisiones resueltas
 
 - Nace de `SPEC-018`, que dejó `P6`/`WEB-08` fuera al validarse sin navegador disponible. Separarlo mantiene la regla de un alcance por especificación y permite validar el resto del payload.
+
+## Estado de la validación
+
+Pendiente: `V1`, bloqueado por la partición de chunks del build (ver la tabla), y en consecuencia `WEB-08` y `V-01` a `V-04`.
