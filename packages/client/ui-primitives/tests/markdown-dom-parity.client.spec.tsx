@@ -16,8 +16,12 @@
 //   npx vitest run packages/client/ui-primitives/tests/markdown-dom-parity.spec.tsx
 //   diff -r <recorded fixtures> <this branch's fixtures>   # byte-identical
 import { cleanup, render } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { MarkdownText } from '@deepseek-ai/dsh-client-ui-primitives'
+import { loadMathEngine } from '../src/markdown/math-engine.ts'
+
+// The engine loads on demand in production; these fixtures pin the KaTeX tree.
+beforeAll(async () => { await loadMathEngine() })
 
 afterEach(cleanup)
 

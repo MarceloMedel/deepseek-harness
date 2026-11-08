@@ -1,4 +1,9 @@
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { transformSync } from 'esbuild'
 import { defineConfig } from 'vite'
 import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -39,8 +44,8 @@ function rejectStandaloneServe(): Plugin {
  * rides index.
  */
 const VENDOR_PACKAGES: ReadonlySet<string> = new Set([
-  // math
-  'katex',
+  // The math engine is absent on purpose: KaTeX's JavaScript is emitted as its
+  // own artifact (see emitMathEngine), so only its stylesheet rides a chunk.
   // syntax highlight (@shikijs/langs is handled separately below —
   // lazy grammars must not land here)
   'shiki',
@@ -115,8 +120,51 @@ function npmPackageOf(id: string): string | undefined {
   return first
 }
 
+/** KaTeX's engine, minified, emitted as its own asset rather than as a chunk.
+ *
+ * The engine is imported on demand — it is 36.7% of the vendor chunk's source
+ * bytes and nothing before the first formula needs it — but a dynamic import is
+ * not enough on its own: the bundler folds an unclaimed dynamic module into
+ * `vendor`, a manual chunk for it makes the entry import that chunk statically,
+ * and a second build entry resolved inside `node_modules` makes Rollup merge the
+ * whole `vendor` chunk into that entry. Emitting the file takes the engine out
+ * of the chunk graph entirely: the shell imports this URL at runtime, the
+ * artifact carries a content hash, and `/assets/` is served immutable.
+ *
+ * KaTeX ships its ESM build unminified and its minified build as UMD, so this
+ * minifies the ESM one rather than loading a second distribution shape.
+ */
+const MATH_ENGINE_SOURCE = (() => {
+  const uiPrimitives = fileURLToPath(new URL('../../packages/client/ui-primitives/package.json', import.meta.url))
+  const unminified = readFileSync(join(dirname(createRequire(uiPrimitives).resolve('katex/package.json')), 'dist', 'katex.mjs'), 'utf8')
+  return Buffer.from(transformSync(unminified, { minify: true, format: 'esm', target: 'es2022' }).code)
+})()
+
+/** Content-hashed URL of the emitted engine, substituted into the shell at build time. */
+const MATH_ENGINE_URL = `/assets/engine/katex-${createHash('sha1').update(MATH_ENGINE_SOURCE).digest('hex').slice(0, 12)}.js`
+
+/** Emit the engine as its own artifact, and serve it from the dev server too. */
+function emitMathEngine(): Plugin {
+  return {
+    name: 'dsh-emit-math-engine',
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: MATH_ENGINE_URL.slice(1), source: MATH_ENGINE_SOURCE })
+    },
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url?.split('?')[0] !== MATH_ENGINE_URL) {
+          next()
+          return
+        }
+        res.setHeader('content-type', 'text/javascript; charset=utf-8')
+        res.end(MATH_ENGINE_SOURCE)
+      })
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [rejectStandaloneServe(), react(), dropRedundantFonts()],
+  plugins: [rejectStandaloneServe(), react(), dropRedundantFonts(), emitMathEngine()],
   build: {
     sourcemap: true,
     // Fonts stay separate files: an inlined face puts its bytes in the
@@ -127,6 +175,8 @@ export default defineConfig({
     assetsInlineLimit: filePath => (FONT_EXTENSIONS.some(ext => filePath.endsWith(ext)) ? false : undefined),
     rollupOptions: {
       output: {
+        // Two entries: the shell keeps its content-hashed chunk names, the
+        // engine keeps the stable URL the build substitutes into the shell.
         // Output layout: the two main chunks stay at assets/ root; lazy
         // @shikijs/langs grammar chunks group under assets/langs/; fonts
         // (all KaTeX faces referenced by vendor.css) group under
@@ -181,6 +231,9 @@ export default defineConfig({
     ],
   },
   define: {
+    // The engine bundle's URL: the runtime import in
+    // `ui-primitives/markdown/math-engine.ts` takes a variable, never a specifier.
+    __DSH_MATH_ENGINE_URL__: JSON.stringify(MATH_ENGINE_URL),
     // vendored loader internal.ts: fromInternal() probes the Node major —
     // "0.0.0" takes neither branch, returning undefined (exactly the empty
     // internal slot the shell boot fills with the client module loader).

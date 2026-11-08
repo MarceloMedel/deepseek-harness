@@ -11,7 +11,7 @@
  * full parse self-heals it.
  */
 
-import { memo, useMemo, useRef } from 'react'
+import { memo, useMemo, useRef, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
 import { IncrementalMarkdownParser } from './incremental.ts'
 import { parseGfm, parseGfmWithMath } from './parse.ts'
@@ -20,6 +20,7 @@ import {
   wrapBlockChildren,
 } from './render.tsx'
 import type { MarkdownCodeLabels, MarkdownFileMentions, MarkdownRenderContext, ReferenceTargets } from './render.tsx'
+import { mathLoadCount, subscribeMathLoaded } from './math-engine.ts'
 import 'katex/dist/katex.min.css'
 import css from './MarkdownText.module.css'
 
@@ -65,6 +66,7 @@ class StreamingRenderer {
   private frozenFootnoteOrder: string[] = []
   private frozenFootnoteCounts = new Map<string, number>()
   private lastText: string | null = null
+  private lastMath = -1
   private lastRendered: ReactNode[] = []
 
   /** @param codeLabels - Fence copy labels baked into cached elements; the owner replaces the renderer when they change. */
@@ -77,7 +79,10 @@ class StreamingRenderer {
    * @returns Frozen elements, re-rendered tail, and the footnote section.
    */
   render(text: string): ReactNode[] {
-    if (text === this.lastText) return this.lastRendered
+    // A math engine arrival re-renders the same text: TeX nodes that painted
+    // their source have to become KaTeX trees, so the cache keys on both.
+    const math = mathLoadCount()
+    if (text === this.lastText && math === this.lastMath) return this.lastRendered
     const { frozen, tail, generation } = this.parser.update(text)
     if (generation !== this.generation) {
       this.generation = generation
@@ -132,6 +137,7 @@ class StreamingRenderer {
     const section = renderFootnoteSection(tailContext)
     if (section !== null) children.push('\n', section)
     this.lastText = text
+    this.lastMath = math
     this.lastRendered = children
     return this.lastRendered
   }
@@ -161,6 +167,9 @@ export const MarkdownText = memo(function MarkdownText({ text, streaming = false
 }) {
   const streamRef = useRef<StreamingRenderer | null>(null)
   const streamLabelsRef = useRef<MarkdownCodeLabels | undefined>(codeLabels)
+  // The engine arrives after the first formula paints, so the message
+  // re-renders once it does (the same contract the lazy grammars use).
+  const math = useSyncExternalStore(subscribeMathLoaded, mathLoadCount, mathLoadCount)
   const children = useMemo(() => {
     if (!streaming) {
       streamRef.current = null
@@ -171,6 +180,6 @@ export const MarkdownText = memo(function MarkdownText({ text, streaming = false
       streamLabelsRef.current = codeLabels
     }
     return streamRef.current.render(text)
-  }, [text, streaming, codeLabels, fileMentions])
+  }, [text, streaming, codeLabels, fileMentions, math])
   return <div className={css.markdown}>{children}</div>
 })

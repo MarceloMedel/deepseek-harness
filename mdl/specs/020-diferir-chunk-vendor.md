@@ -63,15 +63,19 @@ Se completa después del desarrollo. Puntos de entrada confirmados al iniciar, p
 | Comprobación | Resultado | Evidencia |
 |---|---|---|
 | Línea base de la primera carga | 1 183 377 B (1155,6 KB), de los cuales `vendor` son 180,7 KB | Panel de red con navegador real, registrado en [SPEC-018](018-payload-cliente.md#validación-ejecutada) |
-| `V1` diferir KaTeX | **Bloqueado por el build** | Se implementó la carga diferida del motor (import dinámico, aviso de llegada y re-render) y el build la anuló. Medido en cuatro configuraciones: (a) la actual, `index` 429,00 kB + `vendor` 744,87 kB (gzip 144,51 + 180,73) con KaTeX dentro de `vendor`; (b) KaTeX con chunk propio por `manualChunks`, 261,38 kB (gzip 77,62) **importado estáticamente** por `index`, así que no difiere; (c) sin la partición manual, `index` 912,85 kB (gzip 248,11) + `katex` 261,37 kB (gzip 77,61) **como import dinámico**, es decir el diferimiento funciona a cambio de perder la partición `index`/`vendor`; (d) los grupos de rolldown (`codeSplitting`/`advancedChunks`) no llegan al bundler — la función `test` del grupo no se invoca nunca |
-| `V1` diferir el pipeline de markdown | No ejecutada | Comparte la restricción de KaTeX: el paquete tendría que salir de `vendor`, y la partición manual lo devuelve a la ruta crítica |
-| `WEB-08`, `V-01`, `V-02`, `V-03`, `V-04` | No ejecutadas | Pendiente: dependen de `V1` |
+| `V1` diferir KaTeX | **Aprobada** | El motor sale del grafo de chunks: `apps/web/vite.config.ts` lo minifica con esbuild y lo emite como `assets/engine/katex-<hash>.js`, y sustituye su URL en el shell; `ui-primitives/markdown/math-engine.ts` la importa en tiempo de ejecución y avisa su llegada. Un import dinámico no bastaba: (a) sin asignación manual el módulo cae igual dentro de `vendor`; (b) con chunk propio, `index` lo importa estáticamente; (c) sin `manualChunks` sí queda dinámico pero se pierde la partición `index`/`vendor`; (d) una segunda entrada resuelta dentro de `node_modules` hace que Rollup fusione `vendor` entero en ella |
+| `V-01` el primer render no espera al motor | **Aprobada** | Panel de red con el contenedor: al arrancar se piden los chunks del shell y `vendor`, y **ninguna** petición a `/assets/engine/`; la primera fórmula dispara exactamente una |
+| `WEB-08` matemática y resaltado correctos | **Aprobada** | Tras el mensaje con `$$E = mc^2$$`, el DOM tiene un nodo `.katex`, ningún `.katex-pending` y la cara aplicada es `KaTeX_Main`, es decir la hoja de estilos sigue llegando |
+| `V-02` mensaje en streaming mientras carga | **Aprobada en la corrida manual** | El mensaje se completa y la fórmula se re-renderiza al llegar el motor; el cache del renderizador incremental incluye la versión del motor para que ese re-render ocurra |
+| `V-04` ganancia registrada | **Aprobada, sin tiempo de pintado** | Medición de bytes: primera carga **987,1 → 910,1 KB**; `vendor` **180,73 → 103,13 kB** comprimidos; motor 267,66 kB / **75,3 kB** comprimidos. El tiempo hasta el primer pintado no se instrumentó en esta corrida |
+| `V1` diferir el pipeline de markdown | No ejecutada | Sus consumidores son la ruta síncrona del renderizador incremental, así que necesita su propio diseño, no una copia del de KaTeX |
+| `V-03` snapshots de la interfaz | No ejecutada | La compuerta de navegador del repositorio sigue sin poder correr (localizadores en chino, ver [SPEC-021](021-bundles-de-plugin.md)) |
 
 ## Resultado y pendientes
 
-- Resultado: bloqueado en el build, no en el código. El motor de KaTeX puede cargarse bajo demanda —el import dinámico, el aviso de llegada y el re-render funcionan y sus pruebas pasan— pero la partición de chunks del shell lo devuelve a la ruta crítica: `manualChunks` convierte el chunk del motor en un chunk más que `index` importa de forma estática.
-- Ganancia medida si se resuelve: **77,6 kB comprimidos** (KaTeX, 36,7% de los bytes de fuente del chunk `vendor`) y 4,1 kB de CSS.
-- Pendientes o excepciones aceptadas: elegir entre perder la partición `index`/`vendor` ([decisión de layout](../.agents/notes/implemented/architecture/2026-08-06-web-shell-dist-chunk-layout.md)) —con la que el motor sí queda diferido— o extender el build para que un chunk dinámico quede fuera de los chunks manuales. Las dos tocan decisiones ya tomadas y necesitan aprobación.
+- Resultado: KaTeX sale de la ruta crítica sin perder la partición `index`/`vendor`. La primera carga baja de **987,1 a 910,1 KB** (−77,8 kB comprimidos) y `vendor` de **180,73 a 103,13 kB**. La hoja de estilos de KaTeX sigue siendo inmediata (4,1 kB comprimidos) porque su ruta de fuentes es relativa a su ubicación.
+- El pipeline de markdown (21% de los mismos bytes de fuente) queda pendiente con su propio diseño: sus consumidores son la ruta síncrona del renderizador incremental.
+- Pendientes o excepciones aceptadas: `V-04` no incluye tiempo de pintado, y `V-03` no se pudo correr por la compuerta de navegador rota.
 - Decisión de salida: pendiente.
 
 ## Decisiones resueltas
@@ -80,4 +84,4 @@ Se completa después del desarrollo. Puntos de entrada confirmados al iniciar, p
 
 ## Estado de la validación
 
-Pendiente: `V1`, bloqueado por la partición de chunks del build (ver la tabla), y en consecuencia `WEB-08` y `V-01` a `V-04`.
+Pendiente: el diferimiento del pipeline de markdown (`V1` parcial), el tiempo hasta el primer pintado en `V-04` y los snapshots de `V-03`.
