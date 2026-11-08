@@ -98,8 +98,9 @@ Fecha: `2026-11-07`. Entorno de análisis: checkout del repositorio, Node `22.23
 | Pruebas del paquete modificado | Aprobadas | 27 pruebas de `subagent-claude-code` (incluye la real-product con CLI real) |
 | Tipos | Aprobado | `tsc -b tsconfig.host.json` sin errores |
 | Build del workspace | Aprobado | `tsdown --env.DSH_BUILD_FACE host` completo |
-| `IMG-01` imagen ≤1,6 GB | **No ejecutada** | Requiere daemon Docker en el host: `docker image ls` antes y después |
-| `IMG-03` tabla de costo por herramienta | **No ejecutada** | Requiere `docker history` sobre la imagen construida |
+| Construcción en el host | Aprobada | `docker compose build` completo en 284,5 s; las tres etapas (`build`, `runtime-tree` ×2, `runtime`) construyen |
+| `IMG-01` imagen ≤1,6 GB | **No cumplida todavía** | `docker image ls`: **4,17 GB → 3,01 GB** (−28%). El objetivo no se alcanza con `A1`–`A3` y `C1`: quedan ~2,66 GB fuera de `/app` |
+| `IMG-03` tabla de costo por herramienta | **No ejecutada** | Necesita `docker history --no-trunc mdl-harness:local` sobre la imagen recién construida |
 | `IMG-04` ausencia de residuos | Parcial | Los comandos de barrido se ejecutaron sobre `/app` local; su verificación dentro de la imagen queda pendiente |
 | `IMG-05` producto operativo por proxy | **No ejecutada** | El arranque y el shell se validaron locales; nginx, Landlock y el proxy pertenecen al contenedor |
 | `IMG-06` flujo de PR con `gh` | **No ejecutada** | Requiere el contenedor con el token montado |
