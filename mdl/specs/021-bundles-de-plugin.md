@@ -94,14 +94,25 @@ Línea base medida antes de empezar (`2026-11-08`, contenedor `mdl-harness:local
 | Línea base del roster | 733,0 KB en 38 entradas; 9 marcadas `immediately` (249,4 KB) | `curl` con `Accept-Encoding: gzip` contra el contenedor, entrada por entrada de `window.__DSH_BOOT__` |
 | Línea base del inventario | 2 511 KB sin comprimir en 33 bundles; los cuatro mayores son el 60% | `stat` sobre `packages/client/*/lib/client.js` dentro de la imagen |
 | Línea base de la recarga | 88 785 B (86,7 KB) | Segunda carga en el mismo contexto de navegador |
-| `PLG-01` a `PLG-08` | No ejecutadas | Pendiente: requieren desarrollo |
-| Pendiente | No ejecutada | Pendiente |
+| `B2` mecanismo de montaje por fila | **Implementado** | `dsh.client.surface` viaja hasta la fila del grafo; el kernel no crea esas entradas y monta las de la superficie cuando un consumidor llama a `ctx.clientSurfaces.open(nombre)` (`packages/client/web/src/surfaces.ts`). Declarar `surface` e `immediately` juntas falla el escaneo |
+| `B3` filas diferibles | 5 filas, superficie `settings` | `ui-settings-models`, `ui-settings-plugins`, `ui-settings-plugin-inventory`, `ui-agent-preset` y `ui-permission-presets` sólo llenan slots de la superficie, así que se difirieron. `ui-model-selection` y `ui-directory-picker-browse` quedan en el arranque porque llenan el compositor y el sidebar |
+| `PLG-04` una vista no arrastra a las demás | **Aprobada** | Con caché vacía: al arrancar se piden **33** bundles y **0** de la superficie; al abrir Ajustes se piden exactamente los **5** y el panel muestra sus secciones (Modelos, Plugins, Presets de agente, Permisos); la segunda apertura no pide ninguno (**10,5 KB** de revalidación) |
+| `PLG-02` primera carga ≤700 KB | **No se cumple** | **1055,2 KB** (1 080 558 B) en 53 peticiones contra **1155,6 KB** de la línea base; los plugins bajan de 745,1 a **671,4 KB** |
+| `PLG-03` plugins en el arranque ≤400 KB | **No se cumple** | **671,4 KB** en 32 peticiones. Cumple el techo de `WEB-02` (≤700 KB) por primera vez, pero no el objetivo de esta fase |
+| `PLG-05` comportamiento igual | Aprobada en lo ejecutado | `vitest run packages/client packages/host/frontend-static`: **247 archivos y 3374 pruebas en verde**. En navegador: el panel abre, cambia de sección, cierra con Escape y con el botón, y no emite errores de consola |
+| `PLG-09` contrato de activación por fila | Aprobada | `packages/client/web/tests/surfaces.client.spec.ts` (secuencia, intento compartido, superficie desconocida, filas fallidas, reintento) y `settings-root.client.spec.tsx` (el panel espera el montaje; un fallo abre el panel y queda ruidoso en consola) |
+| `PLG-06` recarga con caché tibia | Parcial | La segunda apertura de Ajustes no pide bundles (10,5 KB); la recarga completa no se remedió en esta corrida |
+| `PLG-07` chunks inmutables | No ejecutada | Los bundles de superficie usan la misma ruta `/plugins/<id>/client.js` con `no-cache` y `ETag` de `SPEC-018`; no hay archivos nuevos que declarar inmutables |
+| `PLG-08` medición antes y después | Aprobada | Antes: 1155,6 KB / 745,1 KB (37 bundles, commit `07bbe0d6e1`). Después: 1055,2 KB / 671,4 KB (32 bundles, servidor del checkout con el árbol de trabajo de esta fase) |
+| `PLG-01` atribución por módulo | Parcial | Inventario por paquete completo (33 bundles, 2511 KB, los cuatro mayores son el 60%); la atribución por módulo no se hizo porque el build de bundles no emite metafichero |
+| Compuerta de navegador del repositorio | **No utilizable como compuerta** | 46 de los 70 archivos de `apps/web/tests/*.e2e.ts` siguen buscando la copia china que retiró [SPEC-019](019-idiomas-en-es.md); las pruebas de ajustes fallan por eso, no por esta fase |
 
 ## Resultado y pendientes
 
-- Resultado: pendiente.
-- Estimación: 745,1 KB de plugins en el arranque y 1155,6 KB de primera carga, contra 400 KB y 700 KB de `SPEC-018`; el techo alcanzable sin volver perezoso el montaje de filas se mide en esta fase.
-- Pendientes o excepciones aceptadas: ninguno por defecto.
+- Resultado: mecanismo implementado y una superficie diferida. La primera carga baja de **1155,6 a 1055,2 KB** y los plugins del arranque de **745,1 a 671,4 KB**, que deja `WEB-02` bajo su techo; `PLG-02` y `PLG-03` no se cumplen.
+- Lo que falta para el objetivo no es más mecanismo sino más superficies: los cuatro bundles mayores (conversación, runtime, trayectoria y conexión) siguen en el arranque, y sólo la trayectoria es diferible de verdad.
+- `ui-trajectory` queda fuera por una decisión de producto, no por el mecanismo: diferirla quita su pestaña del anillo de vistas de la conversación, porque el anillo proyecta las vistas registradas.
+- Pendientes o excepciones aceptadas: la compuerta de navegador del repositorio no se puede usar hasta migrar sus localizadores al español; la atribución por módulo necesita un metafichero que el build de bundles no emite.
 - Decisión de salida: pendiente.
 
 ## Decisiones resueltas

@@ -109,3 +109,33 @@ export function createLoaderStatusStore(): LoaderStatusStore {
     },
   }
 }
+
+/** The fiber facts the diagnostic reads (a structural subset of cordis's Fiber). */
+export interface EntryFiberFacts {
+  /** Projected fiber state. */
+  readonly state: import('@deepseek-ai/cordis').FiberState
+  /** Services the entry waits for, keyed by service name. */
+  readonly inject: Record<string, unknown>
+}
+
+/**
+ * Why one entry is not serving, or undefined when it is active. The boot sweep
+ * and the surface opener share this wording: a row that never activated has to
+ * say which one and why, wherever the row was created.
+ * @param name - entry name for the diagnostic.
+ * @param fiber - the entry's root fiber facts, absent when its import failed.
+ * @param hasService - whether the context currently provides a service.
+ * @returns the failure line, or undefined for an active entry.
+ */
+export function entryFailure(
+  name: string,
+  fiber: EntryFiberFacts | undefined,
+  hasService: (service: string) => boolean,
+): string | undefined {
+  if (fiber === undefined) return `${name}: import failed (see console for the import error)`
+  const state = STATE_LABELS[fiber.state]
+  if (state === 'active') return undefined
+  if (state !== 'pending') return `${name}: ${state}`
+  const missing = Object.keys(fiber.inject).filter(service => !hasService(service))
+  return `${name}: pending (waiting for service${missing.length === 1 ? '' : 's'}: ${missing.join(', ') || 'unknown'})`
+}

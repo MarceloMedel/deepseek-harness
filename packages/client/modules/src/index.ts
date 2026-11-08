@@ -49,6 +49,8 @@ interface DshClientDeclaration {
   platform: string
   /** Boot phase-one prefetch mark; absent means lazy (fetched on demand). */
   immediately?: boolean
+  /** Surface this row mounts with; absent means the row belongs to the boot tier. */
+  surface?: string
 }
 
 /** Resolved package metadata for one `dsh.client` package (cached per name, never expires). */
@@ -56,6 +58,7 @@ interface PkgMeta {
   clientPath: string
   inject?: string[]
   immediately: boolean
+  surface: string | undefined
 }
 
 /** Recovery instruction shared by grouped startup and steady-state bundle diagnostics. */
@@ -121,10 +124,17 @@ function parseDshClient(pkgName: string, value: unknown): DshClientDeclaration |
   if (decl.immediately !== undefined && typeof decl.immediately !== 'boolean') {
     throw new Error(`client-modules: ${pkgName} dsh.client.immediately must be a boolean`)
   }
+  if (decl.surface !== undefined && (typeof decl.surface !== 'string' || decl.surface.length === 0)) {
+    throw new Error(`client-modules: ${pkgName} dsh.client.surface must be a non-empty string`)
+  }
+  if (decl.surface !== undefined && decl.immediately === true) {
+    throw new Error(`client-modules: ${pkgName} declares both dsh.client.surface and dsh.client.immediately — a surface row mounts on demand, so it cannot also be a boot prefetch row`)
+  }
   return {
     platform: decl.platform,
     ...(decl.inject !== undefined ? { inject: decl.inject as string[] } : {}),
     ...(decl.immediately !== undefined ? { immediately: decl.immediately } : {}),
+    ...(decl.surface !== undefined ? { surface: decl.surface } : {}),
   }
 }
 
@@ -147,13 +157,20 @@ function shortHash(input: string | Buffer): string {
 }
 
 /** Graph row for one bundle rev (url carries the rev as its cache-busting query). */
-function graphRow(id: string, rev: string, injectEdges: string[] | undefined, immediately: boolean): WebBootEntry {
+function graphRow(
+  id: string,
+  rev: string,
+  injectEdges: string[] | undefined,
+  immediately: boolean,
+  surface: string | undefined,
+): WebBootEntry {
   return {
     id,
     url: `/plugins/${id}/client.js?rev=${rev}`,
     rev,
     ...(injectEdges !== undefined ? { inject: injectEdges } : {}),
     ...(immediately ? { immediately: true } : {}),
+    ...(surface !== undefined ? { surface } : {}),
   }
 }
 
@@ -276,7 +293,7 @@ export class ClientModuleRegistry extends Service {
     if (record === undefined) return undefined
     const rev = shortHash(readFileSync(record.clientPath))
     if (rev === record.entry.rev) return rev
-    record.entry = graphRow(id, rev, record.entry.inject, record.entry.immediately === true)
+    record.entry = graphRow(id, rev, record.entry.inject, record.entry.immediately === true, record.entry.surface)
     this.composed = this.compose()
     for (const notify of this.rebuildListeners) {
       // Containment: rebuilt() runs inside the HMR watch callback — a
@@ -359,6 +376,7 @@ export class ClientModuleRegistry extends Service {
       clientPath: join(dirname(pkgPath), clientRel),
       ...(decl.inject !== undefined ? { inject: decl.inject } : {}),
       immediately: decl.immediately === true,
+      surface: decl.surface,
     }
     this.pkgMeta.set(pkgName, meta)
     return meta
@@ -396,7 +414,10 @@ export class ClientModuleRegistry extends Service {
     // The rev rides the row from here on: a fiber restart reuses the row (and
     // its rev) untouched; only rebuilt() re-reads the bundle.
     const rev = this.initialBundleRevision(entryName, meta.clientPath)
-    this.table.set(entryName, { entry: graphRow(entryName, rev, meta.inject, meta.immediately), clientPath: meta.clientPath })
+    this.table.set(entryName, {
+      entry: graphRow(entryName, rev, meta.inject, meta.immediately, meta.surface),
+      clientPath: meta.clientPath,
+    })
     return true
   }
 

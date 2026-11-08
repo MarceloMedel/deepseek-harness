@@ -32,7 +32,7 @@
  * decisions (the app-shell assembly is itself a graph entry, the only
  * shell-own module registered with the module system).
  */
-import { Context } from '@deepseek-ai/cordis'
+import { Context, type Fiber } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import { createRoot, type Root } from 'react-dom/client'
 import * as ModulesClient from '@deepseek-ai/dsh-client-modules/client'
@@ -40,11 +40,13 @@ import {
   ClientModuleSystem, parseBootManifest,
   type BootManifest, type ClientModuleSystemOptions, type DshWindow,
 } from '@deepseek-ai/dsh-client-modules/client'
+import type { ClientSurfaces } from '@deepseek-ai/dsh-client-ui-slots'
+import { createSurfaceOpener } from './surfaces.ts'
 import * as AppShell from './app-shell.ts'
 import { APP_SHELL_ID } from './app-shell.ts'
 import { AppRoot } from './AppRoot.tsx'
 import { getStaticModules } from './seed.ts'
-import { STATE_LABELS, createLoaderStatusStore, createSignal } from './loader-status.ts'
+import { entryFailure, STATE_LABELS, createLoaderStatusStore, createSignal } from './loader-status.ts'
 import './base.css'
 
 /** Module transport hook the shell passes through (jsdom tests replace the <script> path). */
@@ -167,6 +169,27 @@ export class AppWebEntry {
     // is a guaranteed loud failure — correct as a tripwire, never as a path.
     loader.internal = this.modules as never
 
+    // Surface activation is provided before any entry exists, like the module
+    // system itself: a consumer opens a surface from its own apply path, and
+    // the kernel is the only holder of the Loader and the module transport.
+    const surfaces: ClientSurfaces = createSurfaceOpener({
+      rows: this.manifest.plugins,
+      prefetch: async (id) => {
+        // A failed prefetch resolves here: the entry's import reloads and owns
+        // the loud failure (same rule as the boot tier).
+        await this.modules.prefetch(id).catch(() => {})
+      },
+      create: async (id) => {
+        const entry = await loader.create({ name: id })
+        const fiber = loader.resolve(entry).fiber
+        await fiber?.await()
+        return fiber
+      },
+      inactiveReason: (name, fiber) => this.inactiveReason(name, fiber),
+      onStatus: (id, state) => { this.status.set(id, state) },
+    })
+    ctx.provide('clientSurfaces', surfaces)
+
     // Status projection: AppRoot displays fiber truth. Every internal/status
     // transition under an entry re-projects that entry's row from its ROOT
     // fiber (child plugin fibers share the same entry).
@@ -186,7 +209,10 @@ export class AppWebEntry {
     // its wrapper apply reads the kernel slot and provides ctx.modules (the
     // provide lives on the plugin face; see MODULES_ID for why the row loop
     // must then skip it).
-    const rows = [MODULES_ID, ...this.manifest.plugins.map(row => row.id).filter(id => id !== MODULES_ID), APP_SHELL_ID]
+    // Surface rows are not boot rows: their bundles stay unfetched until a
+    // feature opens the surface (see openSurface). Every other row mounts here.
+    const bootRows = this.manifest.plugins.filter(row => row.surface === undefined).map(row => row.id)
+    const rows = [MODULES_ID, ...bootRows.filter(id => id !== MODULES_ID), APP_SHELL_ID]
     // Entry creation order carries no semantics (fiber inject waiting owns
     // activation order); creating concurrently lets non-prefetched bundle
     // loads parallelize. The app-shell assembly entry is appended by the
@@ -214,25 +240,23 @@ export class AppWebEntry {
    * timeout, so this sweep is the fail-loud compensation).
    */
   private assertEntriesActive(): void {
-    const ctx = this.ctx
     const failures: string[] = []
-    for (const entry of ctx.loader.entries()) {
-      const name = entry.options.name
-      if (entry.fiber === undefined) {
-        failures.push(`${name}: import failed (see console for the import error)`)
-        continue
-      }
-      const state = STATE_LABELS[entry.fiber.state]
-      if (state === 'active') continue
-      if (state === 'pending') {
-        const missing = Object.keys(entry.fiber.inject).filter(service => ctx.get(service) === undefined)
-        failures.push(`${name}: pending (waiting for service${missing.length === 1 ? '' : 's'}: ${missing.join(', ') || 'unknown'})`)
-      } else {
-        failures.push(`${name}: ${state}`)
-      }
+    for (const entry of this.ctx.loader.entries()) {
+      const reason = this.inactiveReason(entry.options.name, entry.fiber)
+      if (reason !== undefined) failures.push(reason)
     }
     if (failures.length > 0) {
       throw new Error(`web boot: ${String(failures.length)} entr${failures.length === 1 ? 'y' : 'ies'} did not activate\n${failures.join('\n')}`)
     }
+  }
+
+  /**
+   * Why one entry is not serving, or undefined when it is active.
+   * @param name - entry name for the diagnostic.
+   * @param fiber - the entry's root fiber, absent when its import failed.
+   * @returns the failure line, or undefined for an active entry.
+   */
+  private inactiveReason(name: string, fiber: Fiber | undefined): string | undefined {
+    return entryFailure(name, fiber, service => this.ctx.get(service) === undefined)
   }
 }

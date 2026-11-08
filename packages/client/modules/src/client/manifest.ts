@@ -58,6 +58,13 @@ export interface WebBootEntry {
   inject?: string[]
   /** Stage-one prefetch mark: load the script for factory registration during module-face boot. */
   immediately?: boolean
+  /**
+   * Surface this row mounts with instead of at boot. A surface row's bundle is
+   * fetched and its entry created only when the shell opens that surface
+   * (`ctx.clientSurfaces.open`), so a visit that never opens it never pays for
+   * it. Absent means the row belongs to the boot tier.
+   */
+  surface?: string
 }
 
 /** The composed client entry graph the host injects as `window.__DSH_BOOT__`. */
@@ -86,6 +93,8 @@ export interface BootPluginRow {
   inject: string[]
   /** Stage-one prefetch tier (false when the wire omits it). */
   immediately: boolean
+  /** Surface this row mounts with; undefined for a boot row. */
+  surface: string | undefined
 }
 
 /** The parsed boot manifest: one wire, two consumer views. */
@@ -133,11 +142,18 @@ export function parseBootManifest(wire: unknown): BootManifest {
     if (row.immediately !== undefined && typeof row.immediately !== 'boolean') {
       throw new Error(`client-modules: boot manifest entry ${where} immediately must be a boolean`)
     }
+    if (row.surface !== undefined && (typeof row.surface !== 'string' || row.surface.length === 0)) {
+      throw new Error(`client-modules: boot manifest entry ${where} surface must be a non-empty string`)
+    }
+    if (row.surface !== undefined && row.immediately === true) {
+      throw new Error(`client-modules: boot manifest entry ${where} cannot be both immediately and a surface row`)
+    }
     modules.push({ id: row.id, url: row.url, rev: row.rev })
     plugins.push({
       id: row.id,
       inject: row.inject === undefined ? [] : [...row.inject as string[]],
       immediately: row.immediately === true,
+      surface: row.surface as string | undefined,
     })
   }
   return { rev: graph.rev, modules, plugins }

@@ -203,6 +203,10 @@ export class SlotTestRuntime {
     this.workspaces = new TestWorkspaces(this.stabilizer)
     ctx.provide('sessions', this.sessions)
     ctx.provide('workspaces', this.workspaces)
+    // Surface activation belongs to the web shell kernel, which a unit harness
+    // does not run: there is no boot graph to open a surface against, so the
+    // double resolves at once. A case that asserts the wait re-provides a gate.
+    ctx.provide('clientSurfaces', { open: async () => {} })
     // Capturing install: the production renderer does the rendering; the
     // wrapper only takes the host face for storeOf (no machinery copied).
     const renderer = createSlotRenderer()
