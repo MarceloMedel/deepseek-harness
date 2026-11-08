@@ -27,6 +27,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 19 | Idiomas: inglés y español, sin chino | [SPEC-019](specs/019-idiomas-en-es.md) | En implementación |
 | 20 | Diferir el chunk `vendor` del primer render | [SPEC-020](specs/020-diferir-chunk-vendor.md) | Aprobada |
 | 21 | Bundles de plugin: lo que se descarga antes de usarlo | [SPEC-021](specs/021-bundles-de-plugin.md) | En implementación |
+| 22 | Visor de Markdown dentro de la GUI | [SPEC-022](specs/022-visor-markdown.md) | En implementación |
 
 ## Dependencias
 
@@ -46,10 +47,13 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 - La Fase 16 parte de la Fase 15: convierte su comportamiento único en una preferencia de tres niveles sobre la misma presentación.
 - Las fases 17, 18 y 19 son independientes entre sí y se validan por separado: 17 reduce la imagen, 18 el payload del navegador y 19 los idiomas publicados.
 - Las fases 20 y 21 nacen de los dos objetivos que la fase 18 no cumplió y se validan por separado: 20 saca el chunk `vendor` de la ruta crítica del primer render, y 21 reduce los bundles de plugin que el arranque descarga.
+- La Fase 22 no depende de una fase anterior: agrega una superficie nueva por el mismo mecanismo que `dsh-html-preview` y se valida sobre el contenedor reiniciado.
 
 ## Próxima acción
 
 Las fases 1 a 11 están validadas y el fork se reproduce desde un clon limpio de `main` sin afectar la instancia viva. Las fases 15 y 16 se validaron sobre el despliegue HTTPS y llegaron a `main` por el PR #5. La Fase 9 se validó en un teléfono sobre la imagen reconstruida desde la rama `feat/mobile-shell`, y las fases 9, 10 y 11 llegaron a `main` por los PR #1, #2 y #3 del fork, con el agente empujando y abriendo el PR desde el contenedor. Queda por decidir si la interfaz móvil continúa con detalles, ajustes y aprobaciones como hoja a pantalla completa, y si se crea un tag local de release.
+
+La Fase 22 tiene el visor publicado en el volumen y la fila compuesta en el perfil; falta reiniciar el contenedor para que el proceso vivo la monte y cerrar la comprobación visual.
 
 ## Decisiones del despliegue VPS
 
