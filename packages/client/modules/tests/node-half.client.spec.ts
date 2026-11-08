@@ -150,4 +150,46 @@ describe('client bundle activation', () => {
     })
     expect(body).toBe(map)
   })
+
+  it('revalidates a bundle by content ETag, including the weak form a proxy publishes', async () => {
+    const packageName = '@fixture/etag'
+    const clientPath = writePackage(packageName)
+    mkdirSync(dirname(clientPath), { recursive: true })
+    writeFileSync(clientPath, 'export const bundle = 1\n')
+    const { route } = constructWithRoute([packageName])
+    const call = async (ifNoneMatch?: string): Promise<{ status: number; headers: Record<string, string> | undefined }> => {
+      let status = 0
+      let headers: Record<string, string> | undefined
+      const response = {
+        writeHead(nextStatus: number, nextHeaders?: Record<string, string>) {
+          status = nextStatus
+          headers = nextHeaders
+          return response
+        },
+        end() {
+          return response
+        },
+      } as unknown as ServerResponse
+      await route.handler({
+        method: 'GET',
+        url: `/plugins/${packageName}/client.js`,
+        headers: ifNoneMatch === undefined ? {} : { 'if-none-match': ifNoneMatch },
+      } as unknown as IncomingMessage, response)
+      return { status, headers }
+    }
+
+    const first = await call()
+    expect(first.status).toBe(200)
+    const etag = first.headers?.etag
+    expect(etag).toMatch(/^"[A-Za-z0-9_-]+"$/)
+    expect(first.headers?.['cache-control']).toBe('no-cache')
+
+    expect((await call(etag)).status).toBe(304)
+    // A compressing proxy republishes the tag as `W/"..."` and the browser echoes
+    // that form, so revalidation has to compare weakly or the body is resent.
+    expect((await call(`W/${etag ?? ''}`)).status).toBe(304)
+    expect((await call(`"other", W/${etag ?? ''}`)).status).toBe(304)
+    expect((await call('"stale-revision"')).status).toBe(200)
+    expect((await call('W/"stale-revision"')).status).toBe(200)
+  })
 })
