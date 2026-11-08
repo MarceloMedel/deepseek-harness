@@ -60,7 +60,7 @@ RUN rm -rf examples website python packages/test-support packages/typert/generat
     && rm -rf node_modules \
     && corepack pnpm install --prod --frozen-lockfile \
     && node scripts/link-workspace-peers.mjs . \
-    && test -e node_modules/@deepseek-ai/cordis
+    && test -e packages/boot/app-boot/node_modules/@deepseek-ai/cordis
 
 RUN rm -rf coverage docs website mdl scripts .github .vscode .gitlab-ci.yml \
     && rm -rf .agents/notes \
