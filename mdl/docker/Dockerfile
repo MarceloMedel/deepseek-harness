@@ -63,7 +63,7 @@ RUN rm -rf examples website python packages/test-support packages/typert/generat
     && test -e packages/boot/app-boot/node_modules/@deepseek-ai/cordis
 
 RUN rm -rf coverage docs website mdl scripts .github .vscode .gitlab-ci.yml \
-    && rm -rf .agents/notes \
+    && rm -rf .agents/notes .sessions .pnpm-store \
     && find packages apps vendor -type d \( -name tests -o -name stress-tests -o -name src \) -prune -exec rm -rf {} + \
     && find packages apps vendor -path '*/lib/*' \( -name '*.map' -o -name '*.d.ts' \) -delete \
     && find . -name '*.tsbuildinfo' -delete \
