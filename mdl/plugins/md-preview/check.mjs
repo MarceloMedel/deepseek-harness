@@ -382,6 +382,43 @@ await React.act(async () => {
 })
 check('the tool card reads the path from the call', extra.textContent.includes('docs/guide.md'))
 
+// A reply that links the report it wrote renders a plain anchor outside the
+// panel; clicking it must open the document instead of navigating the shell.
+const chat = document.createElement('div')
+chat.innerHTML = '<p>Wrote <a href="docs/guide.md">the guide</a> and '
+  + '<a href="https://example.com/x.md">a remote one</a> and '
+  + '<a href="docs/guide.md" target="_blank">a new-tab one</a>.</p>'
+document.body.append(chat)
+click(chat.querySelector('a[href="docs/guide.md"]'))
+await settle()
+check('a document link in a reply opens the reader on that file',
+  document.querySelector('.dsh-mdp-card') !== null
+  && document.querySelector('.stub-markdown')?.textContent.includes('Guide'),
+  document.querySelector('.dsh-mdp-sub')?.textContent)
+// A file token (an inline-code mention or a produced-files chip) is a button
+// whose title is the full path; it must open the reader rather than the OS.
+const chip = document.createElement('div')
+chip.innerHTML = '<button type="button" title="docs/guide.md">guide.md</button>'
+  + '<button type="button" title="Save as .md">Save</button>'
+document.body.append(chip)
+const chipEvent = new dom.window.MouseEvent('click', { bubbles: true, cancelable: true })
+chip.querySelector('button[title="docs/guide.md"]').dispatchEvent(chipEvent)
+await settle()
+check('a document file token opens the reader too', chipEvent.defaultPrevented === true)
+const decoy = chip.querySelector('button[title="Save as .md"]')
+const decoyEvent = new dom.window.MouseEvent('click', { bubbles: true, cancelable: true })
+decoy.dispatchEvent(decoyEvent)
+check('a control whose label merely ends in .md is left alone', decoyEvent.defaultPrevented === false)
+
+const remote = chat.querySelector('a[href^="https://"]')
+const remoteEvent = new dom.window.MouseEvent('click', { bubbles: true, cancelable: true })
+remote.dispatchEvent(remoteEvent)
+check('a remote link keeps the browser\'s behaviour', remoteEvent.defaultPrevented === false)
+const newTab = chat.querySelector('a[target="_blank"]')
+const newTabEvent = new dom.window.MouseEvent('click', { bubbles: true, cancelable: true })
+newTab.dispatchEvent(newTabEvent)
+check('a link that asks for a new tab is left alone', newTabEvent.defaultPrevented === false)
+
 click(document.querySelector('.dsh-mdp-hbtn'))
 await settle()
 check('the header button closes the panel again', document.querySelector('.dsh-mdp-card') === null)

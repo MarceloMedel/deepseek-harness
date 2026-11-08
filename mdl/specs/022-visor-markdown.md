@@ -20,7 +20,7 @@ Una visita a un `.md` fuera de la aplicación obliga a cambiar de ventana, y el 
 - `MD-01` Un panel flotante con los `.md` del workspace de la sesión agrupados por carpeta y con las carpetas plegadas, abierto desde un botón en la cabecera de la sesión.
 - `MD-02` Render del documento con `MarkdownText`: GFM, tablas, bloques de código con resaltado y matemáticas en TeX, igual que la conversación.
 - `MD-03` Índice de encabezados con salto a cada uno dentro del panel.
-- `MD-04` Navegación entre documentos: un enlace relativo a otro `.md` se abre en el visor en vez de salir de la aplicación.
+- `MD-04` Navegación entre documentos: un enlace relativo a otro `.md` se abre en el visor en vez de salir de la aplicación, tanto dentro del panel como en cualquier otra superficie, incluida una respuesta de la conversación y su ficha de archivo producido.
 - `MD-05` Copiar el documento al portapapeles y descargarlo.
 - `MD-06` Posición de lectura conservada por documento mientras el panel siga abierto.
 - `MD-07` Una sola columna en el ancho de teléfono: primero la lista de archivos, después el documento con un botón de vuelta y el índice como hoja sobre el texto.
@@ -47,6 +47,7 @@ Una visita a un `.md` fuera de la aplicación obliga a cambiar de ventana, y el 
 | `MDV-02` | Un `.md` con tablas, código y fórmulas se ve igual que en la conversación | Validación manual con un documento de prueba en el workspace |
 | `MDV-03` | El índice lista los encabezados del documento abierto y cada entrada desplaza el documento hasta él | Validación manual |
 | `MDV-04` | Un enlace relativo a otro `.md` cambia el documento en el visor sin recargar la página | Validación manual sobre dos documentos enlazados |
+| `MDV-16` | Un enlace a un `.md` desde una respuesta de la conversación, o su ficha de archivo producido, abre el visor; un enlace remoto, uno con `target="_blank"` y un control cuyo texto sólo termina en `.md` conservan su comportamiento | Arnéscer de `check.mjs` y validación manual en la GUI |
 | `MDV-05` | Copiar y descargar entregan el contenido íntegro del documento | Validación manual |
 | `MDV-06` | Cerrar y volver a abrir un documento restaura la posición de lectura | Validación manual |
 | `MDV-08` | `md_preview` devuelve la ruta y el tamaño, y su tarjeta muestra el documento | Prueba del agente en una sesión real |
@@ -80,7 +81,7 @@ Una visita a un `.md` fuera de la aplicación obliga a cambiar de ventana, y el 
 
 Entorno: contenedor `mdl-harness` sobre `main` en `7bcd50c8`, 2026-11-08, con el paquete publicado en `/data/dsh/profiles/node_modules/dsh-md-preview` mediante `install.sh`. Los cambios de esta fase están en el árbol de trabajo, sin commit.
 
-La evidencia reproducible es `mdl/plugins/md-preview/check.mjs`, que monta la mitad host sobre el `FileSystem` real (`@deepseek-ai/dsh-fs-local`) y ejecuta la mitad cliente dentro de un DOM de jsdom con una tabla de módulos simulada; las 39 comprobaciones pasan. La composición se validó además arrancando una instancia real de `dsh --profile web` sobre un `DSH_HOME` aislado en el puerto 3099.
+La evidencia reproducible es `mdl/plugins/md-preview/check.mjs`, que monta la mitad host sobre el `FileSystem` real (`@deepseek-ai/dsh-fs-local`) y ejecuta la mitad cliente dentro de un DOM de jsdom con una tabla de módulos simulada; las 46 comprobaciones pasan. La composición se validó además arrancando una instancia real de `dsh --profile web` sobre un `DSH_HOME` aislado en el puerto 3099.
 
 | Comprobación | Resultado | Evidencia |
 |---|---|---|
@@ -94,6 +95,7 @@ La evidencia reproducible es `mdl/plugins/md-preview/check.mjs`, que monta la mi
 | Árbol de carpetas plegado | Validado en DOM, pendiente en la GUI | Al abrir sólo se ven `README.md` y la carpeta `docs` con `aria-expanded="false"`; abrirla muestra `guide.md` y la carpeta `deep`, y abrir `deep` muestra `api.md` |
 | Maqueta ancha: árbol, índice y documento | Validado en DOM, pendiente en la GUI | Con viewport ancho el panel vuelve a las tres columnas y a la barra de cinco botones |
 | Enlace relativo entre documentos | Validado en DOM, pendiente en la GUI | Pulsar el enlace a `README.md` cambia el documento en el panel y el índice pasa a `Project, Install, Usage` |
+| Enlace a un documento desde fuera del panel | Validado en DOM, pendiente en la GUI | Un ancla `docs/guide.md` colocada fuera del panel abre el visor; el botón `title="docs/guide.md"` también; un enlace `https://` y uno con `target="_blank"` no se interceptan, y un botón con el texto `Save as .md` tampoco |
 | Copiar y descargar | Validado en DOM, pendiente en la GUI | El portapapeles recibe el documento íntegro y la etiqueta pasa a `Copied ✓`; la descarga usa el nombre del archivo |
 | `md_preview`: tarjeta con el documento | Validado en DOM, pendiente con el agente | La tarjeta lee la ruta de `argsRaw` y renderiza el documento |
 | Posición de lectura conservada | Pendiente | jsdom no calcula la maquetación, así que `scrollTop` no es observable; requiere la GUI real |

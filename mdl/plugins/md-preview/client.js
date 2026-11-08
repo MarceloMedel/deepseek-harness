@@ -37,6 +37,8 @@ window.__ModuleLoader__.load({
     const ROUTE = '/md-viewer'
     /** Extensions the reader opens in place when a document links to them. */
     const DOC_EXT = /\.(md|markdown|mdown|mkd)$/i
+    /** A bare workspace path to a document: no spaces, so a sentence ending in `.md` never matches. */
+    const DOC_PATH = /^\S+\.(md|markdown|mdown|mkd)$/i
     /**
      * Viewport width at or below which the panel becomes a single-pane phone
      * layout. It must match the shell's own phone breakpoint (`MOBILE_MAX` in
@@ -246,6 +248,34 @@ window.__ModuleLoader__.load({
         stack.push(part)
       }
       return stack.length === 0 ? null : stack.join('/')
+    }
+
+    /**
+     * A click handler that keeps relative links inside the reader.
+     *
+     * A document link opens the other document in the panel; any other relative
+     * target opens on the host route in a new tab. Absolute links, anchors and
+     * modified clicks keep the browser's behaviour.
+     * @param dir - directory the surrounding document lives in ('' at the root).
+     * @param sessionId - session whose workspace serves the target.
+     * @returns the click handler.
+     */
+    function followLink(dir, sessionId) {
+      return (event) => {
+        if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+        const node = event.target
+        if (node === null || node === undefined || typeof node.closest !== 'function') return
+        const anchor = node.closest('a[href]')
+        if (anchor === null || anchor.hasAttribute('download')) return
+        const href = anchor.getAttribute('href') ?? ''
+        if (href === '' || isAbsoluteDest(href)) return
+        const { body } = splitDest(href)
+        const resolved = resolveRel(dir, body)
+        if (resolved === null) return
+        event.preventDefault()
+        if (DOC_EXT.test(resolved)) store.openFile(resolved)
+        else window.open(assetUrl(sessionId, resolved), '_blank', 'noopener,noreferrer')
+      }
     }
 
     /**
@@ -704,21 +734,7 @@ window.__ModuleLoader__.load({
       }
 
       /** Open a relative link in place instead of navigating away from the application. */
-      const onClickDoc = (event) => {
-        if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
-        const node = event.target
-        if (node === null || node === undefined || typeof node.closest !== 'function') return
-        const anchor = node.closest('a[href]')
-        if (anchor === null) return
-        const href = anchor.getAttribute('href') ?? ''
-        if (href === '' || isAbsoluteDest(href)) return
-        const { body } = splitDest(href)
-        const resolved = resolveRel(doc.dir, body)
-        if (resolved === null) return
-        event.preventDefault()
-        if (DOC_EXT.test(resolved)) store.openFile(resolved)
-        else window.open(assetUrl(current.sessionId, resolved), '_blank', 'noopener,noreferrer')
-      }
+      const onClickDoc = followLink(doc.dir, current.sessionId)
 
       /** Copy the open document, reporting the outcome in the toolbar. */
       const onCopy = async () => {
@@ -916,7 +932,7 @@ window.__ModuleLoader__.load({
       let body
       if (doc.status === 'error') body = React.createElement('div', { className: 'dsh-mdp-error' }, doc.error)
       else if (doc.status === 'ok' && doc.text !== null) {
-        body = React.createElement('div', { className: 'dsh-mdp-carddoc' },
+        body = React.createElement('div', { className: 'dsh-mdp-carddoc', onClick: followLink(doc.dir, String(sessionId)) },
           React.createElement(MarkdownText, { text: rewriteAssets(doc.text, doc.dir, String(sessionId)) }),
         )
       } else body = note(t.loading)
@@ -945,6 +961,62 @@ window.__ModuleLoader__.load({
         sync()
         return ctx.locale.subscribe(sync)
       }, 'md-preview: locale preference')
+
+      // A document link outside this panel — the common case is a reply that
+      // links the report it just wrote — would otherwise navigate the shell to a
+      // path it cannot route. Two shapes reach the browser:
+      //
+      //   - a Markdown link, rendered as a plain anchor with the path as its href;
+      //   - a file token, rendered as a button whose `title` is the full path —
+      //     the inline-code mention inside prose and the produced-files chip both
+      //     carry it, and both hand the click to the chat view's OS file opener.
+      //
+      // This plugin cannot replace that opener: `chatFileMentions` has one
+      // provider. The listener therefore looks at the attribute those controls
+      // already publish. It requires the title to be a bare path, so an
+      // unrelated control whose label merely ends in `.md` stays untouched.
+      // Clicks inside the panel are left to its own handlers, which resolve
+      // against the document's directory rather than the workspace root.
+      ctx.effect(() => {
+        const openIfDocument = (path) => {
+          const resolved = resolveRel('', path)
+          const sessionId = store.get().sessionId
+          if (resolved === null || sessionId === '' || !DOC_EXT.test(resolved)) return false
+          store.openFile(resolved)
+          return true
+        }
+        const onDocumentClick = (event) => {
+          if (event.defaultPrevented || event.button !== 0) return
+          const node = event.target
+          if (node === null || node === undefined || typeof node.closest !== 'function') return
+          // The reader and the tool card handle their own links, resolved
+          // against the document's directory; both carry this root class.
+          if (node.closest('.dsh-mdp-root') !== null) return
+          const anchor = node.closest('a[href]')
+          if (anchor !== null) {
+            if (anchor.hasAttribute('download')) return
+            const target = anchor.getAttribute('target')
+            if (target !== null && target !== '') return
+            const href = anchor.getAttribute('href') ?? ''
+            if (href === '' || isAbsoluteDest(href)) return
+            if (openIfDocument(splitDest(href).body)) {
+              event.preventDefault()
+              event.stopPropagation()
+            }
+            return
+          }
+          const chip = node.closest('button[title]')
+          if (chip === null) return
+          const title = (chip.getAttribute('title') ?? '').trim()
+          if (!DOC_PATH.test(title)) return
+          if (openIfDocument(title)) {
+            event.preventDefault()
+            event.stopPropagation()
+          }
+        }
+        window.addEventListener('click', onDocumentClick, true)
+        return () => window.removeEventListener('click', onDocumentClick, true)
+      }, 'md-preview: document links')
 
       ctx.slots.inject('conversation.session.header.actions', () => ctx.slots.register(
         { name: 'conversation.session.header.actions', id: 'md-preview-open', order: 31 },
