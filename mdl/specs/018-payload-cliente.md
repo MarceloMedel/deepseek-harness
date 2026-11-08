@@ -71,26 +71,25 @@ La instalación en la pantalla de inicio del iPhone ([SPEC-014](014-instalacion-
 
 ## Validación ejecutada
 
-Fecha: `2026-11-07`. Entorno: checkout del repositorio, Node `22.23.4`, build de `apps/web` con Vite, servidor `dsh web` local. Sin navegador y sin capacidad de inspección visual en este entorno.
+Fecha: `2026-11-07`/`2026-11-08`. Entornos: checkout del repositorio con Node `22.23.4` y build de `apps/web` con Vite; y el contenedor `mdl-harness:local` en el VPS detrás de su proxy. Sin navegador en ninguno de los dos, así que las mediciones de transferencia salen de `curl` y no de una carga real.
 
 | Comprobación | Resultado | Evidencia |
 |---|---|---|
-| `P1` compresión `gzip` | Implementada, **no medida** | `mdl/docker/nginx.conf` habilita `gzip` con los tipos del shell y de los bundles; la medición de `WEB-01`/`WEB-02` necesita el contenedor |
+| `P1` compresión `gzip` | **Aprobada en el contenedor** | `Content-Encoding: gzip` en el asset con hash y en el bundle de plugin; un bundle pasa de 52 153 a **11 606 bytes** transferidos |
 | `P2` caché inmutable | Aprobada | `cacheControlFor` en `frontend-static`: `/assets/*` responde `public, max-age=31536000, immutable` y los nombres estables `no-cache`; prueba real-composition afirma ambas |
-| `P3` `ETag` y `304` | Aprobada | `/plugins/<id>/client.js` responde `ETag` derivado del contenido y `304` ante el mismo validador; prueba nueva más las existentes |
+| `P3` `ETag` y `304` | **Aprobada en el contenedor, tras corregir un defecto** | La comparación exigía igualdad exacta con el validador fuerte, pero nginx publica `W/"…"` al comprimir, así que un navegador real nunca recibía `304`; la comparación ahora es débil, como pide RFC 9110 para `If-None-Match`, y el contenedor responde **304** ante `W/"9B1W…"` |
 | `P4` fuentes sólo `woff2` | Aprobada | Build de `apps/web`: las caras KaTeX quedan en 19 archivos `woff2` (250,2 KB); sobrevive un `woff`/`ttf` de 11,7 KB de otra familia sin `woff2`, que se conserva a propósito |
 | `P5` iconos | Aprobada | 507 KB → **228 KB** (icon-512 256,4→103,9; maskable 169,8→85,7; icon-192 41,3→17,3; apple-touch 36,7→15,3) por cuantización a 256 colores; PSNR 39,6–41,2 dB contra el original |
 | `P7` sin sourcemaps publicados | Aprobada | La etapa `runtime-tree` borra `apps/web/dist/**/*.map`; los archivos locales se conservan para depuración del build |
 | `P6` diferir el chunk `vendor` | **Pendiente** | Requiere cambiar el camino de render de matemática y resaltado y verificarlo en navegador; ver nota al final |
-| `WEB-01`/`WEB-02` transferencia | **No ejecutadas** | Requieren contenedor y panel de red |
-| `WEB-04` `ETag` y `304` | **Aprobada en el contenedor** | `curl -sI` sobre `/plugins/@deepseek-ai/dsh-typert-registry/client.js` devuelve `200` con `etag: "9B1W4LdHDssa25YKWsfUbY8S8CA"` y `cache-control: no-cache`; la repetición con `If-None-Match` devuelve **304** |
-| `WEB-03` caché inmutable | Pendiente de medición | La primera comprobación usó una URL con `assets/` duplicado y recibió el fallback SPA |
-| `WEB-06` compresión | Pendiente de medición | La petición no envió `Accept-Encoding`; `Vary: Accept-Encoding` confirma que nginx la considera |
+| `WEB-01`/`WEB-02` transferencia | Parcial | Medido por `curl` con `Accept-Encoding: gzip`: el shell responde y un bundle transfiere 11 606 bytes. La suma de una primera carga completa y del roster entero necesita el panel de red del navegador |
+| `WEB-04` `ETag` y `304` | **Aprobada en el contenedor** | `curl -sI` devuelve `200` con `cache-control: no-cache` y un validador; la repetición con `If-None-Match: W/"9B1W4LdHDssa25YKWsfUbY8S8CA"` devuelve **304** |
+| `WEB-03` caché inmutable | **Aprobada en el contenedor** | `/assets/index-BHhrez7c.js` responde `cache-control: public, max-age=31536000, immutable` con `Content-Encoding: gzip` |
 | `WEB-05` semánticas previas | Aprobada | Las pruebas de traversal 403, SPA fallback, `octet-stream` y 405 siguen pasando |
 | `WEB-08` matemática y resaltado | **No ejecutada** | Depende de `P6` |
 | `WEB-10` snapshots | **No ejecutada** | `pnpm run test:snapshot` y `test:web` no se corrieron en este entorno |
 
-Pruebas ejecutadas: `packages/host/frontend-static` y `packages/client/modules` — 29 pruebas en verde; `oxlint` sin errores en los archivos tocados; build de `apps/web` completo.
+Pruebas ejecutadas: `packages/host/frontend-static` y `packages/client/modules` — 28 pruebas en verde, incluidas las del validador débil y de la lista de validadores; `oxlint` sin errores en los archivos tocados; build de `apps/web` y de los bundles de cliente completos.
 
 ## Resultado y pendientes
 
