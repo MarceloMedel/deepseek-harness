@@ -98,8 +98,10 @@ Fecha: `2026-11-07`. Entorno: checkout del repositorio, Node `22.23.4`, pnpm `11
 | `LANG-07` `doc-sync` | Aprobado salvo `docs:build` | **25 gates en verde** de 26; `docs:build` no puede ejecutarse aquí porque su script interno invoca `pnpm`, ausente del PATH de este shell, pero el build subyacente sí corre: `vitepress build .` completa en 56 s |
 | `LANG-08` enlaces y sitio | Aprobado | `verify-md-links`: 969 archivos sin enlaces roto; el build de VitePress completa (`vitepress build .`, 56 s) |
 | `LANG-10` pruebas | Aprobado en lo que cubre el cambio | suite completa: **798 archivos y 13 310 pruebas en verde**. Las 28 pruebas restantes en 5 archivos (`fs-sandbox`, `terminal-bash`, `tool-terminal`, `tool-bash-persistent`, `subprocess-local/process-exit`) fallan por el entorno, no por este cambio: `EACCES mkdtemp '/home/node/…'` del sandbox de archivos y `forkpty(3) failed` del contenedor. En esos paquetes el cambio solo toca sus README |
-| `LANG-03`/`LANG-04`/`LANG-05` | **No ejecutadas** | Requieren navegador y el contenedor: navegador sin idioma soportado, navegador en español y persistencia de la elección tras reiniciar |
-| `LANG-09` revisión visual en español | **No ejecutada** | Sin navegador ni lectura de imágenes en este entorno |
+| `LANG-03` navegador no soportado → inglés | **Aprobada** | Confirmada por el usuario en navegador contra el contenedor |
+| `LANG-04` navegador en español → español | **Aprobada** | Confirmada por el usuario en navegador contra el contenedor |
+| `LANG-05` persistencia de la elección | **Pendiente** | El reinicio se intentó sin `-f`, así que `docker compose` no encontró el archivo; falta repetirlo con `down` + `up -d` |
+| `LANG-09` revisión visual en español | Aprobada en escritorio | El usuario confirmó la interfaz en español; el ancho de 390 px no se revisó por separado |
 
 Cambios de herramienta que la retirada del chino exigió, registrados aquí porque alteran compuertas compartidas:
 

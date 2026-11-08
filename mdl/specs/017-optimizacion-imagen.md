@@ -103,8 +103,8 @@ Fecha: `2026-11-07`. Entorno de análisis: checkout del repositorio, Node `22.23
 | `IMG-03` tabla de costo por herramienta | Aprobada | `docker history --no-trunc`: capa `COPY /app /app` 1,86 GB, apt + `gh` + `uv` **245 MB**, capa de Node 154 MB. La auditoría de herramientas de `B` dejó la cadena en 245 MB |
 | Fuga de estado en la imagen | Corregida | `COPY /app /app` medía 1,86 GB con `/app` a 345 MB: el contexto arrastraba `.sessions` (1,4 GB de registros de sesión del checkout, comprimidos a 9 MB en la transferencia) y el store de pnpm. `.dockerignore` los excluye y el barrido los elimina como segunda defensa |
 | `IMG-04` ausencia de residuos | Parcial | Los comandos de barrido se ejecutaron sobre `/app` local; su verificación dentro de la imagen queda pendiente |
-| `IMG-05` producto operativo por proxy | Parcial: shell servido | `docker compose up -d` arranca y `curl http://127.0.0.1:3081/` responde 200; la sesión con agente, `bash` bajo Landlock y el flujo de PR siguen pendientes |
-| `IMG-06` flujo de PR con `gh` | **No ejecutada** | Requiere el contenedor con el token montado |
+| `IMG-05` producto operativo por proxy | **Aprobada** | El shell responde 200 por el proxy y una sesión real desde el navegador envía un turno, ejecuta `bash` (Landlock en el árbol de runtime nuevo) y abre el selector de carpeta sobre un proyecto |
+| `IMG-06` flujo de PR con `gh` | **Aprobada** | La sesión que lo ejecutó corría dentro del propio contenedor (PID 1 = `tini` → `mdl-entrypoint`, `/.dockerenv`, nginx en 8080 → DSH en 3080), así que el flujo usó el wrapper de credencial y el conjunto reducido de herramientas a la vez |
 | `IMG-08` persistencia tras reconstrucción | **No ejecutada** | Requiere Docker y el volumen |
 | `IMG-09` preset ACP sin peer | Parcial | La carga del bundle diferido está verificada; falta montar el preset dentro de un contenedor |
 | `IMG-10` gates del repositorio | Parcial | Tipos y build ejecutados; `test` y `typecheck` completos quedan pendientes de la corrida en CI |
