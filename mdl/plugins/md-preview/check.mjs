@@ -410,6 +410,28 @@ const decoyEvent = new dom.window.MouseEvent('click', { bubbles: true, cancelabl
 decoy.dispatchEvent(decoyEvent)
 check('a control whose label merely ends in .md is left alone', decoyEvent.defaultPrevented === false)
 
+// An absolute path is only a document when it sits under the session workspace
+// root; a path outside it must keep its own behaviour rather than open a reader
+// that can only report the file as missing.
+const outside = document.createElement('div')
+outside.innerHTML = '<a href="/srv/projects/homepage/test.md">outside</a>'
+  + '<button type="button" title="/srv/projects/homepage/test.md">test.md</button>'
+  + '<a href="/workspace/demo/docs/guide.md">inside, absolute</a>'
+document.body.append(outside)
+const outsideEvent = new dom.window.MouseEvent('click', { bubbles: true, cancelable: true })
+outside.querySelector('a[href^="/srv/"]').dispatchEvent(outsideEvent)
+check('an absolute path outside the workspace is not intercepted', outsideEvent.defaultPrevented === false)
+const outsideChip = outside.querySelector('button')
+const outsideChipEvent = new dom.window.MouseEvent('click', { bubbles: true, cancelable: true })
+outsideChip.dispatchEvent(outsideChipEvent)
+check('an absolute token outside the workspace is not intercepted', outsideChipEvent.defaultPrevented === false)
+const insideEvent = new dom.window.MouseEvent('click', { bubbles: true, cancelable: true })
+outside.querySelector('a[href^="/workspace/"]').dispatchEvent(insideEvent)
+await settle()
+check('an absolute path under the workspace root opens the reader',
+  insideEvent.defaultPrevented === true
+  && document.querySelector('.stub-markdown')?.textContent.includes('Guide'))
+
 const remote = chat.querySelector('a[href^="https://"]')
 const remoteEvent = new dom.window.MouseEvent('click', { bubbles: true, cancelable: true })
 remote.dispatchEvent(remoteEvent)

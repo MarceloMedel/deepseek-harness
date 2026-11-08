@@ -12,6 +12,8 @@ Three surfaces, all composed by slot registration from `client.js`:
 
 A document link opens the reader from anywhere in the application, not only from inside it. A reply that links the report it just wrote renders a plain anchor, and the shell has no route for a workspace path, so the click navigated away; a file token — an inline-code mention or a produced-files chip — reached the chat view's OS file opener instead. One delegated click listener covers both, reading the attribute each control already publishes: the anchor's `href` and the button's `title`, which those controls set to the full path. It requires the title to be a bare path, so an unrelated control whose label merely ends in `.md` is untouched.
 
+A path resolves against the document's own directory when relative, and against the session workspace root when absolute; a path outside that root is left alone, so the click keeps its own behaviour instead of opening a reader that can only report the file as missing. The root comes from the listing, so an absolute path resolves once this page has listed the workspace.
+
 Rendering goes through `MarkdownText` from `@deepseek-ai/dsh-client-ui-primitives`, which is a platform module: the bundle carries no Markdown engine, no highlighter and no React copy, so a preview is byte-for-byte the renderer the conversation uses. Copying uses the same package's `writeClipboard`, which falls back to `execCommand` where the async Clipboard API is missing.
 
 ## Two layouts, one state machine
@@ -72,3 +74,4 @@ The checks cover route registration, the workspace listing, containment for trav
 - A document is rendered up to 2 MB and an asset is served up to 8 MB; larger files must be opened through another tool.
 - The outline lists ATX headings. Setext headings appear in the document but not in the outline.
 - The folder tree is flat below the workspace root: it shows every folder that holds a document, with no collapse-all, search or sort control.
+- An absolute link resolves only after the reader has listed a workspace on this page, because the workspace root is published by that listing.
