@@ -84,7 +84,7 @@ describe('the deferred trajectory view', () => {
 
 /** The wait's props with a translate that echoes keys. */
 function props(ensureView: () => Promise<void>): TrajectorySurfacePendingProps {
-  return { ensureView, t: (key: string) => key } as never
+  return { ensureView, t: key => key }
 }
 
 describe('TrajectorySurfacePending', () => {

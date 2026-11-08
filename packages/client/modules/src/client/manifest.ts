@@ -153,7 +153,7 @@ export function parseBootManifest(wire: unknown): BootManifest {
       id: row.id,
       inject: row.inject === undefined ? [] : [...row.inject as string[]],
       immediately: row.immediately === true,
-      surface: row.surface as string | undefined,
+      surface: row.surface,
     })
   }
   return { rev: graph.rev, modules, plugins }
