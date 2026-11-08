@@ -1,8 +1,8 @@
 # SPEC-020 — Diferir el chunk `vendor` del primer render
 
-Estado: Aprobada
+Estado: En implementación
 Fase: 20
-Aprobación para iniciar: usuario, 2026-11-08 — aprobada después de medir la primera carga con navegador real
+Aprobación para iniciar: usuario, 2026-11-08 — aprobada después de medir la primera carga con navegador real, e iniciada a continuación
 Commit base: `ac1643ba89`
 
 ## Objetivo
@@ -54,11 +54,16 @@ La medición de esa ruta necesita un navegador: la ganancia es de tiempo hasta e
 
 ## Validación ejecutada
 
-Se completa después del desarrollo.
+Se completa después del desarrollo. Puntos de entrada confirmados al iniciar, para que la medición de `V-04` compare lo que hoy entra en la ruta crítica:
+
+- `packages/client/ui-primitives/src/markdown/highlight.ts` importa `shiki/core`, `shiki/engine/javascript` y las tres gramáticas de arranque (`@shikijs/langs/typescript`, `/shellscript`, `/json`) de forma estática, así que el chunk `vendor` lo arrastra `index`.
+- Los módulos de markdown de `packages/client/ui-primitives/src/markdown/` importan `micromark-core-commonmark`, `micromark-factory-space` y `micromark-util-*` de forma estática por el mismo motivo.
+- `apps/web/vite.config.ts` asigna esos paquetes a `vendor` en `manualChunks` y `BOOT_GRAMMAR_FILES` conserva TypeScript, shell y JSON en ese chunk, que es lo que `V3` pide mantener.
 
 | Comprobación | Resultado | Evidencia |
 |---|---|---|
-| Pendiente | No ejecutada | Pendiente |
+| Línea base de la primera carga | 1 183 377 B (1155,6 KB), de los cuales `vendor` son 180,7 KB | Panel de red con navegador real, registrado en [SPEC-018](018-payload-cliente.md#validación-ejecutada) |
+| `WEB-08`, `V-01` a `V-04` | No ejecutadas | Pendiente: requieren el desarrollo |
 
 ## Resultado y pendientes
 
