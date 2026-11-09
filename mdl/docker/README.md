@@ -109,13 +109,26 @@ sudo make edge-up
 
 La publicación requiere una aplicación de Cloudflare Access con política por email para `dsh.devmedel.com`. Sin Access, cualquiera que resuelva el hostname puede ejecutar comandos en el contenedor.
 
-### Límite del plano privilegiado
+### Plano privilegiado
 
-DSH no tiene autenticación propia y fija a loopback los métodos que leen o escriben configuración y credenciales (`settings.*`, `credentials.*`, `llm.discoverModels`, `host.pickDirectory`, `agentPreset.read/copy/remove/openDocument`). Por `dsh.devmedel.com` funcionan conversación y sesiones; la configuración se administra por `http://127.0.0.1:3081` (túnel SSH) o editando el volumen.
+DSH no tiene autenticación propia y fija a loopback los métodos que leen o escriben configuración y credenciales (`settings.*`, `credentials.*`, `llm.discoverModels`, `host.pickDirectory`, `agentPreset.read/copy/remove/openDocument`). Por `dsh.devmedel.com` funcionan conversación y sesiones. La configuración se administra por `http://127.0.0.1:3081` (túnel SSH), editando el volumen, o — desde SPEC-024 — por el hostname público si el despliegue declara el tag de aplicación de Access.
 
 ```sh
 ssh -L 3081:127.0.0.1:3081 USUARIO@VPS
 ```
+
+Habilitar el plano en el hostname público (`SPEC-024`) requiere el **Application Audience (AUD) Tag** de la aplicación de Access, que se copia de Zero Trust → Access → Applications → `dsh.devmedel.com` → Overview. No es un secreto. Se pasa al contenedor por el entorno y el arranque aplica la capa `privileged-access.yml`:
+
+```sh
+# en el VPS, junto al compose (por ejemplo en mdl/docker/.env)
+echo 'DSH_ACCESS_AUD=<tag>' | sudo tee -a mdl/docker/.env
+sudo mdl/docker/backup.sh          # opcional: respaldo antes de recrear
+cd mdl/docker && sudo docker compose up -d --build
+```
+
+Sin `DSH_ACCESS_AUD` el arranque no aplica la capa y el plano privilegiado sigue en solo loopback, exactamente como antes de SPEC-024; el registro del contenedor lo dice en ambos casos. Con el tag declarado, DSH verifica la aserción que Cloudflare firma para esa aplicación (firma RS256 contra las claves publicadas del equipo, `iss` del equipo, `aud` del tag, vigencia) y solo entonces admite `Configuración → Modelos` y el resto del plano en `dsh.devmedel.com`. Loopback sigue entrando sin aserción, y cualquier otra autoridad sigue recibiendo `403`.
+
+La rotación de claves del equipo se reconoce en la primera petición posterior al intervalo de recarga (60 s); mientras dure ese intervalo, una petición firmada con la clave nueva recibe `403`.
 
 ## Backup y restauración
 

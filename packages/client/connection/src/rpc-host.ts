@@ -14,6 +14,7 @@ import {
 import { bridge, type FetchHandler } from './http-bridge.ts'
 import { isTrustedApiRequest } from './api-request-trust.ts'
 import { API_PATH } from './api-path.ts'
+import type { PrivilegedRequestPolicy } from './privileged-access.ts'
 import type {
   ConnectionRpcEndpointMatcher,
   ConnectionRpcHandler,
@@ -47,8 +48,13 @@ export class HostConnectionService extends Service implements HostConnectionHand
    * Provide the Host half over the active HTTP server.
    * @param ctx - owning Connection plugin context.
    * @param trustedHosts - deployment authorities accepted by trusted-host channels.
+   * @param privileged - policy deciding whether a request reaches loopback-authority channels.
    */
-  constructor(ctx: Context, private readonly trustedHosts: readonly string[]) {
+  constructor(
+    ctx: Context,
+    private readonly trustedHosts: readonly string[],
+    private readonly privileged: PrivilegedRequestPolicy,
+  ) {
     super(ctx, 'connection')
   }
 
@@ -73,14 +79,14 @@ export class HostConnectionService extends Service implements HostConnectionHand
     fallback: FetchHandler,
   ): FetchHandler {
     return {
-      fetch: (request) => {
+      fetch: async (request) => {
         const endpoint = endpointFromPath(channel, new URL(request.url).pathname)
         const interceptor = this.interceptors.get(channel)
         if (endpoint === undefined || interceptor === undefined || !interceptor.matches(endpoint)) {
           return fallback.fetch(request)
         }
-        if (interceptor.options.authority === 'loopback' && !isTrustedApiRequest(request, [])) {
-          return Promise.resolve(new Response('forbidden', { status: 403 }))
+        if (interceptor.options.authority === 'loopback' && !await this.privileged.allows(request)) {
+          return new Response('forbidden', { status: 403 })
         }
         return interceptor.fetchHandler.fetch(request)
       },
@@ -94,13 +100,17 @@ export class HostConnectionService extends Service implements HostConnectionHand
     options: ConnectionRpcHandlerOptions,
   ): () => Promise<void> {
     assertChannel(channel)
-    const trustedHosts = options.authority === 'loopback' ? [] : this.trustedHosts
     const fetchHandler = rpcFetchHandler(channel, handler)
+    const privileged = options.authority === 'loopback'
     const route: WebRoute = {
       kind: 'prefix',
       path: channel,
       handler: async (req, res) => {
-        if (!isTrustedApiRequest(req, trustedHosts)) {
+        // A loopback-authority channel answers to the privileged policy, which
+        // is loopback unless the deployment extended it with an authenticator;
+        // a trusted-host channel keeps the general fence.
+        const allowed = privileged ? await this.privileged.allows(req) : isTrustedApiRequest(req, this.trustedHosts)
+        if (!allowed) {
           res.writeHead(403)
           res.end('forbidden')
           return

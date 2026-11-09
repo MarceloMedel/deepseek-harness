@@ -12,9 +12,16 @@ services:
     environment:
       DSH_HOME: /data/dsh
       DSH_PERMISSION_MODE: workspace-write
-      # Public authority accepted by the /api browser-trust fence. It does not
-      # grant the privileged configuration plane, which stays loopback-only.
+      # Public authority accepted by the /api browser-trust fence. On its own it
+      # does not grant the privileged configuration plane (SPEC-024 admits that
+      # plane only with DSH_ACCESS_AUD below).
       DSH_TRUSTED_HOST: dsh.devmedel.com
+      # Cloudflare Access application Audience (AUD) tag for dsh.devmedel.com.
+      # Setting it lets the privileged configuration plane (Configuración →
+      # Modelos, credentials, directory picker) answer on the public hostname to
+      # a request whose Access assertion this process verified. Leaving it unset
+      # keeps that plane on loopback, which is the state before SPEC-024.
+      DSH_ACCESS_AUD: ${DSH_ACCESS_AUD:-}
       GIT_TERMINAL_PROMPT: "0"
       # No repository-specific git configuration here (SPEC-011). Cloning,
       # pushing and PRs all go over HTTPS with the mounted token, which reaches

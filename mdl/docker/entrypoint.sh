@@ -40,7 +40,23 @@ else
   echo "mdl-harness: git configuration is unreadable; git and gh will fail (check /etc/gitconfig and the mounted gitconfig)" >&2
 fi
 
-dsh_args=(--profile web --host 127.0.0.1 --port 3080)
+# Launcher options must precede the app's own: the launcher stops parsing at the
+# first flag it does not know, so `--patch` has to come before `--host`.
+dsh_args=(--profile web)
+
+# The privileged configuration plane on the public hostname (SPEC-024) is opt-in
+# at deploy time: without the Access application's AUD tag the overlay is not
+# applied at all, so every configuration method keeps answering only on
+# loopback. With it, an assertion Cloudflare signs for this application stands
+# in for loopback on the authorities the overlay declares.
+if [[ -n "${DSH_ACCESS_AUD:-}" ]]; then
+  dsh_args+=(--patch /etc/mdl-harness/privileged-access.yml)
+  echo "mdl-harness: privileged configuration plane admitted for ${DSH_TRUSTED_HOST:-no authority} with a verified Access assertion"
+else
+  echo "mdl-harness: no DSH_ACCESS_AUD; the privileged configuration plane stays loopback-only (see mdl/docker/README.md)"
+fi
+
+dsh_args+=(--host 127.0.0.1 --port 3080)
 if [[ -n "${DSH_TRUSTED_HOST:-}" ]]; then
   dsh_args+=(--trusted-host "$DSH_TRUSTED_HOST")
 fi
