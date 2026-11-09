@@ -1,0 +1,25 @@
+# The privileged configuration plane on the public hostname (SPEC-024).
+#
+# A patch overlay applied after every bundle layer and after the profile's own
+# patch file, only when the deployment provides the application's AUD tag. It
+# restates the whole `connection` row config because a patch replaces it:
+# `trustedHosts` keeps the invocation-derived expression the bundle uses, and
+# `privilegedAccess` adds Cloudflare Access as the authenticator for the public
+# authority.
+#
+# Loopback keeps reaching the privileged plane without an assertion, every other
+# authority keeps today's 403, and an assertion that fails verification (wrong
+# signature, another team, another application, expired) is refused like none.
+- id: connection
+  config:
+    trustedHosts: !!js ctx.webRuntime.trustedHosts
+    privilegedAccess:
+      cloudflareAccess:
+        # Team whose published keys sign the assertions; also the expected `iss`.
+        teamOrigin: https://marcelomedel.cloudflareaccess.com
+        # The Access application's Audience (AUD) tag, from the environment so a
+        # deployment that has not looked it up keeps the plane on loopback.
+        audience: !!js process.env.DSH_ACCESS_AUD
+        # The authority that may carry privileged methods with a valid assertion.
+        hosts:
+          - dsh.devmedel.com

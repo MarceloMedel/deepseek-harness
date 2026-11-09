@@ -8,9 +8,11 @@ import { toFetchHandler } from '@deepseek-ai/dsh-host-apiproxy'
 import { API_PATH, HOST_EVENTS_PATH, MUX_EVENTS_PATH } from './api-path.ts'
 import { bridge, DEFAULT_MAX_REQUEST_BODY_BYTES } from './http-bridge.ts'
 import { assertTrustedAuthority, isTrustedApiRequest } from './api-request-trust.ts'
+import { createPrivilegedPolicy, type PrivilegedAccessConfig } from './privileged-access.ts'
 import { HostConnectionService } from './rpc-host.ts'
 import { rejectWebSocketUpgrade, WebSocketDownlinks } from './websocket-downlink.ts'
 
+export type { CloudflareAccessConfig, PrivilegedAccessConfig } from './privileged-access.ts'
 export type {
   ConnectionRpcAuthority,
   ConnectionRpcEndpointMatcher,
@@ -59,11 +61,34 @@ export interface ConnectionConfig {
   trustedHosts?: string[]
   /** Maximum buffered JSON body for every `/api` request. */
   maxRequestBodyBytes?: number
+  /**
+   * Extends the privileged plane beyond loopback to authorities whose callers
+   * authenticate through Cloudflare Access. Omitted — the default, and the
+   * only shape upstream deployments have — keeps every privileged method on
+   * loopback exactly as before.
+   */
+  privilegedAccess?: PrivilegedAccessConfig
 }
 
 export const Config: z<ConnectionConfig> = z.object({
   trustedHosts: z.array(String).default([]),
   maxRequestBodyBytes: z.natural().min(1).default(DEFAULT_MAX_REQUEST_BODY_BYTES),
+  // The extension is optional in the Loader's schema, not only in the type: a
+  // bare nested object is materialized as `{}` when the deployment omits it,
+  // which would hand `apply` an empty declaration instead of none. The union
+  // keeps an absent section absent, so "not declared" and "declared empty"
+  // stay distinguishable — the second one fails the load loudly.
+  privilegedAccess: z.union([
+    z.object({
+      cloudflareAccess: z.union([
+        z.object({
+          teamOrigin: z.string(),
+          audience: z.string(),
+          hosts: z.array(String),
+        }),
+      ]),
+    }),
+  ]),
 })
 
 /**
@@ -134,8 +159,12 @@ export function apply(ctx: Context, config?: ConnectionConfig): void {
   // Config boundary: a malformed entry fails the load loudly here rather than
   // silently authorizing its hostname prefix at request time.
   for (const entry of trustedHosts) assertTrustedAuthority(entry)
+  // Config boundary: the privileged extension is validated in full here, so a
+  // malformed team origin or an authority the general fence never admits fails
+  // the load instead of 403ing every administrative request later.
+  const privileged = createPrivilegedPolicy(config?.privilegedAccess, trustedHosts)
   if (ctx.get('apiProxy') !== undefined) assertImageBodyCapacity(ctx, maxRequestBodyBytes)
-  const connection = new HostConnectionService(ctx, trustedHosts)
+  const connection = new HostConnectionService(ctx, trustedHosts, privileged)
   const fetchHandler = connection.createSharedFetchHandler(API_PATH, {
     async fetch(request) {
       const pathname = new URL(request.url).pathname
@@ -144,7 +173,7 @@ export function apply(ctx: Context, config?: ConnectionConfig): void {
         : undefined
       if (method !== undefined
         && PRIVILEGED_METHODS.has(method)
-        && !isTrustedApiRequest(request, [])) {
+        && !await privileged.allows(request)) {
         return new Response('forbidden', { status: 403 })
       }
       if (request.method === 'GET' && (pathname === MUX_EVENTS_PATH || pathname === HOST_EVENTS_PATH)) {

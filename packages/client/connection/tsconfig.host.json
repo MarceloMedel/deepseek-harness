@@ -8,10 +8,13 @@
   "files": [
     "src/api-path.ts",
     "src/api-request-trust.ts",
+    "src/cloudflare-access.ts",
     "src/http-bridge.ts",
     "src/index.ts",
     "src/invariant.ts",
     "src/loopback-hostname.ts",
+    "src/privileged-access.ts",
+    "src/request-headers.ts",
     "src/rpc-host.ts",
     "src/rpc.ts",
     "src/websocket-downlink.ts"

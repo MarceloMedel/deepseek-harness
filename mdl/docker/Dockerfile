@@ -127,6 +127,10 @@ RUN printf '%s\n' \
 
 COPY --from=runtime-tree /app /app
 COPY mdl/docker/nginx.conf /etc/nginx/nginx.conf
+# The privileged-plane overlay (SPEC-024) is applied with `--patch` only when the
+# deployment provides DSH_ACCESS_AUD, so it ships beside the entrypoint and never
+# enters the volume: a rebuilt image carries the current one.
+COPY mdl/docker/privileged-access.yml /etc/mdl-harness/privileged-access.yml
 COPY mdl/docker/entrypoint.sh /usr/local/bin/mdl-entrypoint
 # The GUI plugin bundles (SPEC-022, SPEC-023) ship beside the entrypoint rather
 # than inside the runtime tree, which drops `mdl/`: the entrypoint publishes them
@@ -139,7 +143,7 @@ COPY mdl/plugins/html-preview /opt/mdl/plugins/html-preview
 RUN chmod 0755 /usr/local/bin/mdl-entrypoint \
     && chmod -R a+rX /opt/mdl/plugins/md-preview /opt/mdl/plugins/html-preview \
     && chmod 0755 /opt/mdl/plugins/md-preview/install.sh /opt/mdl/plugins/html-preview/install.sh \
-    && chmod 0644 /etc/nginx/nginx.conf \
+    && chmod 0644 /etc/nginx/nginx.conf /etc/mdl-harness/privileged-access.yml \
     && chown root:root /etc/nginx/nginx.conf
 
 WORKDIR /workspace

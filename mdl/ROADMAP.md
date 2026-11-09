@@ -29,6 +29,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 21 | Bundles de plugin: lo que se descarga antes de usarlo | [SPEC-021](specs/021-bundles-de-plugin.md) | En implementación |
 | 22 | Visor de Markdown dentro de la GUI | [SPEC-022](specs/022-visor-markdown.md) | En implementación |
 | 23 | Visor de HTML generado dentro de la GUI | [SPEC-023](specs/023-visor-html.md) | Validada |
+| 24 | Plano privilegiado autenticado desde el hostname público | [SPEC-024](specs/024-plano-privilegiado-autenticado.md) | En implementación |
 
 ## Dependencias
 
@@ -50,6 +51,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 - Las fases 20 y 21 nacen de los dos objetivos que la fase 18 no cumplió y se validan por separado: 20 saca el chunk `vendor` de la ruta crítica del primer render, y 21 reduce los bundles de plugin que el arranque descarga.
 - La Fase 22 no depende de una fase anterior: agrega una superficie nueva por el mismo mecanismo que `dsh-html-preview` y se valida sobre el contenedor reiniciado.
 - La Fase 23 parte de la Fase 22 validada: reemplaza la copia no versionada del visor de HTML por un bundle del repositorio con fila en el perfil `web`, retira el preset `html-preview` y se valida sobre el contenedor reiniciado.
+- La Fase 24 relaja la restricción que `SPEC-005` dejó explícitamente fuera de alcance, y solo puede hacerlo con una especificación propia y validación de seguridad (`MDL-SEC-02`): el plano privilegiado se habilita en el hostname público únicamente con una aserción de Cloudflare Access verificada dentro del proceso. No depende de otra fase y no cambia el comportamiento por defecto.
 
 ## Próxima acción
 

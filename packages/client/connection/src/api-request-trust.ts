@@ -13,18 +13,12 @@
  * belongs to the webserver config, and this fence is not an auth layer.
  */
 
-import type { IncomingHttpHeaders } from 'node:http'
 import { isLoopbackHostname } from './loopback-hostname.ts'
+import { requestHeader, type RequestHeaders } from './request-headers.ts'
 
 /** The request facts the fence reads from either HTTP representation. */
-interface ApiTrustRequest {
-  headers: IncomingHttpHeaders | Headers
-}
-
-function header(headers: IncomingHttpHeaders | Headers, name: string): string | undefined {
-  if (headers instanceof Headers) return headers.get(name) ?? undefined
-  const value = headers[name]
-  return typeof value === 'string' ? value : undefined
+export interface ApiTrustRequest {
+  headers: RequestHeaders
 }
 
 /** Normalized URL of a Host-header authority (hostname lowercased, default port stripped, IPv6 bracketed), or undefined when unparsable. */
@@ -101,19 +95,19 @@ export function isTrustedApiRequest(request: ApiTrustRequest, trustedHosts: read
   // (images and navigations) arrives with neither Origin nor
   // Fetch-Metadata, indistinguishable from curl, and its response is readable
   // by the rebound page.
-  const host = header(request.headers, 'host')
+  const host = requestHeader(request.headers, 'host')
   if (host === undefined) return false
   const hostUrl = parseAuthority(host)
   if (hostUrl === undefined) return false
   if (!isLoopbackHostname(hostUrl.hostname) && !isTrustedAuthority(hostUrl, trustedHosts)) return false
   // Cross-site fence: modern browsers label the initiator relationship on
   // every fetch; an explicit cross-site marker is refused regardless of Origin.
-  if (header(request.headers, 'sec-fetch-site') === 'cross-site') return false
+  if (requestHeader(request.headers, 'sec-fetch-site') === 'cross-site') return false
   // Origin fence: when a browser attaches an Origin it must be exactly this
   // authority (compared through the same normalization as the Host). Absent
   // Origin is fine — the Host fence above already bound the request. The
   // literal "null" (sandboxed iframes, file: pages) is an opaque origin, refused.
-  const origin = header(request.headers, 'origin')
+  const origin = requestHeader(request.headers, 'origin')
   if (origin === undefined) return true
   try {
     return new URL(origin).host === hostUrl.host

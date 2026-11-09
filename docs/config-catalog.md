@@ -407,10 +407,36 @@ export interface ConnectionConfig {
   trustedHosts?: string[]
   /** Maximum buffered JSON body for every `/api` request. */
   maxRequestBodyBytes?: number
+  /**
+   * Extends the privileged plane beyond loopback to authorities whose callers
+   * authenticate through Cloudflare Access. Omitted — the default, and the
+   * only shape upstream deployments have — keeps every privileged method on
+   * loopback exactly as before.
+   */
+  privilegedAccess?: PrivilegedAccessConfig
+}
+
+/** Deployment extension of the privileged plane beyond loopback. */
+export interface PrivilegedAccessConfig {
+  /** Cloudflare Access as the authenticator for declared authorities. */
+  cloudflareAccess?: CloudflareAccessConfig
+}
+
+/** Cloudflare Access coordinates and the authorities whose callers they admit. */
+export interface CloudflareAccessConfig {
+  /**
+   * Team origin such as `https://team.cloudflareaccess.com`. Its key set is the
+   * trust root, and it is also the `iss` every accepted assertion must carry.
+   */
+  teamOrigin?: string
+  /** Application Audience (AUD) tag of this deployment's Access application. */
+  audience?: string
+  /** Non-loopback authorities whose verified callers reach the privileged plane. */
+  hosts?: string[]
 }
 ```
 
-Source: [`packages/client/connection/src/index.ts:50`](../packages/client/connection/src/index.ts)
+Source: [`packages/client/connection/src/index.ts:52`](../packages/client/connection/src/index.ts)
 
 <a id="deepseek-aidsh-client-hmr"></a>
 

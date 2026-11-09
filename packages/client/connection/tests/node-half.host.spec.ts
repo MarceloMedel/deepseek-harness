@@ -10,7 +10,18 @@ import type { ApiProxy } from '@deepseek-ai/dsh-host-apiproxy/api'
 import type { AttachmentStore } from '@deepseek-ai/dsh-attachment'
 import { RpcId, type ClientRequest } from '@deepseek-ai/dsh-host-apiproxy/api'
 import type { WebServer, WebRoute, WebUpgradeRoute } from '@deepseek-ai/dsh-host-webserver'
-import { API_PATH, apply, HOST_EVENTS_PATH, inject, MUX_EVENTS_PATH, type HostConnectionHandle } from '../src/index.ts'
+import {
+  API_PATH,
+  apply,
+  Config,
+  HOST_EVENTS_PATH,
+  inject,
+  MUX_EVENTS_PATH,
+  type ConnectionConfig,
+  type HostConnectionHandle,
+} from '../src/index.ts'
+import { createPrivilegedPolicy } from '../src/privileged-access.ts'
+import { assertionClaims, certServer, mint, teamKeys, AUDIENCE } from './access-team.fixture.ts'
 
 /** Structural webServer fake recording both route registries. */
 function fakeHttpServer(
@@ -74,7 +85,7 @@ function fakeResponse(): { response: ServerResponse; state: { status?: number; b
   return { response, state }
 }
 
-async function mounted(config?: { trustedHosts?: string[] }): Promise<{
+async function mounted(config?: ConnectionConfig): Promise<{
   routes: WebRoute[]
   upgrades: WebUpgradeRoute[]
   dispose: () => Promise<void>
@@ -113,6 +124,76 @@ describe('connection node half', () => {
     await expect(fiber).rejects.toThrow(/not a bare host\[:port\] authority/)
     expect(routes).toHaveLength(0)
     expect(upgrades).toHaveLength(0)
+  })
+
+  it('resolves an undeclared extension as absent, so the pin stays in force', async () => {
+    // The Loader validates config through `Config`, which a bare nested object
+    // would materialize as an empty declaration — failing the load on every
+    // deployment that never opted in. This pins the resolved shape and the
+    // policy it produces.
+    const resolve = Config as unknown as (value: unknown) => ConnectionConfig
+    const resolved = resolve({ trustedHosts: ['harness.example'] })
+    expect(resolved.privilegedAccess).toBeUndefined()
+    expect(resolve({})).toMatchObject({ trustedHosts: [] })
+
+    const policy = createPrivilegedPolicy(resolved.privilegedAccess, resolved.trustedHosts)
+    expect(await policy.allows({ headers: { host: 'harness.example' } })).toBe(false)
+    expect(await policy.allows({ headers: { host: '127.0.0.1:3080' } })).toBe(true)
+  })
+
+  it('fails the load on a privileged extension the deployment could not honour', async () => {
+    const cases: (readonly [string, ConnectionConfig, RegExp])[] = [
+      [
+        'plaintext team origin',
+        { privilegedAccess: { cloudflareAccess: { teamOrigin: 'http://harness.example', audience: 'aud', hosts: ['harness.example'] } } },
+        /teamOrigin must be an https origin/,
+      ],
+      [
+        'team origin carrying a path',
+        { privilegedAccess: { cloudflareAccess: { teamOrigin: 'https://team.cloudflareaccess.com/certs', audience: 'aud', hosts: ['harness.example'] } } },
+        /teamOrigin must be an https origin/,
+      ],
+      [
+        'missing team origin',
+        { privilegedAccess: { cloudflareAccess: { audience: 'aud', hosts: ['harness.example'] } } },
+        /teamOrigin must be an https origin/,
+      ],
+      [
+        'missing audience',
+        { privilegedAccess: { cloudflareAccess: { teamOrigin: 'https://team.cloudflareaccess.com', hosts: ['harness.example'] } } },
+        /audience must be the application AUD tag/,
+      ],
+      [
+        'no declared authority',
+        { privilegedAccess: { cloudflareAccess: { teamOrigin: 'https://team.cloudflareaccess.com', audience: 'aud' } } },
+        /hosts must name at least one authority/,
+      ],
+      [
+        'authority the general fence never admits',
+        { privilegedAccess: { cloudflareAccess: { teamOrigin: 'https://team.cloudflareaccess.com', audience: 'aud', hosts: ['harness.example'] } } },
+        /must also appear in trustedHosts/,
+      ],
+      [
+        'loopback as an extension',
+        { trustedHosts: ['127.0.0.1'], privilegedAccess: { cloudflareAccess: { teamOrigin: 'https://team.cloudflareaccess.com', audience: 'aud', hosts: ['127.0.0.1'] } } },
+        /is loopback/,
+      ],
+      [
+        'authority that is not a bare host',
+        { trustedHosts: ['harness.example/path'], privilegedAccess: { cloudflareAccess: { teamOrigin: 'https://team.cloudflareaccess.com', audience: 'aud', hosts: ['harness.example/path'] } } },
+        /not a bare host\[:port\] authority/,
+      ],
+    ]
+    for (const [label, config, message] of cases) {
+      const routes: WebRoute[] = []
+      const upgrades: WebUpgradeRoute[] = []
+      const ctx = new Context()
+      ctx.provide('webServer', fakeHttpServer(routes, upgrades) as WebServer)
+      ctx.provide('apiProxy', {} as unknown as ApiProxy)
+      await expect(ctx.plugin({ inject: [...inject], apply }, config), label).rejects.toThrow(message)
+      expect(routes).toHaveLength(0)
+      expect(upgrades).toHaveLength(0)
+    }
   })
 
   it('registers one HTTP route plus one upgrade route per downlink and removes all three with the fiber', async () => {
@@ -439,10 +520,10 @@ describe('connection node half over a real HTTP server', () => {
   }
 
   /** One real request; `host` spoofs the authority the way a LAN client's browser would send it. */
-  function call(port: number, method: string, host: string): Promise<number> {
+  function call(port: number, method: string, host: string, headers: Record<string, string> = {}): Promise<number> {
     return new Promise((resolve, reject) => {
       const request = httpRequest(
-        { host: '127.0.0.1', port, path: `${API_PATH}/${method}`, method: 'GET', headers: { host } },
+        { host: '127.0.0.1', port, path: `${API_PATH}/${method}`, method: 'GET', headers: { ...headers, host } },
         (response) => {
           response.resume()
           response.on('end', () => { resolve(response.statusCode ?? 0) })
@@ -490,6 +571,101 @@ describe('connection node half over a real HTTP server', () => {
     } finally {
       await close()
       await dispose()
+    }
+  })
+
+  it('admits a verified Access assertion from the declared authority and nothing else, over real HTTP', async () => {
+    const keys = teamKeys()
+    const team = await certServer([keys.jwk])
+    const { routes, dispose } = await mounted({
+      trustedHosts: ['harness.example', 'other.example'],
+      privilegedAccess: {
+        cloudflareAccess: { teamOrigin: team.origin, audience: AUDIENCE, hosts: ['harness.example'] },
+      },
+    })
+    const { port, close } = await serve(routes)
+    const token = mint(keys, assertionClaims(team.origin))
+    try {
+      // Declared authority plus a verified assertion: the fence passes and the
+      // empty proxy answers the carrier (404), exactly as loopback does.
+      expect(await call(port, 'settings.describe', 'harness.example', { 'cf-access-jwt-assertion': token })).toBe(404)
+      // The Access cookie carries the same assertion.
+      expect(await call(port, 'settings.describe', 'harness.example', { cookie: `CF_Authorization=${token}` })).toBe(404)
+      // A same-origin browser request keeps its Origin fence satisfied.
+      expect(await call(port, 'settings.describe', 'harness.example', {
+        'cf-access-jwt-assertion': token, origin: 'https://harness.example',
+      })).toBe(404)
+      // The same authority without an assertion stays shut, on every method.
+      for (const method of ['settings.describe', 'settings.mutate', 'credentials.set', 'llm.discoverModels']) {
+        expect([method, await call(port, method, 'harness.example')]).toEqual([method, 403])
+      }
+      // A trusted but undeclared authority gets nothing from a valid assertion.
+      expect(await call(port, 'settings.describe', 'other.example', { 'cf-access-jwt-assertion': token })).toBe(403)
+      // Browser markers still fence the request, assertion or not.
+      expect(await call(port, 'settings.describe', 'harness.example', {
+        'cf-access-jwt-assertion': token, origin: 'https://evil.example',
+      })).toBe(403)
+      expect(await call(port, 'settings.describe', 'harness.example', {
+        'cf-access-jwt-assertion': token, origin: 'null',
+      })).toBe(403)
+      expect(await call(port, 'settings.describe', 'harness.example', {
+        'cf-access-jwt-assertion': token, 'sec-fetch-site': 'cross-site',
+      })).toBe(403)
+      // An expired assertion is not a credential.
+      expect(await call(port, 'settings.describe', 'harness.example', {
+        'cf-access-jwt-assertion': mint(keys, assertionClaims(team.origin, { exp: 1 })),
+      })).toBe(403)
+      // Loopback needs no assertion of its own.
+      expect(await call(port, 'settings.describe', `127.0.0.1:${String(port)}`)).toBe(404)
+    } finally {
+      await close()
+      await team.close()
+      await dispose()
+    }
+  })
+
+  it('extends a loopback-authority interceptor only to the verified authority', async () => {
+    const keys = teamKeys()
+    const team = await certServer([keys.jwk])
+    const ctx = new Context()
+    const routes: WebRoute[] = []
+    ctx.provide('webServer', fakeHttpServer(routes, []) as WebServer)
+    const fiber = ctx.plugin({ inject: [...inject], apply }, {
+      trustedHosts: ['harness.example'],
+      privilegedAccess: {
+        cloudflareAccess: { teamOrigin: team.origin, audience: AUDIENCE, hosts: ['harness.example'] },
+      },
+    })
+    await fiber.await()
+    const connection = ctx.get('connection') as HostConnectionHandle
+    const remove = connection.rpc.intercept(
+      '/api',
+      endpoint => endpoint === 'goals/create',
+      async () => ({ ok: true, value: null }),
+      { authority: 'loopback' },
+    )
+    const route = routes.find(candidate => candidate.path === API_PATH)!
+    const request = { type: 'client-request', rpcId: 'rpc-privileged', method: 'goals/create', payload: {} }
+    const token = mint(keys, assertionClaims(team.origin))
+    try {
+      const admitted = fakeResponse()
+      await route.handler(
+        fakePost({ host: 'harness.example', 'cf-access-jwt-assertion': token }, '/api/goals/create', request),
+        admitted.response,
+      )
+      expect(admitted.state.status).toBe(200)
+
+      const refused = fakeResponse()
+      await route.handler(fakePost({ host: 'harness.example' }, '/api/goals/create', request), refused.response)
+      expect(refused.state).toMatchObject({ status: 403, body: 'forbidden' })
+
+      const loopback = fakeResponse()
+      await route.handler(fakePost({ host: '127.0.0.1:3080' }, '/api/goals/create', request), loopback.response)
+      expect(loopback.state.status).toBe(200)
+    } finally {
+      await remove()
+      await team.close()
+      await fiber.dispose()
     }
   })
 })
