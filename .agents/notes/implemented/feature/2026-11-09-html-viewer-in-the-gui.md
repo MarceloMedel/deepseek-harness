@@ -24,7 +24,7 @@ What a rewrite cannot reach is a URL the page builds after it loads — a script
 
 `Abrir ↗` opens a document of this plugin's own, `__page`, which frames the page under one chrome bar carrying the way back to the GUI and a reload. The first version linked the raw route directly, and that was wrong in exactly the case it existed for: a page outside the GUI has no control of ours, and on a phone whose GUI is installed as an app there is no browser chrome either, so the page was a dead end. The bar's return target is the viewer's own URL; a target naming another host is dropped for the GUI root, so a shared link cannot make this document navigate off-host.
 
-The framed page keeps the raw route as its `src`. That route mirrors the workspace tree and serves each file with its own content type, so the page's own references resolve without any rewriting; asking for a folder serves its `index.html`.
+The framed page arrives as `srcdoc`, the same rewritten source the panel frames. The first version pointed the frame at the raw route, and the page never painted: a framed navigation to that route was the one thing the previous viewer had recorded as broken, and I had no browser to re-test the claim on. Serving the page through the mechanism the panel already proves removed the guess, and it keeps one rendering path for both surfaces. The bar is fixed and the frame positioned below it rather than a flex chain, so the page fills the window regardless of how a browser resolves percentage heights inside a frame.
 
 Two layouts share one state machine, split at the shell's `MOBILE_MAX`; narrower takes the viewport and shows the list, then the page with a back button, leaving the shell's `MOBILE_MENU_RESERVED` band empty for the floating menu.
 
@@ -44,7 +44,7 @@ Adding `sandbox` to the frame was rejected. Without `allow-same-origin` the page
 
 A framed page can reach everything the GUI's origin can. A page fetched from a remote site and saved into the workspace is the case where that matters, and it is the case the tab already had; a future sandbox decision has to weigh it against losing local `fetch`.
 
-The chrome bar costs one nested frame: the opened page runs inside an iframe of a same-origin document, which is invisible to the page itself except through `window.top`. It also means the opened tab's URL is this plugin's, so bookmarking it names the page rather than the file.
+The chrome bar costs one nested frame: the opened page runs inside an iframe of a same-origin document, which is invisible to the page itself except through `window.top`. It also means the opened tab's URL is this plugin's, so bookmarking it names the page rather than the file. The tab renders up to 8 MB while the panel renders up to 2 MB, because the tab is the surface that exists for the page the panel refuses.
 
 The injected `<base>` is what makes the untouched cases work, and it also changes them: a URL the page computes at runtime resolves against that base, so it only works while it stays relative to the page's own directory. A page that builds an absolute shell path intentionally — `/api/...` — reaches the gateway exactly as it would from the page's own tab.
 

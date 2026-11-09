@@ -135,6 +135,11 @@ function escapeHtml(value) {
   })[ch])
 }
 
+/** Escape one value for an HTML attribute position, `srcdoc` included. */
+function escapeAttribute(value) {
+  return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+}
+
 /**
  * The return target a chrome link may point at: a URL on this request's own
  * host, reduced to its path. Anything else — another host, an unparseable
@@ -158,17 +163,18 @@ function backTargetOf(raw, host) {
 
 /**
  * The document `__page` answers with: one chrome bar and the page framed below
- * it. The page keeps the raw route as its `src`, so it resolves its own
- * references natively and runs top-level inside that frame.
- * @param options - the framed path, its raw URL, the return target, the copy and
- *   an error to show instead of the page.
+ * it. The page arrives as `srcdoc` — the same rewritten source the panel frames
+ * — so the two surfaces render through one path and the framing needs no
+ * navigation of its own.
+ * @param options - the page path, its prepared source, the return target, the
+ *   copy and an error to show instead of the page.
  * @returns a complete HTML document.
  */
 function chromeDocument(options) {
-  const { path, source, back, locale, error } = options
+  const { path, html, back, locale, error } = options
   const t = labelsFor(locale)
   const body = error === null
-    ? `<iframe class="page" src="${escapeHtml(source)}" title="${escapeHtml(path)}"></iframe>`
+    ? `<iframe class="page" srcdoc="${escapeAttribute(html)}" title="${escapeHtml(path)}"></iframe>`
     : `<p class="error">${escapeHtml(error)}</p>`
   return `<!doctype html>
 <html lang="${locale === 'es' ? 'es' : 'en'}">
@@ -177,20 +183,25 @@ function chromeDocument(options) {
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>${escapeHtml(path)}</title>
 <style>
-  :root { color-scheme: light dark; }
+  /* The frame's box comes from fixed positioning rather than a flex chain, so
+     the page fills the window below the bar whatever the browser does with
+     percentage heights inside an iframe. */
+  :root { color-scheme: light dark; --bar: calc(42px + env(safe-area-inset-top, 0px)); }
   html, body { height: 100%; }
-  body { margin: 0; display: flex; flex-direction: column; background: Canvas; color: CanvasText;
+  body { margin: 0; box-sizing: border-box; padding-top: var(--bar);
+         background: Canvas; color: CanvasText;
          font: 13px/1.4 -apple-system, "Segoe UI", system-ui, sans-serif; }
-  header { display: flex; align-items: center; gap: 10px; padding: 6px 10px;
-           padding-top: calc(6px + env(safe-area-inset-top, 0px));
-           border-bottom: 1px solid color-mix(in srgb, CanvasText 18%, transparent); flex: 0 0 auto; }
+  header { position: fixed; top: 0; left: 0; right: 0; z-index: 2; box-sizing: border-box;
+           height: var(--bar); padding: env(safe-area-inset-top, 0px) 10px 0; display: flex; align-items: center; gap: 10px;
+           background: Canvas; border-bottom: 1px solid color-mix(in srgb, CanvasText 18%, transparent); }
   a.back, button { appearance: none; border: 1px solid color-mix(in srgb, CanvasText 24%, transparent);
            background: color-mix(in srgb, CanvasText 6%, Canvas); color: inherit; border-radius: 7px;
            padding: 6px 12px; font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; }
   a.back { flex: 0 0 auto; }
   .path { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
           opacity: .72; font-size: 12px; }
-  .page { flex: 1 1 auto; width: 100%; border: 0; background: #fff; }
+  .page { position: fixed; top: var(--bar); left: 0; right: 0; bottom: 0; width: 100%; height: auto;
+          border: 0; background: #fff; display: block; }
   .error { margin: 24px; max-width: 52ch; }
 </style>
 </head>
@@ -204,8 +215,7 @@ ${body}
 <script>
   (function () {
     var button = document.getElementById('reload')
-    var frame = document.querySelector('iframe.page')
-    if (button !== null && frame !== null) button.addEventListener('click', function () { frame.contentWindow.location.reload() })
+    if (button !== null) button.addEventListener('click', function () { window.location.reload() })
   })()
 </script>
 </body>
@@ -505,12 +515,20 @@ export function apply(ctx) {
     }
   }
 
-  /** Read one page and rewrite it for a framed document. */
-  const buildDocument = async (rel, root, sessionId) => {
+  /**
+   * Read one page and rewrite it for a framed document.
+   * @param rel - the workspace-relative page path.
+   * @param root - the session workspace root.
+   * @param sessionId - the session whose route namespace the rewrite targets.
+   * @param maxBytes - the size this surface renders, since the tab allows more
+   *   than the panel does.
+   */
+  const buildDocument = async (rel, root, sessionId, maxBytes = MAX_DOC_BYTES) => {
     const info = await inspect(rel, root)
     if (info.ok !== true) return { ok: false, error: info.error }
-    if (info.sizeBytes > MAX_DOC_BYTES) {
-      return { ok: false, error: `The file is ${String(info.sizeBytes)} bytes; the framed viewer renders up to 2 MB. Use "Abrir ↗" to open the page in its own tab.` }
+    if (info.sizeBytes > maxBytes) {
+      const limit = String(Math.floor(maxBytes / (1024 * 1024)))
+      return { ok: false, error: `The file is ${String(info.sizeBytes)} bytes; this surface renders up to ${limit} MB.` }
     }
     let body
     try {
@@ -573,21 +591,15 @@ export function apply(ctx) {
         const locale = queryParam(parsed.query, 'lang') ?? 'en'
         const back = backTargetOf(queryParam(parsed.query, 'back'), req.headers.host)
         if (wanted === undefined) {
-          sendHtml(res, 400, chromeDocument({ path: '—', source: '', back, locale, error: labelsFor(locale).missing }))
+          sendHtml(res, 400, chromeDocument({ path: '—', html: '', back, locale, error: labelsFor(locale).missing }))
           return
         }
-        const info = await inspect(wanted, root)
-        if (info.ok !== true) {
-          sendHtml(res, 404, chromeDocument({ path: wanted, source: '', back, locale, error: info.error }))
+        const page = await buildDocument(wanted, root, parsed.sessionId, MAX_ASSET_BYTES)
+        if (page.ok !== true) {
+          sendHtml(res, 404, chromeDocument({ path: wanted, html: '', back, locale, error: page.error }))
           return
         }
-        sendHtml(res, 200, chromeDocument({
-          path: info.path,
-          source: urlOf(parsed.sessionId, info.path),
-          back,
-          locale,
-          error: null,
-        }))
+        sendHtml(res, 200, chromeDocument({ path: page.path, html: page.html, back, locale, error: null }))
         return
       }
       if (parsed.rel === '') {
