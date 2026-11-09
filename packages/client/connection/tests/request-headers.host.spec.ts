@@ -1,4 +1,5 @@
 /** Header lookup shared by the trust fence and the Access verifier. */
+import type { IncomingHttpHeaders } from 'node:http'
 import { describe, expect, it } from 'vitest'
 import { requestHeader } from '../src/request-headers.ts'
 
@@ -12,6 +13,6 @@ describe('request header lookup', () => {
     expect(requestHeader(new Headers(), 'host')).toBeUndefined()
     expect(requestHeader({}, 'host')).toBeUndefined()
     // node:http types a repeated header as an array; the fence reads single values only.
-    expect(requestHeader({ cookie: ['a', 'b'] }, 'cookie')).toBeUndefined()
+    expect(requestHeader({ cookie: ['a', 'b'] } as unknown as IncomingHttpHeaders, 'cookie')).toBeUndefined()
   })
 })

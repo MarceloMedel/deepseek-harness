@@ -136,7 +136,7 @@ describe('connection node half', () => {
     expect(resolved.privilegedAccess).toBeUndefined()
     expect(resolve({})).toMatchObject({ trustedHosts: [] })
 
-    const policy = createPrivilegedPolicy(resolved.privilegedAccess, resolved.trustedHosts)
+    const policy = createPrivilegedPolicy(resolved.privilegedAccess, resolved.trustedHosts ?? [])
     expect(await policy.allows({ headers: { host: 'harness.example' } })).toBe(false)
     expect(await policy.allows({ headers: { host: '127.0.0.1:3080' } })).toBe(true)
   })
