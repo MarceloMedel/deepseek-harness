@@ -29,7 +29,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 21 | Bundles de plugin: lo que se descarga antes de usarlo | [SPEC-021](specs/021-bundles-de-plugin.md) | En implementación |
 | 22 | Visor de Markdown dentro de la GUI | [SPEC-022](specs/022-visor-markdown.md) | En implementación |
 | 23 | Visor de HTML generado dentro de la GUI | [SPEC-023](specs/023-visor-html.md) | Validada |
-| 24 | Plano privilegiado autenticado desde el hostname público | [SPEC-024](specs/024-plano-privilegiado-autenticado.md) | En implementación |
+| 24 | Plano privilegiado autenticado desde el hostname público | [SPEC-024](specs/024-plano-privilegiado-autenticado.md) | Validada |
 
 ## Dependencias
 
@@ -60,6 +60,8 @@ Las fases 1 a 11 están validadas y el fork se reproduce desde un clon limpio de
 La Fase 22 está desplegada y en uso: el lector abre los documentos del workspace desde el escritorio y el teléfono, y las tres correcciones del uso real llegaron a `main` por los PR #10 y #11. Quedan sin ejercitar el salto desde el índice, la memoria de lectura, la tarjeta de `md_preview` en una conversación real y la observación tras recrear el contenedor.
 
 La Fase 23 está validada: el visor de HTML vive en el repositorio y en el volumen, el usuario lo confirmó tras reiniciar el contenedor en escritorio y en el teléfono, y el uso real cerró los tres defectos de la pantalla completa (sin salida, marco sin pintar y documento cortado por desplazamiento anidado). Queda como observación una llamada real del agente a `html_preview`.
+
+La Fase 24 está validada: el plano privilegiado de configuración responde en `dsh.devmedel.com` con la aserción de Cloudflare Access verificada dentro del proceso, la página Modelos carga y guarda desde el teléfono y el escritorio, el modelo agregado sobrevive a la recarga y a la recreación del contenedor, y sin `DSH_ACCESS_AUD` el despliegue queda exactamente como antes. Fuera de la fase queda descargar `glm-5.3-flash:cloud` en el host antes de seleccionarlo.
 
 ## Decisiones del despliegue VPS
 

@@ -1,6 +1,6 @@
 # SPEC-024 — Plano privilegiado autenticado desde el hostname público
 
-Estado: En implementación
+Estado: Validada
 Fase: 24
 Aprobación para iniciar: usuario, 2026-11-09 — aprobar el alcance tal como está; el tag `AUD` se aporta al desplegar
 Commit base: `e66067f423`
@@ -96,12 +96,12 @@ Validado el 2026-11-09 dentro del contenedor de despliegue, primero sobre el ár
 | `PRIVV-07` falla cerrado sin claves | Cumplida | Endpoint de certificados con `503`, conjunto publicado sin clave RSA usable y `kid` desconocido: `403`, con una sola consulta por intervalo (el contador del servidor de prueba lo comprueba). El JWKS real del equipo se inspeccionó antes del despliegue: dos claves RSA/RS256 con `kid` y `use: sig`, la forma que el verificador consume |
 | `PRIVV-08` configuración inválida | Cumplida | Casos de carga fallida (origen en texto plano, origen con ruta, sin `audience`, sin `hosts`, autoridad fuera de `trustedHosts`, loopback como extensión, autoridad no canónica) y `dsh --profile web --dump-config --patch mdl/docker/privileged-access.yml`, que compone la fila con la expresión `trustedHosts` intacta, también con el tag real |
 | `PRIVV-09` token fuera de registros | Cumplida | Revisión: el verificador no registra el token ni lo incluye en rechazos; solo cachea claves públicas en memoria |
-| `PRIVV-10` despliegue real | Parcialmente cumplida | Imagen `mdl-harness:local` reconstruida y contenedor recreado; el proceso arranca con `--patch /etc/mdl-harness/privileged-access.yml` y la capa queda montada en `/etc/mdl-harness/`; el bundle instalado contiene el verificador; `Configuración → Modelos` carga desde `https://dsh.devmedel.com`, admite agregar un modelo, lo guarda en el volumen y lo muestra tras recargar la página. Falta la última mitad: que el modelo persista tras **recrear** el contenedor |
+| `PRIVV-10` despliegue real | Cumplida | Imagen `mdl-harness:local` reconstruida y contenedor recreado; el proceso arranca con `--patch /etc/mdl-harness/privileged-access.yml` y la capa queda montada en `/etc/mdl-harness/`; el bundle instalado contiene el verificador; `Configuración → Modelos` carga desde `https://dsh.devmedel.com`, agrega un modelo, lo guarda en el volumen y lo muestra tras recargar la página y tras `docker compose up -d --force-recreate` |
 
 Nota de implementación: el esquema del Loader materializa un objeto anidado como `{}` cuando falta, lo que habría hecho fallar la carga de todo despliegue que no declara la extensión. La sección se declara como unión para que «no declarada» y «declarada vacía» sigan siendo distinguibles, y `node-half.host.spec.ts` fija ese comportamiento resolviendo la configuración por el esquema real.
 
 ## Resultado y pendientes
 
-- Resultado: desplegado y en uso; el plano privilegiado responde por el hostname público con la aserción de Access verificada, `Configuración → Modelos` carga, agrega un modelo de Ollama y lo guarda en el volumen conservando comentarios y valores por defecto.
-- Pendientes o excepciones aceptadas: recrear el contenedor y confirmar que el modelo agregado sigue ahí (`PRIVV-10`). Fuera de esta especificación, el modelo declarado todavía no está descargado en el host: `glm-5.3-flash:cloud` existe en el registro de Ollama pero no en la instancia, así que hay que traerlo con `ollama pull` antes de seleccionarlo.
-- Decisión de salida: pendiente de ese último registro.
+- Resultado: desplegado y validado. El plano privilegiado responde por el hostname público con la aserción de Access verificada, `Configuración → Modelos` carga, agrega un modelo de Ollama, lo guarda en el volumen conservando comentarios y valores por defecto, y lo mantiene tras recargar y tras recrear el contenedor. El usuario lo confirmó en `https://dsh.devmedel.com`.
+- Pendientes o excepciones aceptadas: fuera de esta especificación, el modelo declarado todavía no está descargado en el host — `glm-5.3-flash:cloud` existe en el registro de Ollama pero no en la instancia, así que hay que traerlo con `ollama pull` antes de seleccionarlo.
+- Decisión de salida: validada.
