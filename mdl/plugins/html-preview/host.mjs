@@ -183,13 +183,13 @@ function chromeDocument(options) {
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>${escapeHtml(path)}</title>
 <style>
-  /* The frame's box comes from fixed positioning rather than a flex chain, so
-     the page fills the window below the bar whatever the browser does with
-     percentage heights inside an iframe. */
+  /* The bar is fixed and the frame keeps an explicit height below it, so the
+     page scrolls itself like any embedded document instead of relying on a
+     fixed viewport box, which mobile browsers do not scroll reliably. The
+     dvh unit follows the collapsing URL bar. */
   :root { color-scheme: light dark; --bar: calc(42px + env(safe-area-inset-top, 0px)); }
-  html, body { height: 100%; }
-  body { margin: 0; box-sizing: border-box; padding-top: var(--bar);
-         background: Canvas; color: CanvasText;
+  html, body { margin: 0; height: 100%; }
+  body { background: Canvas; color: CanvasText;
          font: 13px/1.4 -apple-system, "Segoe UI", system-ui, sans-serif; }
   header { position: fixed; top: 0; left: 0; right: 0; z-index: 2; box-sizing: border-box;
            height: var(--bar); padding: env(safe-area-inset-top, 0px) 10px 0; display: flex; align-items: center; gap: 10px;
@@ -200,9 +200,10 @@ function chromeDocument(options) {
   a.back { flex: 0 0 auto; }
   .path { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
           opacity: .72; font-size: 12px; }
-  .page { position: fixed; top: var(--bar); left: 0; right: 0; bottom: 0; width: 100%; height: auto;
-          border: 0; background: #fff; display: block; }
-  .error { margin: 24px; max-width: 52ch; }
+  .page { display: block; box-sizing: border-box; width: 100%; margin-top: var(--bar);
+          height: calc(100vh - var(--bar)); height: calc(100dvh - var(--bar));
+          border: 0; background: #fff; }
+  .error { margin: calc(var(--bar) + 24px) 24px 24px; max-width: 52ch; }
 </style>
 </head>
 <body>
