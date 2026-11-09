@@ -1,0 +1,28 @@
+{
+  "name": "dsh-html-preview",
+  "version": "1.0.0",
+  "description": "HTML viewer for DSH: serves the session workspace's pages and frames them in a floating panel, a Tool card and the agent's html_preview calls",
+  "type": "module",
+  "main": "host.mjs",
+  "exports": {
+    ".": "./host.mjs",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "host.mjs",
+    "client.js",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "license": "MIT",
+  "private": true
+}

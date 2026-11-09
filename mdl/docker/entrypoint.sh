@@ -3,14 +3,16 @@ set -euo pipefail
 
 mkdir -p "$DSH_HOME" /workspace
 
-# Markdown reader (SPEC-022). The bundle lives in the image, so publishing it
-# into the volume on every boot is what makes it survive a recreated container
-# and upgrade with the image; the script is idempotent and refuses to take the
-# deployment down with it.
-if [[ -x /opt/mdl/plugins/md-preview/install.sh ]]; then
-  /opt/mdl/plugins/md-preview/install.sh \
-    || echo "mdl-harness: the Markdown reader could not be published; the GUI runs without it" >&2
-fi
+# GUI plugin bundles (SPEC-022, SPEC-023). They live in the image, so publishing
+# them into the volume on every boot is what makes them survive a recreated
+# container and upgrade with the image; each script is idempotent and refuses to
+# take the deployment down with it.
+for bundle in md-preview html-preview; do
+  if [[ -x "/opt/mdl/plugins/$bundle/install.sh" ]]; then
+    "/opt/mdl/plugins/$bundle/install.sh" \
+      || echo "mdl-harness: $bundle could not be published; the GUI runs without it" >&2
+  fi
+done
 
 # The bundled settings file is the deployment's provider configuration, not a
 # secret. It seeds an empty home on first boot; an existing settings.yaml in

@@ -1,0 +1,9 @@
+# The layer this bundle contributes to whichever profile lists it (SPEC-022, SPEC-023).
+#
+# One row, at the root of the host composition: the viewer publishes no service,
+# so it needs no isolate realm, and it consumes `webServer`, `fs`, `tools` and
+# `sessions` from the host exactly as it finds them. The package name resolves
+# through the profile's healed node_modules fallback, where `install.sh` publishes it.
+- insert:
+    - id: html-preview
+      name: dsh-html-preview

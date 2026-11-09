@@ -128,15 +128,17 @@ RUN printf '%s\n' \
 COPY --from=runtime-tree /app /app
 COPY mdl/docker/nginx.conf /etc/nginx/nginx.conf
 COPY mdl/docker/entrypoint.sh /usr/local/bin/mdl-entrypoint
-# The Markdown reader bundle (SPEC-022) ships beside the entrypoint rather than
-# inside the runtime tree, which drops `mdl/`: the entrypoint publishes it into
-# the volume on every boot, so a recreated container converges without a rebuild.
-# `COPY` carries the build context's modes, so the bundle is chmodded here: the
-# entrypoint runs as `node` and must be able to read every file it publishes.
+# The GUI plugin bundles (SPEC-022, SPEC-023) ship beside the entrypoint rather
+# than inside the runtime tree, which drops `mdl/`: the entrypoint publishes them
+# into the volume on every boot, so a recreated container converges without a
+# rebuild. `COPY` carries the build context's modes, so the bundles are chmodded
+# here: the entrypoint runs as `node` and must be able to read every file it
+# publishes.
 COPY mdl/plugins/md-preview /opt/mdl/plugins/md-preview
+COPY mdl/plugins/html-preview /opt/mdl/plugins/html-preview
 RUN chmod 0755 /usr/local/bin/mdl-entrypoint \
-    && chmod -R a+rX /opt/mdl/plugins/md-preview \
-    && chmod 0755 /opt/mdl/plugins/md-preview/install.sh \
+    && chmod -R a+rX /opt/mdl/plugins/md-preview /opt/mdl/plugins/html-preview \
+    && chmod 0755 /opt/mdl/plugins/md-preview/install.sh /opt/mdl/plugins/html-preview/install.sh \
     && chmod 0644 /etc/nginx/nginx.conf \
     && chown root:root /etc/nginx/nginx.conf
 
