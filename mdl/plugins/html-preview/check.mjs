@@ -192,6 +192,10 @@ check('the chrome document frames the page and offers a way back',
   chrome.body.slice(0, 120))
 check('the chrome document frames the same rewritten page the panel shows',
   chrome.body.includes('/html-viewer/s1/style.css') && chrome.body.includes('&quot;'))
+check('the chrome document measures the framed page and hands scrolling to the tab',
+  chrome.body.includes("querySelector('iframe.page')")
+  && chrome.body.includes('min-height: calc(100dvh - var(--bar))')
+  && chrome.body.includes('frame.contentDocument'))
 check('the chrome document drops a return target on another host',
   (await call('/html-viewer/s1/__page?path=index.html&back=https%3A%2F%2Fevil.example%2Fx')).body.includes('class="back" href="/"'))
 check('the chrome document reports an unusable path instead of framing it',

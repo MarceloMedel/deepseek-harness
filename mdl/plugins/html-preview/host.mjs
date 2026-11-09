@@ -183,12 +183,12 @@ function chromeDocument(options) {
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>${escapeHtml(path)}</title>
 <style>
-  /* The bar is fixed and the frame keeps an explicit height below it, so the
-     page scrolls itself like any embedded document instead of relying on a
-     fixed viewport box, which mobile browsers do not scroll reliably. The
-     dvh unit follows the collapsing URL bar. */
+  /* The bar is fixed and the frame is measured to its content, so the tab's own
+     scroll moves the page: a nested scroll region inside a fixed viewport box
+     is what mobile browsers scroll unreliably, and it left a long report cut at
+     its first screenful. The minimum keeps a short page filling the window. */
   :root { color-scheme: light dark; --bar: calc(42px + env(safe-area-inset-top, 0px)); }
-  html, body { margin: 0; height: 100%; }
+  html, body { margin: 0; }
   body { background: Canvas; color: CanvasText;
          font: 13px/1.4 -apple-system, "Segoe UI", system-ui, sans-serif; }
   header { position: fixed; top: 0; left: 0; right: 0; z-index: 2; box-sizing: border-box;
@@ -201,7 +201,7 @@ function chromeDocument(options) {
   .path { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
           opacity: .72; font-size: 12px; }
   .page { display: block; box-sizing: border-box; width: 100%; margin-top: var(--bar);
-          height: calc(100vh - var(--bar)); height: calc(100dvh - var(--bar));
+          min-height: calc(100vh - var(--bar)); min-height: calc(100dvh - var(--bar));
           border: 0; background: #fff; }
   .error { margin: calc(var(--bar) + 24px) 24px 24px; max-width: 52ch; }
 </style>
@@ -217,6 +217,35 @@ ${body}
   (function () {
     var button = document.getElementById('reload')
     if (button !== null) button.addEventListener('click', function () { window.location.reload() })
+    var frame = document.querySelector('iframe.page')
+    if (frame === null) return
+    // The page is same-origin (it arrives as srcdoc), so its own height is
+    // readable: growing the frame to it hands the scrolling to this tab, which
+    // every browser does natively, instead of nesting a scroll region.
+    var last = 0
+    function fit() {
+      var doc = null
+      try { doc = frame.contentDocument } catch (error) { return }
+      if (doc === null || doc.documentElement === null) return
+      var content = Math.max(doc.documentElement.scrollHeight, doc.body === null ? 0 : doc.body.scrollHeight)
+      var floor = Math.max(0, window.innerHeight - frame.offsetTop)
+      var next = Math.max(content, floor)
+      if (Math.abs(next - last) < 4) return
+      last = next
+      frame.style.height = next + 'px'
+    }
+    frame.addEventListener('load', fit)
+    window.addEventListener('resize', fit)
+    if (typeof ResizeObserver === 'function') {
+      frame.addEventListener('load', function () {
+        try {
+          new ResizeObserver(fit).observe(frame.contentDocument.documentElement)
+        } catch (error) {
+          // An inaccessible document keeps the CSS minimum height, which still
+          // frames the page; only the content-height fit is lost.
+        }
+      })
+    }
   })()
 </script>
 </body>
