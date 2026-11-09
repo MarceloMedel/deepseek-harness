@@ -6,7 +6,7 @@ Status: implemented
 
 A Markdown document the agent writes lives in the workspace, and reading it meant leaving the GUI: an editor, a preview pane in another window, or a `git diff` renderer. The conversation renders Markdown already, but only as the model's own replies — a report, a README or a specification produced on disk had no reader.
 
-The deployment already had a precedent for a persistent browser surface: `dsh-html-preview`, a plain-JavaScript bundle in the profile's `node_modules` mounted by a composition row. A dynamic Cordis plugin would not do, because those live only in the running process and vanish on restart, which was the stated requirement.
+The deployment already had a precedent for a persistent browser surface: `dsh-html-preview`, a plain-JavaScript bundle in the profile's `node_modules` mounted by a composition row. It was untracked at the time and became a versioned bundle of its own in [the HTML viewer's note](2026-11-09-html-viewer-in-the-gui.md). A dynamic Cordis plugin would not do, because those live only in the running process and vanish on restart, which was the stated requirement.
 
 ## Decision
 
