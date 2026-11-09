@@ -83,25 +83,25 @@ Por qué no se elige una cabecera de confianza inyectada por el proxy: el secret
 
 ## Validación ejecutada
 
-Validado el 2026-11-09 dentro del contenedor de despliegue, sobre el árbol de trabajo del fork (sin reconstruir la imagen).
+Validado el 2026-11-09 dentro del contenedor de despliegue, primero sobre el árbol de trabajo del fork y después sobre la imagen reconstruida en el VPS.
 
 | Comprobación | Resultado | Evidencia |
 |---|---|---|
-| `PRIVV-01` pin intacto sin configuración | Cumplida | `npx vitest run packages/client/connection` (117 pruebas): `settings.describe` con `Host` público y sin aserción responde `403`; por loopback `200` |
-| `PRIVV-02` aserción válida admitida | Cumplida | `tests/cloudflare-access.host.spec.ts` con un JWKS real en loopback; y arranque real del perfil compuesto: `settings.describe` por `dsh.devmedel.com` con la aserción en el encabezado responde `200`, y con la cookie `CF_Authorization` también |
+| `PRIVV-01` pin intacto sin configuración | Cumplida | `npx vitest run packages/client/connection` (127 pruebas): `settings.describe` con `Host` público y sin aserción responde `403`; por loopback `200`. Repetido sobre la imagen reconstruida: `403` por `dsh.devmedel.com` sin aserción, `200` por loopback, `200` el catálogo |
+| `PRIVV-02` aserción válida admitida | Cumplida | `tests/cloudflare-access.host.spec.ts` con un JWKS real en loopback; arranque real del perfil compuesto con aserción en el encabezado y en la cookie; y en el despliegue el usuario abrió `Configuración → Modelos` en `https://dsh.devmedel.com`, que carga el catálogo y admite edición — el mismo pedido que antes devolvía el error del directorio |
 | `PRIVV-03` rechazos por condición | Cumplida | Casos parametrizados: aserción ausente o vacía, token no JWT, segmentos fuera de base64url, encabezado sin JSON, `alg` simétrico o ausente, sin `kid`, firma ajena, vencido, sin `exp`, `nbf` futuro, otro equipo, otra aplicación, `aud` en lista ajena, carga manipulada — `403` en cada uno |
 | `PRIVV-04` escritura por el plano | Cumplida (local) | Arranque real: `settings.mutate` con aserción responde `200`, el valor queda en `$DSH_HOME/settings.yaml`, y la misma llamada sin aserción responde `403` |
 | `PRIVV-05` autoridad no declarada | Cumplida | `tests/node-half.host.spec.ts` sobre HTTP real: autoridad confiable pero fuera de `hosts` con aserción válida → `403` |
 | `PRIVV-06` fence de navegador | Cumplida | Mismos casos: `Origin` ajeno, `Origin: null` y `sec-fetch-site: cross-site` con aserción válida → `403`; `Origin` del propio host → admitido |
-| `PRIVV-07` falla cerrado sin claves | Cumplida | Endpoint de certificados con `503`, conjunto publicado sin clave RSA usable y `kid` desconocido: `403`, con una sola consulta por intervalo (el contador del servidor de prueba lo comprueba) |
-| `PRIVV-08` configuración inválida | Cumplida | Casos de carga fallida (origen en texto plano, origen con ruta, sin `audience`, sin `hosts`, autoridad fuera de `trustedHosts`, loopback como extensión, autoridad no canónica) y `dsh --profile web --dump-config --patch mdl/docker/privileged-access.yml`, que compone la fila con la expresión `trustedHosts` intacta |
+| `PRIVV-07` falla cerrado sin claves | Cumplida | Endpoint de certificados con `503`, conjunto publicado sin clave RSA usable y `kid` desconocido: `403`, con una sola consulta por intervalo (el contador del servidor de prueba lo comprueba). El JWKS real del equipo se inspeccionó antes del despliegue: dos claves RSA/RS256 con `kid` y `use: sig`, la forma que el verificador consume |
+| `PRIVV-08` configuración inválida | Cumplida | Casos de carga fallida (origen en texto plano, origen con ruta, sin `audience`, sin `hosts`, autoridad fuera de `trustedHosts`, loopback como extensión, autoridad no canónica) y `dsh --profile web --dump-config --patch mdl/docker/privileged-access.yml`, que compone la fila con la expresión `trustedHosts` intacta, también con el tag real |
 | `PRIVV-09` token fuera de registros | Cumplida | Revisión: el verificador no registra el token ni lo incluye en rechazos; solo cachea claves públicas en memoria |
-| `PRIVV-10` despliegue real | Pendiente | Requiere reconstruir la imagen con `DSH_ACCESS_AUD` y validar en `dsh.devmedel.com` desde escritorio y teléfono |
+| `PRIVV-10` despliegue real | Parcialmente cumplida | Imagen `mdl-harness:local` reconstruida y contenedor recreado; el proceso arranca con `--patch /etc/mdl-harness/privileged-access.yml` y la capa queda montada en `/etc/mdl-harness/`; el bundle instalado contiene el verificador; `Configuración → Modelos` carga y es editable desde `https://dsh.devmedel.com`. Falta guardar un modelo y comprobar que persiste tras recargar y recrear el contenedor: `$DSH_HOME/settings.yaml` sigue con la fecha del despliegue anterior, así que la escritura por el hostname público todavía no se ejerció |
 
 Nota de implementación: el esquema del Loader materializa un objeto anidado como `{}` cuando falta, lo que habría hecho fallar la carga de todo despliegue que no declara la extensión. La sección se declara como unión para que «no declarada» y «declarada vacía» sigan siendo distinguibles, y `node-half.host.spec.ts` fija ese comportamiento resolviendo la configuración por el esquema real.
 
 ## Resultado y pendientes
 
-- Resultado: implementado y validado localmente; el plano privilegiado funciona por el hostname público cuando el despliegue aporta el tag `AUD`.
-- Pendientes o excepciones aceptadas: reconstruir la imagen y recrear el contenedor en el VPS con `DSH_ACCESS_AUD`, y registrar `PRIVV-10` desde escritorio y teléfono. Sin ese valor el despliegue sigue exactamente como antes.
-- Decisión de salida: pendiente.
+- Resultado: desplegado y en uso; el plano privilegiado responde por el hostname público con la aserción de Access verificada, y `Configuración → Modelos` carga desde `https://dsh.devmedel.com`.
+- Pendientes o excepciones aceptadas: falta ejercer la escritura por el hostname público —agregar o editar un modelo y guardar— y comprobar que persiste tras recargar y recrear el contenedor (`PRIVV-10`). Hasta entonces la escritura solo está probada en local (`PRIVV-04`).
+- Decisión de salida: pendiente de ese último registro.
