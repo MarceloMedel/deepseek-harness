@@ -85,9 +85,9 @@ Entorno: contenedor `mdl-harness` sobre `main`, 2026-11-09, con el paquete publi
 | `HVV-03` ruta cruda con su tipo MIME y `index.html` de carpeta | Validado (arnéscer) | `check.mjs`: `text/css; charset=utf-8` para la hoja, la fuente de `index.html` llega sin reescribir y `/html-viewer/s1/site` devuelve la página de entrada |
 | `HVV-10` barra del documento abierto | Validado (arnéscer); pendiente el teléfono real | `check.mjs`: `__page` responde `text/html`, enmarca la ruta cruda, enlaza el destino de vuelta recibido y escribe «Volver a la GUI»; un destino de otro host cae a `/`; una ruta inválida se informa en la barra en lugar de enmarcarse |
 | `HVV-04` `html_preview` y su tarjeta | Validado (arnéscer); pendiente una llamada real del agente | `check.mjs`: la herramienta se registra como `html_preview`, la tarjeta lee la ruta de la llamada y enmarca la página |
-| `HVV-05` maqueta de teléfono | Validado (arnéscer); pendiente el teléfono real | `check.mjs`: punto de corte `(max-width: 767px)`, `padding:calc(58px + env(safe-area-inset-top, 0px))`, la lista abre primero, elegir una página cambia al panel del documento y el botón de vuelta regresa |
+| `HVV-05` maqueta de teléfono | Validado (uso real en teléfono y arnéscer) | `check.mjs`: punto de corte `(max-width: 767px)`, `padding:calc(58px + env(safe-area-inset-top, 0px))`, la lista abre primero, elegir una página cambia al panel del documento y el botón de vuelta regresa |
 | `HVV-06` inglés y español | Validado (arnéscer) | `check.mjs`: la tabla de textos, el cambio a `es` en la tarjeta y la caída a inglés para un idioma sin copia |
-| `HVV-07` reinicio del proceso | Pendiente | La fila compone, el arranque aislado la monta y `install.sh` corre en cada arranque; nadie ha reiniciado el contenedor después de esta fase |
+| `HVV-07` reinicio del proceso | Validado | El usuario reinició el contenedor `cfe0d292883d` y el visor quedó disponible sin reinstalar nada: la fila del perfil, el paquete del volumen y su bundle de cliente llegaron al proceso nuevo |
 | `HVV-08` cercado al workspace | Validado (arnéscer) | `check.mjs`: recorrido, forma codificada, enlace simbólico que sale, NUL → `403`, sesión desconocida → `404`, método de escritura → `405` |
 | `HVV-09` composición y retiro del preset | Validado | `--dump-config` sobre el perfil desplegado incluye `- id: html-preview` y `- id: md-preview`; `/data/dsh/.agent-presets` queda vacío y el preset vive en `/data/dsh/retired/` |
 
@@ -95,6 +95,6 @@ Entorno: contenedor `mdl-harness` sobre `main`, 2026-11-09, con el paquete publi
 
 ## Resultado y pendientes
 
-- Resultado: el visor está versionado, publicado en el volumen y montado por la composición; queda observarlo en la GUI después de reiniciar el contenedor.
-- Pendientes: la observación tras el reinicio (`HVV-07`), la pintura de una página real en el navegador y la maqueta de teléfono en un teléfono (`HVV-02`, `HVV-05`), y una llamada real del agente a `html_preview` (`HVV-04`). Ninguna se reporta como exitosa.
-- Decisión de salida: en implementación hasta que se registre la observación tras el reinicio.
+- Resultado: el visor está versionado, publicado en el volumen, montado por la composición y en uso tras reiniciar el contenedor. El uso en el teléfono mostró que la página abierta con `Abrir ↗` quedaba sin salida; se corrigió con un documento propio que la enmarca bajo una barra con «Volver a la GUI».
+- Pendientes: la pintura de una página de varias piezas en el navegador (`HVV-02`, validada sólo por el arnéscer) y una llamada real del agente a `html_preview` (`HVV-04`). El uso real cubrió el reinicio, la maqueta de teléfono y el listado.
+- Decisión de salida: en implementación hasta que el usuario confirme en el navegador la página de varias piezas y la barra del documento abierto.
