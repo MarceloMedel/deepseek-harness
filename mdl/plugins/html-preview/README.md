@@ -14,7 +14,9 @@ The page is framed as `srcdoc`. The host half rewrites the page's relative refer
 
 What the rewrite cannot see is a relative URL the page's own script builds — `fetch('data.json')` — or one hidden in an attribute this plugin does not parse, such as `srcset`. The framed document therefore carries a `<base>` naming its directory on the route, so those resolve against the page rather than against the shell. A page that declares its own `<base>` keeps it: the rewrite rebases that `href` and adds nothing.
 
-`Abrir ↗` opens the raw route in a new tab. That route mirrors the workspace tree and serves each file with its own content type, so the page's own references resolve by themselves; asking for a folder serves its `index.html`.
+`Abrir ↗` opens the `__page` document: the page framed under one chrome bar carrying **Volver a la GUI** and **Recargar**. A page opened on its own had no way back — and on a phone whose GUI is installed as an app there is no browser chrome to escape with either — so the route answers with the page and the way back to it. The bar's return target is the URL the viewer was opened from, and a target that names another host is dropped for the GUI root rather than followed.
+
+The framed page keeps the raw route as its `src`. That route mirrors the workspace tree and serves each file with its own content type, so the page's own references resolve by themselves; asking for a folder serves its `index.html`.
 
 The frame carries no `sandbox` attribute: the page runs in the GUI's origin, exactly as it does opened in its own tab, which is what keeps its scripts and its `fetch` calls working. The content is a workspace file of the session.
 
@@ -34,6 +36,7 @@ That width is the shell's own phone breakpoint (`MOBILE_MAX`), and the panel's f
 |---|---|
 | `GET /html-viewer/<sessionId>/__list` | The workspace's HTML pages, ordered by path with `index.html` first |
 | `GET /html-viewer/<sessionId>/__doc?path=<p>` | One page: its path, directory, size and source with relative references rebased |
+| `GET /html-viewer/<sessionId>/__page?path=<p>&back=<url>&lang=<l>` | The document `Abrir ↗` opens: the page framed under a chrome bar with the way back |
 | `GET /html-viewer/<sessionId>/<path>` | Raw bytes of one workspace file, for the tab and for the assets a page references |
 
 Every path is fenced to the session workspace with `fs.contains`, which also rejects a symlink whose real target escapes it; the listing never offers such a file.

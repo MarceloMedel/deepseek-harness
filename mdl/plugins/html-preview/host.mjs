@@ -113,6 +113,106 @@ function baseUrlOf(sessionId, dir) {
 /** A page that already names its own base, whose href the rewrite rebases. */
 const BASE_TAG = /<base\b/i
 
+/** Chrome copy for the page opened outside the GUI (MDL-LOCALE-01). */
+const LABELS = {
+  en: { back: 'Back to the GUI', reload: 'Reload', missing: 'The page could not be opened.' },
+  es: { back: 'Volver a la GUI', reload: 'Recargar', missing: 'No se pudo abrir la página.' },
+}
+
+/** One label set, falling back to English for an unpublished locale. */
+function labelsFor(locale) {
+  return LABELS[locale] ?? LABELS.en
+}
+
+/** Escape one value for HTML text and attribute positions. */
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, ch => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  })[ch])
+}
+
+/**
+ * The return target a chrome link may point at: a URL on this request's own
+ * host, reduced to its path. Anything else — another host, an unparseable
+ * value — falls back to the GUI root, so a shared link cannot make this page
+ * navigate somewhere it does not own.
+ * @param raw - the `back` query value, or undefined.
+ * @param host - the request's Host header.
+ * @returns a same-origin path with its query and fragment.
+ */
+function backTargetOf(raw, host) {
+  const value = typeof raw === 'string' ? raw.trim() : ''
+  if (value.length === 0) return '/'
+  try {
+    const url = new URL(value, `http://${String(host)}`)
+    if (url.host !== String(host)) return '/'
+    return `${url.pathname}${url.search}${url.hash}`
+  } catch {
+    return '/'
+  }
+}
+
+/**
+ * The document `__page` answers with: one chrome bar and the page framed below
+ * it. The page keeps the raw route as its `src`, so it resolves its own
+ * references natively and runs top-level inside that frame.
+ * @param options - the framed path, its raw URL, the return target, the copy and
+ *   an error to show instead of the page.
+ * @returns a complete HTML document.
+ */
+function chromeDocument(options) {
+  const { path, source, back, locale, error } = options
+  const t = labelsFor(locale)
+  const body = error === null
+    ? `<iframe class="page" src="${escapeHtml(source)}" title="${escapeHtml(path)}"></iframe>`
+    : `<p class="error">${escapeHtml(error)}</p>`
+  return `<!doctype html>
+<html lang="${locale === 'es' ? 'es' : 'en'}">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>${escapeHtml(path)}</title>
+<style>
+  :root { color-scheme: light dark; }
+  html, body { height: 100%; }
+  body { margin: 0; display: flex; flex-direction: column; background: Canvas; color: CanvasText;
+         font: 13px/1.4 -apple-system, "Segoe UI", system-ui, sans-serif; }
+  header { display: flex; align-items: center; gap: 10px; padding: 6px 10px;
+           padding-top: calc(6px + env(safe-area-inset-top, 0px));
+           border-bottom: 1px solid color-mix(in srgb, CanvasText 18%, transparent); flex: 0 0 auto; }
+  a.back, button { appearance: none; border: 1px solid color-mix(in srgb, CanvasText 24%, transparent);
+           background: color-mix(in srgb, CanvasText 6%, Canvas); color: inherit; border-radius: 7px;
+           padding: 6px 12px; font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; }
+  a.back { flex: 0 0 auto; }
+  .path { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+          opacity: .72; font-size: 12px; }
+  .page { flex: 1 1 auto; width: 100%; border: 0; background: #fff; }
+  .error { margin: 24px; max-width: 52ch; }
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="${escapeHtml(back)}">← ${escapeHtml(t.back)}</a>
+  <span class="path">${escapeHtml(path)}</span>
+  <button type="button" id="reload">${escapeHtml(t.reload)}</button>
+</header>
+${body}
+<script>
+  (function () {
+    var button = document.getElementById('reload')
+    var frame = document.querySelector('iframe.page')
+    if (button !== null && frame !== null) button.addEventListener('click', function () { frame.contentWindow.location.reload() })
+  })()
+</script>
+</body>
+</html>
+`
+}
+
 /** Plain-text reply. */
 function sendText(res, status, body, extra) {
   res.writeHead(status, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store', ...extra })
@@ -126,6 +226,17 @@ function sendJson(res, status, value) {
     'content-type': 'application/json; charset=utf-8',
     'cache-control': 'no-store',
     'content-length': String(Buffer.byteLength(body)),
+  })
+  res.end(body)
+}
+
+/** HTML reply, for the document that frames a page opened outside the GUI. */
+function sendHtml(res, status, body) {
+  res.writeHead(status, {
+    'content-type': 'text/html; charset=utf-8',
+    'cache-control': 'no-store',
+    'content-length': String(Buffer.byteLength(body)),
+    'x-content-type-options': 'nosniff',
   })
   res.end(body)
 }
@@ -452,6 +563,31 @@ export function apply(ctx) {
           return
         }
         sendJson(res, 200, await buildDocument(wanted, root, parsed.sessionId))
+        return
+      }
+      // The document `Abrir ↗` opens: the page framed under one chrome bar. A
+      // page opened on its own has no way back to the GUI, and on a phone
+      // installed as an app it has no browser chrome to escape with either.
+      if (parsed.rel === '__page') {
+        const wanted = queryParam(parsed.query, 'path')
+        const locale = queryParam(parsed.query, 'lang') ?? 'en'
+        const back = backTargetOf(queryParam(parsed.query, 'back'), req.headers.host)
+        if (wanted === undefined) {
+          sendHtml(res, 400, chromeDocument({ path: '—', source: '', back, locale, error: labelsFor(locale).missing }))
+          return
+        }
+        const info = await inspect(wanted, root)
+        if (info.ok !== true) {
+          sendHtml(res, 404, chromeDocument({ path: wanted, source: '', back, locale, error: info.error }))
+          return
+        }
+        sendHtml(res, 200, chromeDocument({
+          path: info.path,
+          source: urlOf(parsed.sessionId, info.path),
+          back,
+          locale,
+          error: null,
+        }))
         return
       }
       if (parsed.rel === '') {

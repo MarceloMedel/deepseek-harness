@@ -22,7 +22,7 @@ El contrato de producto está en [../PRODUCT_SPEC.md](../PRODUCT_SPEC.md) y el o
 - `HV-01` Un botón `HTML` en la cabecera de la sesión abre y cierra el visor.
 - `HV-02` El visor flotante lista las páginas HTML del workspace de la sesión ordenadas por ruta, con las páginas `index.html` primero, y muestra la elegida en un marco.
 - `HV-03` La página se sirve al marco con `srcdoc`, sus referencias relativas (`src`, `href`, `poster` y `url()` en CSS) reescritas a la ruta del visor y un `<base>` que nombra su directorio en esa ruta, para que una página que usa una hoja de estilos, un script, una imagen o un JSON vecino se vea completa, incluido lo que el propio script construye en tiempo de ejecución.
-- `HV-04` `Abrir ↗` y las referencias que quedan relativas dentro de la página usan la ruta cruda, que sirve el árbol del workspace con sus tipos MIME, incluido `index.html` cuando se pide una carpeta.
+- `HV-04` `Abrir ↗` abre la página en su propia pestaña bajo una barra con «Volver a la GUI» y «Recargar»; el archivo se sirve por la ruta cruda, que refleja el árbol del workspace con sus tipos MIME, incluido el `index.html` de una carpeta, y una página abierta así nunca queda sin salida.
 - `HV-05` Herramienta `html_preview` para que el agente abra una página, con tarjeta en la conversación que muestra la página renderizada.
 - `HV-06` La maqueta sigue el ancho: por encima de 767 px conviven lista y página; por debajo el panel ocupa la ventana, muestra la lista primero y la página después con un botón de vuelta, y deja libres los primeros 58 px que el shell reserva para su botón de menú.
 - `HV-07` Los textos del panel se publican en inglés y español y siguen la preferencia de idioma de la interfaz.
@@ -46,6 +46,7 @@ El contrato de producto está en [../PRODUCT_SPEC.md](../PRODUCT_SPEC.md) y el o
 | `HVV-02` | Una página con hoja de estilos, script, imagen y JSON vecinos se ve completa dentro del marco | Validación manual con una página de varias piezas |
 | `HVV-03` | `Abrir ↗` sirve la página original con su tipo MIME y sus activos; una carpeta sirve su `index.html` | `curl` a la ruta y validación manual |
 | `HVV-04` | `html_preview` devuelve ruta y tamaño, y su tarjeta muestra la página | Arnéscer de `check.mjs` y validación manual |
+| `HVV-10` | `Abrir ↗` muestra la página con una barra que vuelve a la GUI, y un destino de vuelta de otro host se descarta | Arnéscer de `check.mjs` y validación manual |
 | `HVV-05` | En el teléfono el panel ocupa la ventana, abre en la lista, cambia a la página con un botón de vuelta y no tapa el botón de menú del shell | Arnéscer de `check.mjs` (punto de corte `767` y banda de 58 px) y validación manual en el teléfono |
 | `HVV-06` | Los textos siguen la preferencia de idioma: inglés y español, sin chino | Arnéscer de `check.mjs` sobre la tabla de textos y validación manual |
 | `HVV-07` | Tras reiniciar el proceso el visor sigue disponible sin reinstalar nada | Reinicio del contenedor y validación manual |
@@ -82,6 +83,7 @@ Entorno: contenedor `mdl-harness` sobre `main`, 2026-11-09, con el paquete publi
 | `HVV-01` listado con `index.html` primero | Validado (arnéscer) | `check.mjs`: la lista devuelve `index.html,site/index.html,docs/other.html`; `node_modules` y un `.md` quedan fuera |
 | `HVV-02` página con hoja de estilos, script, imagen y `url()` vecinos | Validado (arnéscer); pendiente la pintura en el navegador | `check.mjs`: `href="style.css"`, `src="app.js"`, `src="img/a.png"` y `url(img/a.png)` llegan como `/html-viewer/s1/…`; una referencia remota, `data:` y `#top` quedan intactas; una página anidada rebasa `../img/a.png` a la raíz; el `<base>` inyectado apunta a `/html-viewer/s1/` o `/html-viewer/s1/docs/`, y el `<base>` que declara una página se rebasa sin duplicarse |
 | `HVV-03` ruta cruda con su tipo MIME y `index.html` de carpeta | Validado (arnéscer) | `check.mjs`: `text/css; charset=utf-8` para la hoja, la fuente de `index.html` llega sin reescribir y `/html-viewer/s1/site` devuelve la página de entrada |
+| `HVV-10` barra del documento abierto | Validado (arnéscer); pendiente el teléfono real | `check.mjs`: `__page` responde `text/html`, enmarca la ruta cruda, enlaza el destino de vuelta recibido y escribe «Volver a la GUI»; un destino de otro host cae a `/`; una ruta inválida se informa en la barra en lugar de enmarcarse |
 | `HVV-04` `html_preview` y su tarjeta | Validado (arnéscer); pendiente una llamada real del agente | `check.mjs`: la herramienta se registra como `html_preview`, la tarjeta lee la ruta de la llamada y enmarca la página |
 | `HVV-05` maqueta de teléfono | Validado (arnéscer); pendiente el teléfono real | `check.mjs`: punto de corte `(max-width: 767px)`, `padding:calc(58px + env(safe-area-inset-top, 0px))`, la lista abre primero, elegir una página cambia al panel del documento y el botón de vuelta regresa |
 | `HVV-06` inglés y español | Validado (arnéscer) | `check.mjs`: la tabla de textos, el cambio a `es` en la tarjeta y la caída a inglés para un idioma sin copia |
@@ -89,7 +91,7 @@ Entorno: contenedor `mdl-harness` sobre `main`, 2026-11-09, con el paquete publi
 | `HVV-08` cercado al workspace | Validado (arnéscer) | `check.mjs`: recorrido, forma codificada, enlace simbólico que sale, NUL → `403`, sesión desconocida → `404`, método de escritura → `405` |
 | `HVV-09` composición y retiro del preset | Validado | `--dump-config` sobre el perfil desplegado incluye `- id: html-preview` y `- id: md-preview`; `/data/dsh/.agent-presets` queda vacío y el preset vive en `/data/dsh/retired/` |
 
-`check.mjs` reporta 54/54 comprobaciones correctas sobre la copia publicada. Un arranque real aislado (`DSH_HOME=/tmp/hp-verify`, puerto 3099, `install.sh` sobre ese home) montó la fila sin avisos: `window.__DSH_BOOT__` publica `dsh-html-preview` con su `rev`, `/plugins/dsh-html-preview/client.js` responde `200 text/javascript` y `/html-viewer/nope/__list` responde `404 text/plain` en lugar de la SPA, que es la prueba de que la ruta tiene dueño.
+`check.mjs` reporta 57/57 comprobaciones correctas sobre la copia publicada. Un arranque real aislado (`DSH_HOME=/tmp/hp-verify`, puerto 3099, `install.sh` sobre ese home) montó la fila sin avisos: `window.__DSH_BOOT__` publica `dsh-html-preview` con su `rev`, `/plugins/dsh-html-preview/client.js` responde `200 text/javascript` y `/html-viewer/nope/__list` responde `404 text/plain` en lugar de la SPA, que es la prueba de que la ruta tiene dueño.
 
 ## Resultado y pendientes
 

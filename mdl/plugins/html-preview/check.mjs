@@ -129,7 +129,7 @@ function call(url, method = 'GET') {
         done(this)
       },
     }
-    handler({ method, url }, res)
+    handler({ method, url, headers: { host: '127.0.0.1:3080' } }, res)
   })
 }
 
@@ -182,6 +182,18 @@ check('places the injected base inside the page head',
 check('rebases a base the page declares instead of adding a second one',
   (await json('/html-viewer/s1/__doc?path=base/page.html')).html.includes('<base href="/html-viewer/s1/base/assets/">')
   && ((await json('/html-viewer/s1/__doc?path=base/page.html')).html.match(/<base\b/gi) ?? []).length === 1)
+const chrome = await call('/html-viewer/s1/__page?path=index.html&back=%2Fworkspace%2Fdemo%2F%3Fsession%3Ds1&lang=es')
+check('the chrome document frames the page and offers a way back',
+  chrome.status === 200
+  && chrome.headers['content-type'] === 'text/html; charset=utf-8'
+  && chrome.body.includes('<iframe class="page" src="/html-viewer/s1/index.html"')
+  && chrome.body.includes('href="/workspace/demo/?session=s1"')
+  && chrome.body.includes('Volver a la GUI'),
+  chrome.body.slice(0, 120))
+check('the chrome document drops a return target on another host',
+  (await call('/html-viewer/s1/__page?path=index.html&back=https%3A%2F%2Fevil.example%2Fx')).body.includes('class="back" href="/"'))
+check('the chrome document reports an unusable path instead of framing it',
+  (await call('/html-viewer/s1/__page?path=..%2F..%2Fetc%2Fpasswd')).body.includes('cannot leave the session workspace'))
 check('rejects a traversal path',
   (await json('/html-viewer/s1/__doc?path=../../etc/passwd')).error === 'The path cannot leave the session workspace.')
 check('rejects an encoded traversal path',
@@ -352,7 +364,7 @@ check('the list shows every page, entry pages first',
 check('a phone opens on the list, with no page framed yet', document.querySelector('.dsh-hp-doc') === null)
 check('the phone toolbar offers reload, open and close as icons',
   iconButton('Reload') !== null && iconButton('Close the viewer') !== null
-  && document.querySelector('a.dsh-hp-ibtn')?.getAttribute('href') === '/html-viewer/s1/index.html')
+  && document.querySelector('a.dsh-hp-ibtn')?.getAttribute('href')?.startsWith('/html-viewer/s1/__page?path=index.html&lang=en&back='))
 
 click([...document.querySelectorAll('.dsh-hp-item')].find(node => node.textContent === 'docs/other.html'))
 await settle()
@@ -379,8 +391,13 @@ check('the wide list swaps the framed page in place',
   && document.querySelector('.dsh-hp-list') !== null)
 check('the framed page carries its rebased references',
   document.querySelector('.dsh-hp-frame')?.getAttribute('srcdoc')?.includes('/html-viewer/s1/style.css'))
-check('open links to the raw route of the selected page',
-  document.querySelector('a.dsh-hp-btn')?.getAttribute('href') === '/html-viewer/s1/index.html')
+check('open points at the chrome document, with the way back and the locale',
+  (() => {
+    const href = document.querySelector('a.dsh-hp-btn')?.getAttribute('href') ?? ''
+    return href.startsWith('/html-viewer/s1/__page?path=index.html&lang=en&back=')
+      && href.endsWith(encodeURIComponent('http://127.0.0.1:3080/'))
+  })(),
+  document.querySelector('a.dsh-hp-btn')?.getAttribute('href'))
 click(toolbarButton('Refresh'))
 await settle()
 check('refresh re-reads the listing', requested.filter(url => url.includes('/__list')).length >= 2)

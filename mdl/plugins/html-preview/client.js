@@ -152,10 +152,16 @@ window.__ModuleLoader__.load({
       return narrow
     }
 
-    /** One page's URL under the route. */
-    function urlFor(sessionId, path) {
-      const encoded = String(path).split('/').map(part => encodeURIComponent(part)).join('/')
-      return `${ROUTE}/${encodeURIComponent(String(sessionId))}/${encoded}`
+    /**
+     * The document that frames one page outside the GUI. A page opened on its
+     * own has no way back, and on a phone the installed app leaves no browser
+     * chrome to escape with, so the route answers with the page under a bar
+     * carrying the return target and a reload.
+     */
+    function openUrlFor(sessionId, path, locale) {
+      const back = typeof window !== 'undefined' && typeof window.location?.href === 'string' ? window.location.href : ''
+      const query = `path=${encodeURIComponent(path)}&lang=${encodeURIComponent(locale)}`
+      return `${ROUTE}/${encodeURIComponent(String(sessionId))}/__page?${query}${back === '' ? '' : `&back=${encodeURIComponent(back)}`}`
     }
 
     /** Human-readable byte count. */
@@ -340,7 +346,7 @@ window.__ModuleLoader__.load({
       const t = strings(snapshot.locale)
       const selected = snapshot.path
       const known = selected === null ? undefined : listing.files.find(file => file.path === selected)
-      const link = selected === null ? null : urlFor(snapshot.sessionId, selected)
+      const link = selected === null ? null : openUrlFor(snapshot.sessionId, selected, snapshot.locale)
 
       const toolbar = narrow
         ? React.createElement('div', { className: 'dsh-hp-bar' },
