@@ -28,7 +28,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 20 | Diferir el chunk `vendor` del primer render | [SPEC-020](specs/020-diferir-chunk-vendor.md) | Aprobada |
 | 21 | Bundles de plugin: lo que se descarga antes de usarlo | [SPEC-021](specs/021-bundles-de-plugin.md) | En implementación |
 | 22 | Visor de Markdown dentro de la GUI | [SPEC-022](specs/022-visor-markdown.md) | En implementación |
-| 23 | Visor de HTML generado dentro de la GUI | [SPEC-023](specs/023-visor-html.md) | En implementación |
+| 23 | Visor de HTML generado dentro de la GUI | [SPEC-023](specs/023-visor-html.md) | Validada |
 
 ## Dependencias
 
@@ -57,7 +57,7 @@ Las fases 1 a 11 están validadas y el fork se reproduce desde un clon limpio de
 
 La Fase 22 está desplegada y en uso: el lector abre los documentos del workspace desde el escritorio y el teléfono, y las tres correcciones del uso real llegaron a `main` por los PR #10 y #11. Quedan sin ejercitar el salto desde el índice, la memoria de lectura, la tarjeta de `md_preview` en una conversación real y la observación tras recrear el contenedor.
 
-La Fase 23 sustituye el visor de HTML heredado: el paquete vive en el repositorio y en el volumen, y el usuario lo confirmó tras reiniciar el contenedor, en escritorio y en el teléfono. El uso destapó que la página abierta con `Abrir ↗` quedaba sin salida fuera de la GUI, ya corregido con un documento propio que la enmarca bajo una barra con «Volver a la GUI».
+La Fase 23 está validada: el visor de HTML vive en el repositorio y en el volumen, el usuario lo confirmó tras reiniciar el contenedor en escritorio y en el teléfono, y el uso real cerró los tres defectos de la pantalla completa (sin salida, marco sin pintar y documento cortado por desplazamiento anidado). Queda como observación una llamada real del agente a `html_preview`.
 
 ## Decisiones del despliegue VPS
 

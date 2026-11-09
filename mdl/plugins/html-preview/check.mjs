@@ -219,6 +219,25 @@ check('answers an unknown session with 404', (await call('/html-viewer/nope/__li
 check('refuses a write method', (await call('/html-viewer/s1/__list', 'POST')).status === 405)
 check('refuses a NUL in the route', (await call('/html-viewer/s1/index%00.html')).status === 403)
 
+// The Tool's own execution: the model-facing entry point validates the path and
+// reports what the card needs.
+const tool = tools[0]
+const agentExec = { agent: { session: { header: { id: 's1', cwd: workspace } } } }
+const executed = await tool.execute({ path: 'index.html' }, agentExec)
+check('the tool validates the path and returns the page URL',
+  executed.path === 'index.html'
+  && executed.url === '/html-viewer/s1/index.html'
+  && typeof executed.sizeBytes === 'number' && executed.sizeBytes > 0,
+  JSON.stringify(executed))
+let toolError = null
+try {
+  await tool.execute({ path: '../../etc/passwd' }, agentExec)
+} catch (error) {
+  toolError = error instanceof Error ? error.message : String(error)
+}
+check('the tool refuses a path outside the workspace',
+  toolError === 'The path cannot leave the session workspace.', toolError)
+
 // ── client half ─────────────────────────────────────────────────────────────
 
 console.log('client half')

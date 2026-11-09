@@ -1,6 +1,6 @@
 # SPEC-023 — Visor de HTML generado dentro de la GUI
 
-Estado: En implementación
+Estado: Validada
 Fase: 23
 Aprobación para iniciar: usuario, 2026-11-09 — bundle versionado con fila en el perfil `web` para todas las sesiones, retirando el preset `html-preview`
 Commit base: `HEAD de la rama personal al iniciar la fase`
@@ -81,20 +81,20 @@ Entorno: contenedor `mdl-harness` sobre `main`, 2026-11-09, con el paquete publi
 | Comprobación | Resultado | Evidencia |
 |---|---|---|
 | `HVV-01` listado con `index.html` primero | Validado (arnéscer) | `check.mjs`: la lista devuelve `index.html,site/index.html,docs/other.html`; `node_modules` y un `.md` quedan fuera |
-| `HVV-02` página con hoja de estilos, script, imagen y `url()` vecinos | Validado (arnéscer); pendiente la pintura en el navegador | `check.mjs`: `href="style.css"`, `src="app.js"`, `src="img/a.png"` y `url(img/a.png)` llegan como `/html-viewer/s1/…`; una referencia remota, `data:` y `#top` quedan intactas; una página anidada rebasa `../img/a.png` a la raíz; el `<base>` inyectado apunta a `/html-viewer/s1/` o `/html-viewer/s1/docs/`, y el `<base>` que declara una página se rebasa sin duplicarse |
+| `HVV-02` página con hoja de estilos, script, imagen y `url()` vecinos | Validado (arnéscer y uso real) | `check.mjs`: `href="style.css"`, `src="app.js"`, `src="img/a.png"` y `url(img/a.png)` llegan como `/html-viewer/s1/…`; una referencia remota, `data:` y `#top` quedan intactas; una página anidada rebasa `../img/a.png` a la raíz; el `<base>` inyectado apunta a `/html-viewer/s1/` o `/html-viewer/s1/docs/`, y el `<base>` que declara una página se rebasa sin duplicarse |
 | `HVV-03` ruta cruda con su tipo MIME y `index.html` de carpeta | Validado (arnéscer) | `check.mjs`: `text/css; charset=utf-8` para la hoja, la fuente de `index.html` llega sin reescribir y `/html-viewer/s1/site` devuelve la página de entrada |
-| `HVV-10` barra del documento abierto | Validado (arnéscer); pendiente el teléfono real | `check.mjs`: `__page` responde `text/html`, enmarca la ruta cruda, enlaza el destino de vuelta recibido y escribe «Volver a la GUI»; un destino de otro host cae a `/`; una ruta inválida se informa en la barra en lugar de enmarcarse |
-| `HVV-04` `html_preview` y su tarjeta | Validado (arnéscer); pendiente una llamada real del agente | `check.mjs`: la herramienta se registra como `html_preview`, la tarjeta lee la ruta de la llamada y enmarca la página |
+| `HVV-10` barra del documento abierto | Validado (uso real y arnéscer) | `check.mjs`: `__page` responde `text/html`, enmarca la ruta cruda, enlaza el destino de vuelta recibido y escribe «Volver a la GUI»; un destino de otro host cae a `/`; una ruta inválida se informa en la barra en lugar de enmarcarse |
+| `HVV-04` `html_preview` y su tarjeta | Validado (arnéscer); la llamada real del agente queda como observación pendiente | `check.mjs`: la herramienta se registra, su ejecución valida la ruta y devuelve ruta, URL y tamaño, rechaza una ruta fuera del workspace, y la tarjeta lee la ruta de la llamada y enmarca la página |
 | `HVV-05` maqueta de teléfono | Validado (uso real en teléfono y arnéscer) | `check.mjs`: punto de corte `(max-width: 767px)`, `padding:calc(58px + env(safe-area-inset-top, 0px))`, la lista abre primero, elegir una página cambia al panel del documento y el botón de vuelta regresa |
 | `HVV-06` inglés y español | Validado (arnéscer) | `check.mjs`: la tabla de textos, el cambio a `es` en la tarjeta y la caída a inglés para un idioma sin copia |
 | `HVV-07` reinicio del proceso | Validado | El usuario reinició el contenedor `cfe0d292883d` y el visor quedó disponible sin reinstalar nada: la fila del perfil, el paquete del volumen y su bundle de cliente llegaron al proceso nuevo |
 | `HVV-08` cercado al workspace | Validado (arnéscer) | `check.mjs`: recorrido, forma codificada, enlace simbólico que sale, NUL → `403`, sesión desconocida → `404`, método de escritura → `405` |
 | `HVV-09` composición y retiro del preset | Validado | `--dump-config` sobre el perfil desplegado incluye `- id: html-preview` y `- id: md-preview`; `/data/dsh/.agent-presets` queda vacío y el preset vive en `/data/dsh/retired/` |
 
-`check.mjs` reporta 57/57 comprobaciones correctas sobre la copia publicada. Un arranque real aislado (`DSH_HOME=/tmp/hp-verify`, puerto 3099, `install.sh` sobre ese home) montó la fila sin avisos: `window.__DSH_BOOT__` publica `dsh-html-preview` con su `rev`, `/plugins/dsh-html-preview/client.js` responde `200 text/javascript` y `/html-viewer/nope/__list` responde `404 text/plain` en lugar de la SPA, que es la prueba de que la ruta tiene dueño.
+`check.mjs` reporta 61/61 comprobaciones correctas sobre la copia publicada, incluida la ejecución de `html_preview` con una ruta válida y su rechazo de una ruta fuera del workspace. Un arranque real aislado (`DSH_HOME=/tmp/hp-verify`, puerto 3099, `install.sh` sobre ese home) montó la fila sin avisos: `window.__DSH_BOOT__` publica `dsh-html-preview` con su `rev`, `/plugins/dsh-html-preview/client.js` responde `200 text/javascript` y `/html-viewer/nope/__list` responde `404 text/plain` en lugar de la SPA, que es la prueba de que la ruta tiene dueño.
 
 ## Resultado y pendientes
 
-- Resultado: el visor está versionado, publicado en el volumen, montado por la composición y en uso tras reiniciar el contenedor. El uso en el teléfono mostró que la página abierta con `Abrir ↗` quedaba sin salida; se corrigió con un documento propio que la enmarca bajo una barra con «Volver a la GUI».
-- Pendientes: la pintura de una página de varias piezas en el navegador (`HVV-02`, validada sólo por el arnéscer) y una llamada real del agente a `html_preview` (`HVV-04`). El uso real cubrió el reinicio, la maqueta de teléfono y el listado.
-- Decisión de salida: en implementación hasta que el usuario confirme en el navegador la página de varias piezas y la barra del documento abierto.
+- Resultado: el visor está versionado, publicado en el volumen, montado por la composición y en uso tras reiniciar el contenedor, en escritorio y en el teléfono. El uso real destapó y cerró tres defectos de la superficie a pantalla completa: la página abierta con `Abrir ↗` no tenía salida, el marco no pintaba la página y el documento se cortaba en el primer pantallazo porque el desplazamiento era anidado. Los tres se corrigieron en `9b5f694ac7`, `24d28bdc6b` y `d78d31ad7f`.
+- Pendientes: una llamada real del agente a `html_preview` y su tarjeta en una conversación (`HVV-04`, con la ejecución de la herramienta cubierta por el arnéscer). El uso real cubrió el reinicio, la maqueta de teléfono, el listado, la pintura de una página con gráfico y la barra del documento abierto.
+- Decisión de salida: validada. El usuario confirmó en escritorio y teléfono la página con gráfico, la barra del documento abierto y la supervivencia al reinicio; la única comprobación sin observar es una llamada real del agente a `html_preview`, que no bloquea la fase porque su ejecución está cubierta por `check.mjs`.
