@@ -1,6 +1,6 @@
 # SPEC-026 — Herramientas externas reproducibles: búsqueda multi-proveedor y MCP de Neon
 
-Estado: En implementación
+Estado: Validada
 Fase: 26
 Commit base: `155a833200` (la rama se corta después de que aterricen SPEC-025 y la corrección de argumentos de herramientas, que hoy están sin confirmar en `main`)
 Aprobación para iniciar: usuario, 2026-11-09 — aprobado el borrador completo: montaje dedicado `MDL_NEON_DIR`, `NEON_PROJECT_ID` por entorno y migración del volumen que retira la fila y el paquete escritos a mano
@@ -97,6 +97,7 @@ Ejecutada el 2026-11-10. La primera tanda se hizo sobre el árbol de fuentes; la
 | `EXT-07` costo medido | Cumplido | 86 herramientas / 84 777 bytes en el despliegue vivo (35 → 86; `mcp:neon` 51 / 49 839); `tools/list` contra Neon devuelve 51 |
 | `EXT-08` migración | Cumplido | El riesgo se confirmó antes (volumen con la fila manual más overlay = **2** filas); tras la migración la composición tiene **una** fila `mcp-neon`, la del overlay, y el paquete del bundle lo volvió a publicar el instalador desde la imagen |
 | `EXT-09` barrera de escritura | Cumplido | Dos capas medidas por separado. Sin rol fijado (URL sólo con `readonly=true`): `DELETE FROM pipaysii.tipo_dte WHERE false` → `cannot execute DELETE in a read-only transaction` (`SQLSTATE 25006`), y `INSERT INTO <tabla inexistente>` → `SQLSTATE 42P01`, que es resolución de nombres y no una escritura permitida. Con el rol: `mdl_reader` existe con `LOGIN`, `rolsuper = false` y `member_of = none`, con `SELECT` sobre los esquemas `pipaysii` y `public`; lee `pipaysii.tipo_dte` y la vista `pipaysii.v_dcv_tipos`, la misma escritura se rechaza también por HTTP directo a la URL fijada, y `inspect_database` sigue devolviendo filas con ese rol |
+| `EXT-09` en el despliegue | Cumplido | Tras reconstruir la imagen: el argv lleva `--patch /etc/mdl-harness/neon-mcp.yml`; `run_sql` con `role_name: neondb_owner` es rechazado por el servidor (*This connection is pinned to Postgres role "mdl_reader"*), una lectura sin rol devuelve filas y `inspect_database` sigue informando |
 | `EXT-10` degradación sin credencial | Cumplido | Gate del entrypoint: con proyecto y sin archivo de credencial el overlay no se aplica y el arranque continúa |
 
 ## Hallazgo durante la validación
@@ -111,6 +112,4 @@ Consecuencia para este despliegue: la escritura queda bloqueada por dos capas in
 
 - Resultado: implementado y validado en el despliegue real. La imagen se reconstruyó, el contenedor se recreó con el overlay aplicado por el entrypoint (`--patch /etc/mdl-harness/neon-mcp.yml` en el argv) y el volumen migrado compone una sola fila `mcp-neon`.
 - Pendientes:
-  - Reconstruir la imagen y recrear el contenedor para que el overlay fijado (`&roleName=mdl_reader`) entre en vigor en el despliegue.
-  - Marcar la fila de la fase en `mdl/ROADMAP.md` como validada al cerrar.
 - Decisión de salida: pendiente.
