@@ -1,6 +1,6 @@
 # SPEC-027 — Índice de código consultable por el agente (graphify)
 
-Estado: Aprobada
+Estado: Validada
 Fase: 27
 Commit base: `f05d96d79f`
 Aprobación para iniciar: usuario, 2026-11-10 — «go with graphify», tras el preflight que fija la versión, el conjunto de herramientas y el comportamiento sin grafo por defecto
@@ -64,23 +64,21 @@ Preflight ejecutado el 2026-11-10 en el contenedor, antes de escribir el `Docker
 
 ## Validación ejecutada
 
-Ejecutada el 2026-11-10 en el contenedor, sobre el árbol de fuentes y con el paquete instalado en un directorio de herramientas del workspace:
+Ejecutada el 2026-11-10, primero sobre el árbol de fuentes y después —tras reconstruir la imagen desde `91b1d25718`— sobre el despliegue real:
 
 | Comprobación | Resultado | Evidencia |
 |---|---|---|
 | `GFY-01` instalación fijada | Cumplido en el espacio de trabajo | `uv tool install "graphifyy[mcp]==0.9.91"` produce `graphify` y `graphify-mcp`; sin `[mcp]` el servidor muere con `ModuleNotFoundError: No module named 'mcp'` |
-| `GFY-01` ejecutable en la imagen | Pendiente | Requiere reconstruir la imagen |
+| `GFY-01` ejecutable en la imagen | Cumplido | `docker exec -u node … graphify-mcp --help` responde su ayuda dentro del contenedor; `/usr/local/bin/graphify-mcp` es un enlace a `/opt/uv-tools/graphifyy/bin/graphify-mcp` (árbol de 193 MB fuera del volumen) |
 | `GFY-02` composición | Cumplido | El overlay parsea con el cargador real de parches y compone una fila `graphify` con `transport: stdio` |
-| `GFY-03` grafo inerte | Cumplido | Con grafo inexistente: `graph_stats` y `query_graph` responden `graph.json not found: /etc/mdl-harness/no-default-graph.json`; con `project_path=/srv/projects/pipay-sii`: 741 nodos, 1 525 aristas, 36 comunidades |
-| `GFY-04` costo | Cumplido | `tools/list`: 10 herramientas, 6 243 bytes propios |
-| `GFY-05` frescura | Cumplido | `graph_stats` informa `Built at commit 38978fc7… HEAD is 2f1e00c…` |
-| Fila montada y 10 herramientas en DSH | Pendiente | Requiere la imagen reconstruida: el ejecutable no existe todavía en `/usr/local/bin` |
+| `GFY-02` fila montada | Cumplido | El argv del proceso lleva `--patch /etc/mdl-harness/graphify-mcp.yml` junto a los otros dos overlays, el entrypoint registra `code-index MCP enabled (graphify-mcp, 10 tools; queries need project_path)` y las diez herramientas responden a través de DSH |
+| `GFY-03` grafo inerte | Cumplido | Con grafo inexistente: `graph_stats` responde `graph.json not found: /etc/mdl-harness/no-default-graph.json`, también con la fila ya montada en el despliegue; con `project_path=/srv/projects/pipay-sii`: 741 nodos, 1 525 aristas, 36 comunidades, y `query_graph` devuelve el recorrido (82 nodos con presupuesto de 2 000 tokens) |
+| `GFY-04` costo | Cumplido | `tools/list` del servidor: 10 herramientas, 6 243 bytes; medido en la petición real del despliegue: **97 herramientas / 83 896 bytes** en total, con `mcp:graphify` en 10 herramientas / 6 392 bytes |
+| `GFY-05` frescura | Cumplido | `graph_stats` con `project_path` informa `Built at commit 38978fc7…` y añade `HEAD is 2f1e00c, graph built at 38978fc: graph may be stale` |
 
 ## Resultado y pendientes
 
-- Resultado: implementado en el árbol de fuentes con el preflight completo.
+- Resultado: implementado y validado en el despliegue real. La imagen reconstruida desde `91b1d25718` lleva el ejecutable, el entrypoint aplica el overlay y el proceso compone la fila con sus diez herramientas, consultando el grafo de `pipay-sii` sólo cuando la consulta nombra `project_path`.
 - Pendientes:
-  - Reconstruir la imagen y comprobar `GFY-01` dentro del contenedor y la fila montada con sus 10 herramientas.
-  - Marcar la fila de la fase en `mdl/ROADMAP.md` al validar.
   - Reconstruir el grafo cuando el proyecto avance: el de `pipay-sii` es del commit `38978fc7` y el `HEAD` del repositorio ya es `2f1e00c`.
-- Decisión de salida: pendiente.
+- Decisión de salida: validada; la reconstrucción del grafo queda como operación del operador, no como pendiente de la fase.
