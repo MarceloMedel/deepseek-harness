@@ -1,0 +1,18 @@
+# Code-index MCP overlay (SPEC-027).
+#
+# Applied with `--patch` by the entrypoint only when the image carries the
+# server binary, so an image without the install composes exactly as before.
+#
+# The default graph is a path that does not exist, on purpose. Every tool takes
+# an optional `project_path`, so a neutral default makes a call that forgets it
+# fail with `graph.json not found: …` instead of answering from whichever
+# project the default happened to name — the failure mode that is worse than no
+# answer, because a graph of the wrong repository reads as authoritative.
+- insert:
+    - id: mcp-graphify
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: graphify
+        transport: stdio
+        command: /usr/local/bin/graphify-mcp
+        args: ['--graph', '/etc/mdl-harness/no-default-graph.json']

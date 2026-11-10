@@ -105,6 +105,18 @@ RUN printf '%s\n' \
 RUN mkdir -p /data/dsh /workspace \
     && chown -R node:node /data /workspace
 
+# The code-index MCP server (SPEC-027). The `[mcp]` extra is part of the
+# requirement, not a detail: without it the binary installs and then exits with
+# `ModuleNotFoundError: No module named 'mcp'`. `UV_PYTHON_DOWNLOADS=never`
+# pins the interpreter to the image's own `python3`, and the tool tree lives
+# under /opt so the volume never holds it and a rebuild replaces it.
+ENV UV_TOOL_DIR=/opt/uv-tools \
+    UV_TOOL_BIN_DIR=/usr/local/bin \
+    UV_PYTHON_DOWNLOADS=never
+RUN UV_CACHE_DIR=/tmp/uv-cache uv tool install "graphifyy[mcp]==0.9.91" \
+    && rm -rf /tmp/uv-cache \
+    && chmod -R a+rX /opt/uv-tools
+
 # GitHub credential surface (SPEC-010): `gh` resolves to the wrapper below on
 # PATH and reads the token per invocation from the read-only mount, so the secret
 # never enters a process environment; the git helper answers github.com only.
@@ -135,6 +147,9 @@ COPY mdl/docker/privileged-access.yml /etc/mdl-harness/privileged-access.yml
 # entrypoint and is applied only when the deployment supplies the project id and
 # a readable credential, so neither the row nor a secret enters the volume.
 COPY mdl/docker/neon-mcp.yml /etc/mdl-harness/neon-mcp.yml
+# The code-index overlay (SPEC-027) is applied only when the image carries the
+# server binary, so an image built without the install composes without the row.
+COPY mdl/docker/graphify-mcp.yml /etc/mdl-harness/graphify-mcp.yml
 COPY mdl/docker/entrypoint.sh /usr/local/bin/mdl-entrypoint
 # The GUI plugin bundles (SPEC-022, SPEC-023) ship beside the entrypoint rather
 # than inside the runtime tree, which drops `mdl/`: the entrypoint publishes them
@@ -164,7 +179,7 @@ RUN cd /opt/mdl/plugins/chat-files \
 RUN chmod 0755 /usr/local/bin/mdl-entrypoint \
     && chmod -R a+rX /opt/mdl/plugins/md-preview /opt/mdl/plugins/html-preview /opt/mdl/plugins/cat-mascot /opt/mdl/plugins/chat-files /opt/mdl/plugins/web-search-multi \
     && chmod 0755 /opt/mdl/plugins/md-preview/install.sh /opt/mdl/plugins/html-preview/install.sh /opt/mdl/plugins/cat-mascot/install.sh /opt/mdl/plugins/chat-files/install.sh /opt/mdl/plugins/web-search-multi/install.sh \
-    && chmod 0644 /etc/nginx/nginx.conf /etc/mdl-harness/privileged-access.yml /etc/mdl-harness/neon-mcp.yml \
+    && chmod 0644 /etc/nginx/nginx.conf /etc/mdl-harness/privileged-access.yml /etc/mdl-harness/neon-mcp.yml /etc/mdl-harness/graphify-mcp.yml \
     && chown root:root /etc/nginx/nginx.conf
 
 WORKDIR /workspace

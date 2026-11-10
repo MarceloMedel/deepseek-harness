@@ -71,7 +71,6 @@ La imagen de runtime instala solo lo que el agente usa de verdad ([SPEC-017](../
 
 Estas herramientas se retiraron porque ningún consumidor las necesita en runtime; reponer cualquiera es volver a agregarla a la lista de `apt` del `Dockerfile`:
 
-- `graphifyy` (con su venv de `uv`): herramienta de grafos de documentación, sin consumidor en la ruta del agente.
 - `docker-ce-cli`: el despliegue no monta el socket por `MDL-DOCKER-02` ni define `DOCKER_HOST`, así que el binario no puede operar ningún daemon.
 - `openssh-client`: todo el Git va por HTTPS con token desde `SPEC-011` y no se monta ningún fragmento SSH.
 - `python3-pip`, `python3-venv`: `uv` cubre ambos.
@@ -114,13 +113,19 @@ npx neon@latest roles create --project-id <project-id> --branch production \
   --name mdl_reader --access read_only --schema pipaysii --schema public
 ```
 
+**Índice de código.** [SPEC-027](../specs/027-indice-de-codigo-graphify.md) instala `graphifyy[mcp]` en una versión fijada durante la build —el extra `[mcp]` es obligatorio, sin él el binario arranca y muere con `ModuleNotFoundError`— y el entrypoint aplica `mdl/docker/graphify-mcp.yml` cuando `/usr/local/bin/graphify-mcp` existe. Sin variable de entorno que lo decida: la fila viaja con el binario.
+
+El grafo por defecto es `/etc/mdl-harness/no-default-graph.json`, que no existe a propósito. Las diez herramientas aceptan un `project_path` opcional, así que una consulta que lo omita responde `graph.json not found` en vez de datos de otro proyecto; con `project_path=/srv/projects/<repo>` responde el grafo de ese repositorio y avisa de su frescura comparando el commit del grafo con el `HEAD` del proyecto. Construir o refrescar el grafo es una acción del operador (`graphify-out/graph.json` en cada repositorio), no del contenedor.
+
 Comprobación:
 
 ```sh
+sudo docker exec -u node mdl-harness-mdl-harness-1 graphify-mcp --help
 sudo docker exec -u node mdl-harness-mdl-harness-1 \
-  node /app/apps/cli/lib/bin.js --profile web --dump-config | grep -A8 'id: mcp-neon'
-# serverName: neon, readonly=true y roleName=mdl_reader en la url,
-# la cabecera con la expresión !!js sin evaluar
+  node /app/apps/cli/lib/bin.js --profile web --dump-config \
+  | grep -A8 -e 'id: mcp-graphify' -e 'id: mcp-neon'
+# graphify: transport stdio, command /usr/local/bin/graphify-mcp, args con el grafo inerte
+# neon: readonly=true y roleName=mdl_reader en la url, la cabecera !!js sin evaluar
 ```
 
 Una escritura a través del rol fijado responde `cannot execute DELETE in a read-only transaction` (`SQLSTATE 25006`), y las lecturas y los diagnósticos `inspect_database` siguen funcionando con ese rol.
