@@ -51,6 +51,13 @@ export interface RpcErrorDetailsMap {
   'agent-preset-not-found': { agentPreset: string; available: string[] }
   'agent-preset-invalid': { agentPreset: string; reason: string }
   'agent-busy': { reason: string }
+  /**
+   * A cancel was refused because the session is waiting for a human answer and
+   * cancelling would discard the question on every attached client. The details
+   * name the pending question; the same cancel repeated inside the rearm window
+   * is accepted.
+   */
+  'question-pending': { sessionId: SessionId; questionRpcId: RpcId }
   'attachment-error': { reason: string }
   'queue-item-not-found': { itemId: MessageId }
   'steer-unavailable': { itemId: MessageId }

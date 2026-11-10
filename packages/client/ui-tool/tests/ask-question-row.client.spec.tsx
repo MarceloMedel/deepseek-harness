@@ -99,6 +99,17 @@ describe('AskQuestionRow', () => {
     expect(view.container.querySelector('[data-state="stopped"]')).not.toBeNull()
   })
 
+  it('a turn-cancelled question reads interrupted, naming the turn rather than the user', () => {
+    // ASK_TURN_CANCELLED: the settlement for a cancel that reached the turn
+    // while the question was still waiting, which the proxy distinguishes from
+    // a cause it cannot attribute to the human.
+    const view = render(<AskQuestionRow {...rowProps(resultNode(ARGS, null,
+      { isError: true, error: { name: 'UserQuestionError', code: 'ASK_TURN_CANCELLED' } }))} />)
+    expect(screen.getByText('interrumpida')).toBeTruthy()
+    expect(view.container.querySelector('[data-state="stopped"]')).not.toBeNull()
+    expect(screen.queryByText('cancelada')).toBeNull()
+  })
+
   it('an interrupted turn reads as stopped, not cancelled', () => {
     const view = render(<AskQuestionRow {...rowProps(resultNode(ARGS, null,
       { isError: true, error: { name: 'Interrupted', code: 'interrupted' } }))} />)

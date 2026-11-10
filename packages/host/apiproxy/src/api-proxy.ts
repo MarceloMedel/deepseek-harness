@@ -114,6 +114,13 @@ import { canOpenNativePath, openNativePath, openNativeTextFile } from './native-
 const DEFAULT_MAX_MESSAGES = 50
 
 /**
+ * How long a refused cancel stays armed for the same session. Long enough that
+ * the deliberate second press reads as one intent, short enough that a cancel
+ * hours later is asked again.
+ */
+const QUESTION_CANCEL_REARM_MS = 15_000
+
+/**
  * Non-model settings namespaces intentionally served to the Web client. The
  * plugin-owned entries (`agent-loop`, `bash`, `web-search-deepseek`) are the
  * host-plane sections the plugin configuration page edits; a namespace absent
@@ -1129,6 +1136,14 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
   let workspaceCreationChain = Promise.resolve()
   const pendingQuestions = new Map<RpcId, PendingQuestion>()
   const pendingApprovals = new Map<RpcId, PendingApproval>()
+  /**
+   * Sessions whose next `cancel` is allowed to destroy a pending question,
+   * with the deadline of that allowance. A turn waiting on a human is one
+   * accidental tap away from silencing the question on every attached client,
+   * so the first cancel is refused and names the cost; a repeat inside the
+   * window is the operator insisting.
+   */
+  const armedQuestionCancels = new Map<SessionId, number>()
   const muxQueues = new Set<FrameQueue<RpcRequest<MuxFrame>>>()
   const imageAdmissionChains = new WeakMap<Agent, Promise<void>>()
 
@@ -1381,8 +1396,18 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         }
         const onAbort = (): void => {
           claimQuestion(pending, 'cancelled')
-          reject(new UserQuestionError(
-            'ask_user_question was aborted before the user answered', 'ASK_ABORTED'))
+          // The turn's own cancellation is not the user declining to answer: a
+          // stop from any attached client ends the phase that asked, so the
+          // tool reports what happened rather than reporting silence.
+          const cause: unknown = request.signal?.reason
+          const turnCancelled = typeof cause === 'object' && cause !== null
+            && (cause as { kind?: unknown }).kind === 'user'
+          reject(turnCancelled
+            ? new UserQuestionError(
+              'the turn was cancelled while the question was open; nothing was answered',
+              'ASK_TURN_CANCELLED')
+            : new UserQuestionError(
+              'ask_user_question was aborted before the user answered', 'ASK_ABORTED'))
         }
         pending.onAbort = onAbort
         pendingQuestions.set(rpcId, pending)
@@ -2627,6 +2652,19 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         }
         if (hasSubagentOwner(agent.session, agent)) {
           return Promise.resolve(err(request, subagentOwnershipError(sessionId)))
+        }
+        const askedSession = [...pendingQuestions.values()].find(pending => pending.sessionId === sessionId)
+        if (askedSession !== undefined) {
+          const deadline = armedQuestionCancels.get(sessionId) ?? 0
+          if (Date.now() > deadline) {
+            armedQuestionCancels.set(sessionId, Date.now() + QUESTION_CANCEL_REARM_MS)
+            return Promise.resolve(err(request, {
+              code: 'question-pending',
+              message: 'this session is waiting for a human answer; cancel again to stop the turn and discard the question',
+              details: { sessionId, questionRpcId: askedSession.rpcId },
+            }))
+          }
+          armedQuestionCancels.delete(sessionId)
         }
         agent.cancel({ kind: 'user' }, { keepInbox: true })
         return Promise.resolve(ok(request, { accepted: true as const }))

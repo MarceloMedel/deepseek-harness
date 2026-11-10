@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
 import SessionStore from '@deepseek-ai/dsh-session'
 import UserQuestionService from '@deepseek-ai/dsh-user-questions'
 import type { ApiProxy, MuxFrame, RpcRequest } from '@deepseek-ai/dsh-host-apiproxy/api'
+import type { SessionId } from '@deepseek-ai/dsh-session'
 import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api/rpc'
 import { createApiProxy } from '../src/api-proxy.ts'
 
@@ -114,6 +115,76 @@ describe('question response validation', () => {
       .toEqual({ accepted: true })
     await expect(asked).resolves.toEqual({
       answers: [{ id: 'target', selected: [], custom: 'Release notes' }],
+    })
+    abort.abort()
+  })
+})
+
+let nextCancelRpc = 1
+function cancelRequest(sessionId: SessionId): RpcRequest<{ sessionId: SessionId }> {
+  return { rpcId: RpcId(`cancel-${String(nextCancelRpc++)}`), payload: { sessionId } }
+}
+
+/** An agent whose `cancel` aborts the phase signal the question was asked under. */
+function runningAgent(ctx: Context, phase: AbortController): { agent: Agent; cancel: ReturnType<typeof vi.fn> } {
+  const session = ctx.sessions.create()
+  const cancel = vi.fn(() => { phase.abort({ kind: 'user' }) })
+  const value = { id: session.id, session, status: 'running', ctx, cancel } as unknown as Agent
+  ctx.agents.register(value)
+  return { agent: value, cancel }
+}
+
+describe('cancel while a question waits', () => {
+  it('refuses the first cancel and leaves the question answerable', async () => {
+    const { ctx, api } = await harness()
+    const abort = new AbortController()
+    const mux = openMux(api, abort)
+    const phase = new AbortController()
+    const { agent: live, cancel } = runningAgent(ctx, phase)
+
+    const asked = ctx.userQuestions.ask({
+      agent: live,
+      questions: [{ id: 'target', question: 'Choose one target', options: [{ label: 'Code' }] }],
+      signal: phase.signal,
+    })
+    const envelope = await mux.waitForQuestion()
+
+    const refused = await api.sessions.cancel(cancelRequest(live.id))
+    expect(refused.result.ok).toBe(false)
+    if (!refused.result.ok) {
+      expect(refused.result.error.code).toBe('question-pending')
+      expect(refused.result.error.details).toEqual({ sessionId: live.id, questionRpcId: envelope.rpcId })
+    }
+    expect(cancel).not.toHaveBeenCalled()
+
+    expect(await api.respond(answer(envelope, ['Code']))).toEqual({ accepted: true })
+    await expect(asked).resolves.toEqual({ answers: [{ id: 'target', selected: ['Code'] }] })
+    abort.abort()
+  })
+
+  it('accepts the repeated cancel and names the turn as the reason the question died', async () => {
+    const { ctx, api } = await harness()
+    const abort = new AbortController()
+    const mux = openMux(api, abort)
+    const phase = new AbortController()
+    const { agent: live, cancel } = runningAgent(ctx, phase)
+
+    const asked = ctx.userQuestions.ask({
+      agent: live,
+      questions: [{ id: 'target', question: 'Choose one target' }],
+      signal: phase.signal,
+    })
+    await mux.waitForQuestion()
+
+    const refused = await api.sessions.cancel(cancelRequest(live.id))
+    expect(refused.result.ok).toBe(false)
+
+    const accepted = await api.sessions.cancel(cancelRequest(live.id))
+    expect(accepted.result.ok).toBe(true)
+    expect(cancel).toHaveBeenCalledTimes(1)
+    await expect(asked).rejects.toMatchObject({
+      code: 'ASK_TURN_CANCELLED',
+      message: 'the turn was cancelled while the question was open; nothing was answered',
     })
     abort.abort()
   })
