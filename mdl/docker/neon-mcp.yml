@@ -6,9 +6,14 @@
 #
 # `readonly=true` is applied by Neon's SERVER, not by DSH: without it the
 # catalog grows to roughly 112 tools carried in every request's `tools` field.
+# It removes the administrative tools, but the SQL tools still connect as the
+# database owner, so the write barrier is the pinned Postgres role: with
+# `roleName` set, every SQL tool logs in as that role and Postgres refuses
+# writes by privilege (`SQLSTATE 25006`), not by tool selection. The role is
+# scoped to the application's own schema; see mdl/docker/README.md.
 # The credential is read from the read-only mount at activation, so it is never
 # an environment value, never in this file, and never in the volume. The
-# expression prints unevaluated in `--dump-config`, which verifies this row and
+# expressions print unevaluated in `--dump-config`, which verifies this row and
 # says nothing about the secret.
 - insert:
     - id: mcp-neon
@@ -17,7 +22,8 @@
         serverName: neon
         transport: streamable-http
         # A tag applies to exactly one node, so each expression is one quoted
-        # scalar: double quotes outside, single quotes inside.
-        url: !!js '"https://mcp.neon.tech/mcp?projectId=" + process.env.NEON_PROJECT_ID + "&readonly=true"'
+        # scalar: double quotes outside, single quotes inside. An unset role name
+        # leaves the URL unpinned instead of sending an empty parameter.
+        url: !!js '"https://mcp.neon.tech/mcp?projectId=" + process.env.NEON_PROJECT_ID + "&readonly=true" + (process.env.NEON_ROLE_NAME ? "&roleName=" + encodeURIComponent(process.env.NEON_ROLE_NAME) : "")'
         headers:
           Authorization: !!js "'Bearer ' + process.getBuiltinModule('node:fs').readFileSync(process.env.MDL_NEON_TOKEN_FILE || '/etc/mdl-harness/neon/token','utf8').trim()"
