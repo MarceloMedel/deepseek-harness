@@ -32,6 +32,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 24 | Plano privilegiado autenticado desde el hostname público | [SPEC-024](specs/024-plano-privilegiado-autenticado.md) | Validada |
 | 25 | Archivos adjuntos en la conversación | [SPEC-025](specs/025-archivos-adjuntos-conversacion.md) | En implementación |
 | 26 | Herramientas externas reproducibles: búsqueda multi-proveedor y MCP de Neon | [SPEC-026](specs/026-herramientas-externas-reproducibles.md) | En implementación |
+| 27 | Índice de código consultable por el agente (graphify) | [SPEC-027](specs/027-indice-de-codigo-graphify.md) | En implementación |
 
 ## Dependencias
 

@@ -70,6 +70,15 @@ else
   echo "mdl-harness: no NEON_PROJECT_ID or no credential at $neon_token_file; the Neon MCP is not mounted"
 fi
 
+# The code-index MCP row (SPEC-027) follows the binary: an image built without
+# the install composes without the row, and no environment decides it.
+if [[ -x /usr/local/bin/graphify-mcp ]]; then
+  dsh_args+=(--patch /etc/mdl-harness/graphify-mcp.yml)
+  echo "mdl-harness: code-index MCP enabled (graphify-mcp, 10 tools; queries need project_path)"
+else
+  echo "mdl-harness: no /usr/local/bin/graphify-mcp; the code-index MCP is not mounted"
+fi
+
 dsh_args+=(--host 127.0.0.1 --port 3080)
 if [[ -n "${DSH_TRUSTED_HOST:-}" ]]; then
   dsh_args+=(--trusted-host "$DSH_TRUSTED_HOST")
