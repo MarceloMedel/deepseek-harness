@@ -48,16 +48,17 @@ export function AskQuestionRow({ toolName, block, inspect, t }: AskQuestionRowPr
   const model = toolRowModel(toolName, block)
   // Composer verdicts settle the call as specific UserQuestionErrors
   // (apiproxy ask_user_question handler): 'ASK_CANCELLED' is the user's own
-  // dismissal of the set, 'ASK_ABORTED' is a turn interrupt landing while the
-  // question was pending. Both name their verdict instead of the generic
-  // failed shape, and the abort keeps the shared stopped (amber) semantics of
-  // any other interrupted tool call.
+  // dismissal of the set; 'ASK_ABORTED' and 'ASK_TURN_CANCELLED' are a turn
+  // landing while the question was pending, respectively with a cause the
+  // proxy does not attribute to the human and one it does. All three name
+  // their verdict instead of the generic failed shape, and the interruptions
+  // keep the shared stopped (amber) semantics of any other interrupted call.
   const code = 'kind' in block ? block.error?.code : undefined
   let summary = model.summary
   let state = model.state
   if (code === 'ASK_CANCELLED') {
     summary = t('ask.cancelled')
-  } else if (code === 'ASK_ABORTED') {
+  } else if (code === 'ASK_ABORTED' || code === 'ASK_TURN_CANCELLED') {
     summary = t('ask.interrupted')
     state = 'stopped'
   } else if (model.state === 'running') {
