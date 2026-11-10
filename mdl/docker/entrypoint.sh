@@ -7,7 +7,7 @@ mkdir -p "$DSH_HOME" /workspace
 # publishing them into the volume on every boot is what makes them survive a
 # recreated container and upgrade with the image; each script is idempotent and
 # refuses to take the deployment down with it.
-for bundle in md-preview html-preview chat-files; do
+for bundle in md-preview html-preview chat-files cat-mascot; do
   if [[ -x "/opt/mdl/plugins/$bundle/install.sh" ]]; then
     "/opt/mdl/plugins/$bundle/install.sh" \
       || echo "mdl-harness: $bundle could not be published; the GUI runs without it" >&2
