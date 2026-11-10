@@ -103,7 +103,7 @@ docker run --rm -v mdl-harness_mdl-dsh-home:/data/dsh --entrypoint bash mdl-harn
     rm -rf /data/dsh/profiles/node_modules/dsh-web-search-multi'
 ```
 
-`readonly=true` retira las herramientas administrativas (ramas, migraciones, configuración de auth, snapshots) y oculta `run_sql_transaction` y `get_connection_string`, pero **no** convierte `run_sql` en un ejecutor de sólo lectura: las herramientas SQL se conectan como el propietario de la base. La barrera de escritura es el rol fijado con `&roleName=<rol>`: con él, cada herramienta SQL inicia sesión como ese rol y Postgres rechaza la escritura por privilegios (`SQLSTATE 25006`), no por selección de herramientas.
+`readonly=true` retira las herramientas administrativas (ramas, migraciones, configuración de auth, snapshots), oculta `run_sql_transaction` y `get_connection_string`, y ejecuta las consultas en una transacción de sólo lectura: una escritura a una tabla real responde `cannot execute DELETE in a read-only transaction` (`SQLSTATE 25006`). La comprobación tiene que hacerse contra una tabla existente; contra una tabla inexistente la respuesta es `SQLSTATE 42P01` porque la resolución de nombres ocurre antes, y eso no demuestra que la escritura esté permitida. El rol fijado con `&roleName=<rol>` añade mínimo privilegio sobre las lecturas y sobrevive a quitar `readonly`.
 
 El rol se crea una vez, con alcance al esquema de la aplicación —`pipaysii` aquí, no `public`— y cubre las tablas que el propietario cree después:
 
