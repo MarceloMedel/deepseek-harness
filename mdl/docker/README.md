@@ -89,6 +89,7 @@ El backend de subagentes `subagent-claude-code` ya no arrastra el SDK oficial co
 | Variable o montaje | Contenido |
 |---|---|
 | `NEON_PROJECT_ID` (entorno) | Identificador del proyecto; no es secreto y no se escribe en el overlay |
+| `NEON_ROLE_NAME` (entorno) | Rol de Postgres al que el servidor fija cada herramienta SQL; por defecto `mdl_reader`. Vacío deja la URL sin fijar y las herramientas corren como el propietario |
 | `MDL_NEON_DIR` (montaje de sólo lectura) | Directorio del host montado en `/etc/mdl-harness/neon`; el token es `token`, modo `0600`, dueño del uid del contenedor |
 
 La credencial se lee al activar la fila y nunca es un valor de entorno; `MDL_NEON_TOKEN_FILE` cambia la ruta que lee el overlay. Un volumen que todavía tenga la fila y el paquete escritos a mano debe limpiarse antes de recrear el contenedor: dos filas con el mismo `serverName` impiden montar la segunda.
@@ -102,15 +103,27 @@ docker run --rm -v mdl-harness_mdl-dsh-home:/data/dsh --entrypoint bash mdl-harn
     rm -rf /data/dsh/profiles/node_modules/dsh-web-search-multi'
 ```
 
-`readonly=true` retira las herramientas administrativas (ramas, migraciones, configuración de auth, snapshots) y oculta `run_sql_transaction` y `get_connection_string`, pero no convierte `run_sql` en un ejecutor de sólo lectura: las herramientas SQL se conectan como el propietario de la base. El mínimo privilegio se consigue fijando un rol con `&roleName=<rol>` en la `url:` del overlay, con permisos de sólo lectura en la base.
+`readonly=true` retira las herramientas administrativas (ramas, migraciones, configuración de auth, snapshots) y oculta `run_sql_transaction` y `get_connection_string`, pero **no** convierte `run_sql` en un ejecutor de sólo lectura: las herramientas SQL se conectan como el propietario de la base. La barrera de escritura es el rol fijado con `&roleName=<rol>`: con él, cada herramienta SQL inicia sesión como ese rol y Postgres rechaza la escritura por privilegios (`SQLSTATE 25006`), no por selección de herramientas.
+
+El rol se crea una vez, con alcance al esquema de la aplicación —`pipaysii` aquí, no `public`— y cubre las tablas que el propietario cree después:
+
+```sh
+# el CLI imprime la contraseña: el servidor MCP resuelve la credencial por su
+# cuenta, así que no hay que guardarla en ninguna parte
+npx neon@latest roles create --project-id <project-id> --branch production \
+  --name mdl_reader --access read_only --schema pipaysii --schema public
+```
 
 Comprobación:
 
 ```sh
 sudo docker exec -u node mdl-harness-mdl-harness-1 \
-  node /app/apps/cli/lib/bin.js --profile web --dump-config | grep -A6 'id: mcp-neon'
-# serverName: neon, readonly=true en la url, la cabecera con la expresión !!js sin evaluar
+  node /app/apps/cli/lib/bin.js --profile web --dump-config | grep -A8 'id: mcp-neon'
+# serverName: neon, readonly=true y roleName=mdl_reader en la url,
+# la cabecera con la expresión !!js sin evaluar
 ```
+
+Una escritura a través del rol fijado responde `cannot execute DELETE in a read-only transaction` (`SQLSTATE 25006`), y las lecturas y los diagnósticos `inspect_database` siguen funcionando con ese rol.
 
 ## Sandbox
 

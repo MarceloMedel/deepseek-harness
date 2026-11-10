@@ -26,6 +26,10 @@ services:
       # secret, so it rides the environment and stays out of the versioned
       # overlay; without it the row is not composed at all.
       NEON_PROJECT_ID: ${NEON_PROJECT_ID:-}
+      # Postgres role the Neon MCP pins every SQL tool to (SPEC-026). Writes are
+      # refused by that role's privileges, so this is the write barrier; an empty
+      # value leaves the URL unpinned and the tools run as the database owner.
+      NEON_ROLE_NAME: ${NEON_ROLE_NAME:-mdl_reader}
       # Overrides the credential path the overlay reads (SPEC-026). Defaults to
       # the mount below; the value is a path, never the credential.
       MDL_NEON_TOKEN_FILE: ${MDL_NEON_TOKEN_FILE:-/etc/mdl-harness/neon/token}

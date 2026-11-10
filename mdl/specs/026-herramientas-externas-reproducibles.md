@@ -36,6 +36,7 @@ Hechos verificados que deciden el diseño:
 - `EXT-06` La credencial de Neon vive fuera del repositorio, de la imagen y del volumen, se monta como archivo de sólo lectura y se lee al activar la entrada. No entra en el entorno del proceso, ni en la capa de parche, ni en los registros de validación.
 - `EXT-07` El costo del catálogo queda medido y registrado: 35 → 86 herramientas y 84 777 bytes, con el desglose por proveedor, y la comprobación independiente contra `tools/list` del servidor de Neon.
 - `EXT-08` La migración retira del volumen la fila `mcp-neon` y el paquete `profiles/node_modules/dsh-web-search-multi` escritos a mano, de modo que el instalador de la imagen y el overlay sean la única fuente.
+- `EXT-09` El MCP fija cada herramienta SQL a un rol de Postgres de sólo lectura, con alcance al esquema de la aplicación y a las tablas futuras, de modo que una escritura la rechaza la base por privilegios y no la selección de herramientas del servidor. El rol se nombra por entorno (`NEON_ROLE_NAME`) y no se escribe en el overlay.
 
 ## Fuera del alcance
 
@@ -58,7 +59,7 @@ Hechos verificados que deciden el diseño:
 | `EXT-06` | La credencial no está en Git, imagen, volumen ni entorno | `git grep napi_`, búsqueda en el sistema de archivos del contenedor y `env` dentro del contenedor: sin coincidencias |
 | `EXT-07` | El catálogo medido coincide con lo registrado | Medición desde el log de sesión (86 / 84 777 B) y `tools/list` contra Neon (51 herramientas) |
 | `EXT-08` | El volumen migrado no conserva la fila ni el paquete manuales | Inspección de `cordis.patch.yml` y de `profiles/node_modules/` tras la migración; una sola fila `mcp-neon` compuesta |
-| `EXT-09` | El catálogo no expone herramientas administrativas y la escritura SQL queda decidida por la base, no por el cliente | `tools/list` sin herramientas de rama, migración, borrado ni snapshots; con rol fijado (`&roleName=`) un `INSERT` es rechazado por permisos. Ver el hallazgo de la validación: `readonly=true` por sí solo no bloquea escrituras por `run_sql` |
+| `EXT-09` | El catálogo no expone herramientas administrativas y la escritura SQL la decide el rol de Postgres, no el cliente | `tools/list` sin herramientas de rama, migración, borrado ni snapshots; con `roleName` fijado, una escritura responde `SQLSTATE 25006` y una lectura sigue devolviendo filas |
 | `EXT-10` | Una credencial ausente o ilegible degrada sin bloquear el arranque | Con `NEON_PROJECT_ID` pero sin archivo de credencial, el entrypoint no aplica el overlay y el proceso arranca |
 
 ## Restricciones
@@ -95,19 +96,19 @@ Ejecutada el 2026-11-10. La primera tanda se hizo sobre el árbol de fuentes; la
 | `EXT-06` credencial fuera de Git, imagen, volumen y entorno | Cumplido | `grep -rl napi_ /data/dsh /opt/mdl /app/apps/cli` no devuelve coincidencias, y el entorno del proceso DSH contiene `NEON_PROJECT_ID` pero ninguna clave (0 coincidencias de `napi_`) |
 | `EXT-07` costo medido | Cumplido | 86 herramientas / 84 777 bytes en el despliegue vivo (35 → 86; `mcp:neon` 51 / 49 839); `tools/list` contra Neon devuelve 51 |
 | `EXT-08` migración | Cumplido | El riesgo se confirmó antes (volumen con la fila manual más overlay = **2** filas); tras la migración la composición tiene **una** fila `mcp-neon`, la del overlay, y el paquete del bundle lo volvió a publicar el instalador desde la imagen |
-| `EXT-09` sólo lectura | **No cumplido como se redactó** | Ver el hallazgo siguiente: `readonly=true` retira las herramientas administrativas, no las escrituras por `run_sql` |
+| `EXT-09` rol de sólo lectura fijado | Cumplido | `mdl_reader` creado con `--access read_only --schema pipaysii --schema public`, sin pertenencia a `neon_superuser` (`rolsuper = false`, `member_of = none`); `SELECT` sobre `pipaysii.tipo_dte` y sobre la vista `pipaysii.v_dcv_tipos` devuelve filas con `role_name: mdl_reader`, y `DELETE ... WHERE false` responde `cannot execute DELETE in a read-only transaction` (`SQLSTATE 25006`). Llamado por HTTP directo a la URL fijada (`&roleName=mdl_reader`) el resultado es el mismo, y `inspect_database` sigue devolviendo filas con ese rol |
 | `EXT-10` degradación sin credencial | Cumplido | Gate del entrypoint: con proyecto y sin archivo de credencial el overlay no se aplica y el arranque continúa |
 
 ## Hallazgo durante la validación
 
 `EXT-09` estaba redactado sobre una premisa falsa. La referencia de Neon define `?readonly=true` como la retirada de las operaciones administrativas (ramas, migraciones, configuración de auth) y de `run_sql_transaction` y `get_connection_string`; no convierte `run_sql` en un ejecutor de sólo lectura. Una sonda `INSERT INTO <tabla inexistente>` llegó a la resolución de nombres (`SQLSTATE 42P01`) en lugar de ser rechazada como sentencia de lectura, lo que descarta un guardia por sentencia delante de la herramienta. La misma página documenta el mecanismo correcto de mínimo privilegio: `?roleName=<rol>`, donde los permisos del rol de Postgres deciden qué puede leer y cambiar el agente, y advierte que MCP es para desarrollo y "never connect MCP agents to production databases".
 
-Consecuencia para este despliegue: hoy el agente tiene capacidad de escritura SQL sobre la base `pipay`, limitada sólo por los privilegios del rol propietario. Es una decisión de seguridad nueva, no una tarea de implementación, y queda como pendiente explícito.
+Consecuencia para este despliegue: mientras la fila corría sin rol fijado, el agente tenía capacidad de escritura SQL sobre la base `pipay`, limitada sólo por los privilegios del rol propietario. Se resolvió con `EXT-09`: `mdl_reader` es un rol con `LOGIN` que no pertenece a `neon_superuser`, con `SELECT` sobre los esquemas `pipaysii` y `public` (incluidas las tablas que el propietario cree después), y el overlay lo fija en la URL. La barrera es de Postgres, así que sobrevive a cualquier cambio de catálogo del servidor MCP.
 
 ## Resultado y pendientes
 
 - Resultado: implementado y validado en el despliegue real. La imagen se reconstruyó, el contenedor se recreó con el overlay aplicado por el entrypoint (`--patch /etc/mdl-harness/neon-mcp.yml` en el argv) y el volumen migrado compone una sola fila `mcp-neon`.
 - Pendientes:
-  - **Decisión de seguridad**: fijar un rol de sólo lectura en la URL (`&roleName=<rol>` con `GRANT SELECT`) o aceptar por escrito que `run_sql` puede escribir. Sin esa decisión, `EXT-09` no puede marcarse cumplido.
+  - Reconstruir la imagen y recrear el contenedor para que el overlay fijado (`&roleName=mdl_reader`) entre en vigor en el despliegue.
   - Marcar la fila de la fase en `mdl/ROADMAP.md` como validada al cerrar.
 - Decisión de salida: pendiente.
