@@ -22,6 +22,13 @@ services:
       # a request whose Access assertion this process verified. Leaving it unset
       # keeps that plane on loopback, which is the state before SPEC-024.
       DSH_ACCESS_AUD: ${DSH_ACCESS_AUD:-}
+      # Neon project the MCP row is scoped to (SPEC-026). The identifier is not a
+      # secret, so it rides the environment and stays out of the versioned
+      # overlay; without it the row is not composed at all.
+      NEON_PROJECT_ID: ${NEON_PROJECT_ID:-}
+      # Overrides the credential path the overlay reads (SPEC-026). Defaults to
+      # the mount below; the value is a path, never the credential.
+      MDL_NEON_TOKEN_FILE: ${MDL_NEON_TOKEN_FILE:-/etc/mdl-harness/neon/token}
       GIT_TERMINAL_PROMPT: "0"
       # No repository-specific git configuration here (SPEC-011). Cloning,
       # pushing and PRs all go over HTTPS with the mounted token, which reaches
@@ -45,6 +52,11 @@ services:
       # projects mount, and read per invocation by the image's gh wrapper, so it
       # never becomes an environment value. Rotating it is replacing the file.
       - ${MDL_GH_DIR:-/home/ubuntu/.config/mdl-harness/gh}:/etc/mdl-harness/gh:ro
+      # Neon API key for the MCP row (SPEC-026): same contract as the GitHub
+      # token — read-only, outside the volume, read at activation by the overlay
+      # and never an environment value. The directory must exist on the host and
+      # be owned by the container's uid, or the entrypoint skips the row.
+      - ${MDL_NEON_DIR:-/home/ubuntu/.config/mdl-harness/neon}:/etc/mdl-harness/neon:ro
       - ./settings.yaml:/etc/mdl-harness/settings.yaml:ro
     networks:
       - default

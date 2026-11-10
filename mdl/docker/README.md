@@ -78,6 +78,40 @@ Estas herramientas se retiraron porque ningún consumidor las necesita en runtim
 
 El backend de subagentes `subagent-claude-code` ya no arrastra el SDK oficial completo: `@anthropic-ai/claude-agent-sdk` es un peer opcional. Montar ese preset sin instalarlo falla con un mensaje que nombra el paquete, no con un `ERR_MODULE_NOT_FOUND` durante el arranque.
 
+## Herramientas externas
+
+[SPEC-026](../specs/026-herramientas-externas-reproducibles.md) hace que estas dos capacidades sobrevivan a un volumen vacío y a una imagen reconstruida. Las dos son opcionales en el arranque: sin configuración, el despliegue compone exactamente lo de antes.
+
+**Búsqueda multi-proveedor.** El bundle `mdl/plugins/web-search-multi/` se publica con su `install.sh` desde el entrypoint, como los bundles de GUI. Reemplaza al proveedor `deepseek-official`, que sin `DEEPSEEK_API_KEY` hacía fallar `web_search`; los motores sin clave que responden desde este VPS son Bing y Baidu. El instalador no necesita `pnpm`: copia el paquete a `profiles/node_modules/` y escribe las dos entradas de parche del bundle.
+
+**MCP de Neon.** La fila vive en el overlay `mdl/docker/neon-mcp.yml`, que se aplica con `--patch` sólo si existen las dos condiciones siguientes:
+
+| Variable o montaje | Contenido |
+|---|---|
+| `NEON_PROJECT_ID` (entorno) | Identificador del proyecto; no es secreto y no se escribe en el overlay |
+| `MDL_NEON_DIR` (montaje de sólo lectura) | Directorio del host montado en `/etc/mdl-harness/neon`; el token es `token`, modo `0600`, dueño del uid del contenedor |
+
+La credencial se lee al activar la fila y nunca es un valor de entorno; `MDL_NEON_TOKEN_FILE` cambia la ruta que lee el overlay. Un volumen que todavía tenga la fila y el paquete escritos a mano debe limpiarse antes de recrear el contenedor: dos filas con el mismo `serverName` impiden montar la segunda.
+
+```sh
+# en el host, con el contenedor detenido
+docker run --rm -v mdl-harness_mdl-dsh-home:/data/dsh --entrypoint bash mdl-harness:local -lc '
+  f=/data/dsh/profiles/web/cordis.patch.yml
+  awk "/Multi-provider web search|Neon MCP \(managed Postgres/{exit} {print}" "$f" > "$f.tmp" &&
+    mv "$f.tmp" "$f" &&
+    rm -rf /data/dsh/profiles/node_modules/dsh-web-search-multi'
+```
+
+`readonly=true` retira las herramientas administrativas (ramas, migraciones, configuración de auth, snapshots) y oculta `run_sql_transaction` y `get_connection_string`, pero no convierte `run_sql` en un ejecutor de sólo lectura: las herramientas SQL se conectan como el propietario de la base. El mínimo privilegio se consigue fijando un rol con `&roleName=<rol>` en la `url:` del overlay, con permisos de sólo lectura en la base.
+
+Comprobación:
+
+```sh
+sudo docker exec -u node mdl-harness-mdl-harness-1 \
+  node /app/apps/cli/lib/bin.js --profile web --dump-config | grep -A6 'id: mcp-neon'
+# serverName: neon, readonly=true en la url, la cabecera con la expresión !!js sin evaluar
+```
+
 ## Sandbox
 
 La cadena Linux de `dsh-sandbox-local` prueba `bwrap` y recurre a Landlock. Dentro del contenedor `bwrap` no puede crear user namespaces por el perfil AppArmor, así que el runner efectivo es Landlock. La imagen compila el launcher (`native/landlock-run`) durante la build; sin ese binario el sandbox se queda sin runners y `bash` falla cerrado.

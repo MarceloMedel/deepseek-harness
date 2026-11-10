@@ -1,0 +1,23 @@
+# Neon MCP overlay (SPEC-026).
+#
+# Applied with `--patch` by the entrypoint only when the deployment provides
+# NEON_PROJECT_ID and a readable credential file, so an installation without
+# them composes exactly as before, with no Neon tools.
+#
+# `readonly=true` is applied by Neon's SERVER, not by DSH: without it the
+# catalog grows to roughly 112 tools carried in every request's `tools` field.
+# The credential is read from the read-only mount at activation, so it is never
+# an environment value, never in this file, and never in the volume. The
+# expression prints unevaluated in `--dump-config`, which verifies this row and
+# says nothing about the secret.
+- insert:
+    - id: mcp-neon
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: neon
+        transport: streamable-http
+        # A tag applies to exactly one node, so each expression is one quoted
+        # scalar: double quotes outside, single quotes inside.
+        url: !!js '"https://mcp.neon.tech/mcp?projectId=" + process.env.NEON_PROJECT_ID + "&readonly=true"'
+        headers:
+          Authorization: !!js "'Bearer ' + process.getBuiltinModule('node:fs').readFileSync(process.env.MDL_NEON_TOKEN_FILE || '/etc/mdl-harness/neon/token','utf8').trim()"
