@@ -2782,4 +2782,71 @@ describe('defineTool presentation (presentCall / presentResult)', () => {
     expect(tool.presentCall?.({})).toBeUndefined()
     expect(tool.presentResult?.({ wrong: 1 }, { content: [], isError: false })).toBeUndefined()
   })
+
+  it('coerces a string-wrapped object parameter through the production dispatch', async () => {
+    const ctx = await setup()
+    let received: unknown
+    const tool = defineTool({
+      name: 'define-shape',
+      description: 'records the arguments it executes with',
+      parameters: {
+        plugin: {
+          required: true,
+          oneOf: [
+            {
+              type: 'object',
+              additionalProperties: false,
+              properties: { kind: { type: 'string', const: 'new', required: true }, idPrefix: { type: 'string', required: true } },
+            },
+            {
+              type: 'object',
+              additionalProperties: false,
+              properties: { kind: { type: 'string', const: 'existing', required: true }, pluginId: { type: 'string', required: true } },
+            },
+          ],
+        },
+      },
+      async execute(args) {
+        received = args
+        return 'recorded'
+      },
+      output: {
+        schema: { type: 'string' },
+        render: (_args, value) => [{ type: 'text', text: value }],
+      },
+    })
+    ctx.tools.register(tool)
+    // The observed model-route mangling: the nested object arrives as an
+    // escaped JSON string inside the raw arguments text.
+    const result = await ctx.tools.execute({
+      signal: testToolSignal, callId: CallId('c2'), name: 'define-shape',
+      arguments: { plugin: '{"kind": "existing", "pluginId": "catgif-1"}' },
+    })
+    expect(result.isError).toBe(false)
+    expect(received).toEqual({ plugin: { kind: 'existing', pluginId: 'catgif-1' } })
+  })
+
+  it('still rejects a string-wrapped parameter whose content is not the declared scalar type', async () => {
+    const ctx = await setup()
+    const intTool = defineTool({
+      name: 'int-shape',
+      description: 'declares an integer argument',
+      parameters: { n: { type: 'integer', required: true } },
+      async execute(args) { return String(args.n) },
+      output: {
+        schema: { type: 'string' },
+        render: (_args, value) => [{ type: 'text', text: value }],
+      },
+    })
+    ctx.tools.register(intTool)
+    // An integer parameter cannot accept a bare string, but its double-encoded
+    // content still fails the scalar schema, so the violation must surface
+    // instead of a silent pass-through.
+    const result = await ctx.tools.execute({
+      signal: testToolSignal, callId: CallId('c4'), name: 'int-shape',
+      arguments: { n: '{"parses": true}' },
+    })
+    expect(result.isError).toBe(true)
+    expect(JSON.stringify(result.content)).toContain('must be an integer')
+  })
 })

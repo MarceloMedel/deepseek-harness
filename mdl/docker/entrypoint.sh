@@ -3,11 +3,13 @@ set -euo pipefail
 
 mkdir -p "$DSH_HOME" /workspace
 
-# GUI plugin bundles (SPEC-022, SPEC-023). They live in the image, so publishing
-# them into the volume on every boot is what makes them survive a recreated
-# container and upgrade with the image; each script is idempotent and refuses to
-# take the deployment down with it.
-for bundle in md-preview html-preview; do
+# GUI plugin bundles (SPEC-022, SPEC-023, SPEC-025) and the two deployment
+# bundles that follow the same pattern: multi-provider search (SPEC-026) and the
+# black-cat mascot. They live in the image, so publishing them into the volume on
+# every boot is what makes them survive a recreated container and upgrade with
+# the image; each script is idempotent and refuses to take the deployment down
+# with it.
+for bundle in md-preview html-preview chat-files web-search-multi cat-mascot; do
   if [[ -x "/opt/mdl/plugins/$bundle/install.sh" ]]; then
     "/opt/mdl/plugins/$bundle/install.sh" \
       || echo "mdl-harness: $bundle could not be published; the GUI runs without it" >&2
@@ -54,6 +56,18 @@ if [[ -n "${DSH_ACCESS_AUD:-}" ]]; then
   echo "mdl-harness: privileged configuration plane admitted for ${DSH_TRUSTED_HOST:-no authority} with a verified Access assertion"
 else
   echo "mdl-harness: no DSH_ACCESS_AUD; the privileged configuration plane stays loopback-only (see mdl/docker/README.md)"
+fi
+
+# The Neon MCP row (SPEC-026) is opt-in the same way: without a project id and a
+# readable credential the overlay is not applied at all, so an installation
+# without them composes exactly as before and carries no Neon tools. The
+# credential is never read, echoed, or exported here — only checked for.
+neon_token_file="${MDL_NEON_TOKEN_FILE:-/etc/mdl-harness/neon/token}"
+if [[ -n "${NEON_PROJECT_ID:-}" && -r "$neon_token_file" ]]; then
+  dsh_args+=(--patch /etc/mdl-harness/neon-mcp.yml)
+  echo "mdl-harness: Neon MCP enabled for project ${NEON_PROJECT_ID}; catalog restricted by readonly=true, SQL tools connect as the database owner, credential from $neon_token_file"
+else
+  echo "mdl-harness: no NEON_PROJECT_ID or no credential at $neon_token_file; the Neon MCP is not mounted"
 fi
 
 dsh_args+=(--host 127.0.0.1 --port 3080)

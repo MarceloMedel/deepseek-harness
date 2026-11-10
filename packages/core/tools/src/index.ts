@@ -66,6 +66,7 @@ export {
   defineTool,
   valueSchemaSpecToJsonSchema,
   parameterSchemaSpecToJsonSchema,
+  coerceStringifiedArguments,
   validateArgs,
   ToolArgsError,
   type ValueSchemaAnnotations,

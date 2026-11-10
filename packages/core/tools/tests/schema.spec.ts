@@ -1,7 +1,9 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import {
+  coerceStringifiedArguments,
   JsonSchemaError,
   parameterSchemaSpecToJsonSchema,
+  validateArgs,
   valueSchemaSpecToJsonSchema,
   type InferArgs,
   type InferValue,
@@ -201,5 +203,73 @@ describe('the unified author schema DSL', () => {
       symbol: { [symbolKey]: { type: 'string' } } satisfies ParameterSchemaSpec,
     }
     expect(Object.keys(invalidObjects)).toHaveLength(5)
+  })
+})
+
+describe('stringified argument coercion', () => {
+  const pluginSpec: ParameterSchemaSpec = {
+    plugin: {
+      required: true,
+      oneOf: [
+        {
+          type: 'object',
+          additionalProperties: false,
+          properties: { kind: { type: 'string', const: 'new', required: true }, idPrefix: { type: 'string', required: true } },
+        },
+        {
+          type: 'object',
+          additionalProperties: false,
+          properties: { kind: { type: 'string', const: 'existing', required: true }, pluginId: { type: 'string', required: true } },
+        },
+      ],
+    },
+    name: { type: 'string', required: true },
+    code: { type: 'object', additionalProperties: false, required: true, properties: { host: { type: 'string' }, client: { type: 'string' } } },
+    blob: { type: 'json' },
+  }
+  const compiled = parameterSchemaSpecToJsonSchema(pluginSpec)
+
+  it('recovers a declared-object parameter the model wrapped in a JSON string', () => {
+    const mangled = {
+      plugin: '{"kind": "existing", "pluginId": "catgif-1"}',
+      name: 'Cat working mascot',
+      code: { host: 'return { apply(ctx) {} }' },
+    }
+    const coerced = coerceStringifiedArguments(compiled, mangled) as typeof mangled
+    expect(coerced.plugin).toEqual({ kind: 'existing', pluginId: 'catgif-1' })
+    expect(coerced.code).toEqual({ host: 'return { apply(ctx) {} }' })
+    expect(validateArgs(pluginSpec, coerced)).toEqual([])
+  })
+
+  it('recovers several stringified parameters in one call through one copy', () => {
+    const args = {
+      plugin: '{"kind": "new", "idPrefix": "catgif"}',
+      code: '{"host": "return { apply(ctx) {} }"}',
+      name: 'Cat working mascot',
+    }
+    const coerced = coerceStringifiedArguments(compiled, args) as Record<string, unknown>
+    expect(coerced.plugin).toEqual({ kind: 'new', idPrefix: 'catgif' })
+    expect(coerced.code).toEqual({ host: 'return { apply(ctx) {} }' })
+    expect(args.plugin).toBe('{"kind": "new", "idPrefix": "catgif"}')
+    expect(validateArgs(pluginSpec, coerced)).toEqual([])
+  })
+
+  it('leaves declared-string and unconstrained properties untouched', () => {
+    const args = { name: '{"parses": true}', blob: '{"a": 1}' }
+    const coerced = coerceStringifiedArguments(compiled, args) as typeof args
+    expect(coerced.name).toBe('{"parses": true}')
+    expect(coerced.blob).toBe('{"a": 1}')
+  })
+
+  it('keeps strings that do not parse or do not satisfy the declared schema', () => {
+    expect(coerceStringifiedArguments(compiled, { plugin: '{not json', name: 'x' })).toEqual({ plugin: '{not json', name: 'x' })
+    expect(coerceStringifiedArguments(compiled, { plugin: '[1, 2]', name: 'x' })).toEqual({ plugin: '[1, 2]', name: 'x' })
+  })
+
+  it('preserves clean arguments by identity and non-object arguments as they are', () => {
+    const clean = { plugin: { kind: 'new', idPrefix: 'catgif' }, name: 'x', code: {} }
+    expect(coerceStringifiedArguments(compiled, clean)).toBe(clean)
+    expect(coerceStringifiedArguments(compiled, 'raw text')).toBe('raw text')
+    expect(coerceStringifiedArguments(compiled, undefined)).toBeUndefined()
   })
 })

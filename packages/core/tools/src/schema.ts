@@ -4,7 +4,7 @@ import { HarnessError } from '@deepseek-ai/dsh-llm'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import type { JsonValue } from '@deepseek-ai/dsh-session'
 import type { ToolDefinition, ToolExecution, ToolExecutionResult, ToolRunContext, ToolResult } from './index.ts'
-import { assertSupportedJsonSchema, isJsonSchemaRecord, isPlainJsonArray, JsonSchemaError, validateJsonSchemaValue } from './json-schema.ts'
+import { assertSupportedJsonSchema, isJsonSchemaRecord, isPlainJsonArray, isPlainJsonRecord, JsonSchemaError, validateJsonSchemaValue } from './json-schema.ts'
 import type { JsonSchemaNode, JsonSchemaScalar, ObjectJsonSchema } from './json-schema.ts'
 import type { ToolCallView, ToolResultView } from './presentation.ts'
 
@@ -479,6 +479,56 @@ export function validateArgs(spec: ParameterSchemaSpec, args: unknown): string[]
   return validateJsonSchemaValue(parameterSchemaSpecToJsonSchema(spec), args, '')
 }
 
+/**
+ * Decide whether one compiled schema node can accept a bare string value.
+ * A node with no compilation-visible constraint (the `json` author type) or
+ * `type: 'string'` accepts a string directly; a `oneOf` node accepts a string
+ * when any branch does.
+ * @param node - compiled schema node of one parameter property.
+ * @returns Whether a bare string satisfies the node.
+ */
+function schemaNodeAcceptsString(node: JsonSchemaNode): boolean {
+  if (node.type === undefined) {
+    if (node.oneOf !== undefined) return node.oneOf.some(schemaNodeAcceptsString)
+    return true
+  }
+  return node.type === 'string'
+}
+
+/**
+ * Recover nested-object tool fields from double-encoded model arguments. One
+ * model route serializes a declared-object parameter as an escaped JSON string
+ * while sibling scalar and array parameters keep their declared types; such a
+ * call reaches schema validation with the field collapsed to a string. A
+ * property is a recovery candidate only when its compiled schema cannot accept
+ * a bare string; a candidate is replaced only when its string parses and the
+ * parsed value validates against that property's own schema. Everything else
+ * passes through unchanged, so malformed model output keeps failing validation
+ * loudly. Depth is limited to the parameter root because that is what the
+ * observed route mangles.
+ * @param parameters - compiled parameter schema of the tool being entered.
+ * @param args - raw model-generated arguments before any validation.
+ * @returns Arguments with recoverable fields parsed, or the input unchanged when nothing qualifies.
+ */
+export function coerceStringifiedArguments(parameters: ParameterJsonSchema, args: unknown): unknown {
+  if (!isPlainJsonRecord(args)) return args
+  let coerced: Record<string, JsonValue> | undefined
+  for (const [key, node] of Object.entries(parameters.properties)) {
+    const value = args[key]
+    if (typeof value !== 'string' || value.length === 0 || schemaNodeAcceptsString(node)) continue
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(value)
+    } catch {
+      continue
+    }
+    if (validateJsonSchemaValue(node, parsed, key).length > 0) continue
+    if (coerced === undefined) coerced = { ...args } as Record<string, JsonValue>
+    coerced[key] = parsed as JsonValue
+  }
+  return coerced ?? args
+}
+
 /** Options for {@link defineTool}. */
 export interface DefineToolOptions<S extends ParameterSchemaSpec, O extends ValueSchemaSpec> {
   /** Tool name (must be unique). */
@@ -583,9 +633,10 @@ export function defineTool<const S extends ParameterSchemaSpec, const O extends 
     },
     ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
     async execute(args: unknown, exec: ToolRunContext): Promise<JsonValue> {
-      const violations = validate(args)
+      const normalized = coerceStringifiedArguments(parameters, args)
+      const violations = validate(normalized)
       if (violations.length > 0) throw new ToolArgsError(violations)
-      return userExecute(args as InferArgs<S>, exec) as Promise<JsonValue>
+      return userExecute(normalized as InferArgs<S>, exec) as Promise<JsonValue>
     },
   }
   if (userFinalizeContent) {
@@ -597,20 +648,23 @@ export function defineTool<const S extends ParameterSchemaSpec, const O extends 
   // than the hard `ToolArgsError` the execute path raises.
   if (userPresentCall) {
     tool.presentCall = (args: unknown): ToolCallView | undefined => {
-      if (validate(args).length > 0) return undefined
-      return userPresentCall(args as InferArgs<S>)
+      const normalized = coerceStringifiedArguments(parameters, args)
+      if (validate(normalized).length > 0) return undefined
+      return userPresentCall(normalized as InferArgs<S>)
     }
   }
   if (userPresentResult) {
     tool.presentResult = (args: unknown, result: ToolResult): ToolResultView | undefined => {
-      if (validate(args).length > 0) return undefined
-      return userPresentResult(args as InferArgs<S>, result)
+      const normalized = coerceStringifiedArguments(parameters, args)
+      if (validate(normalized).length > 0) return undefined
+      return userPresentResult(normalized as InferArgs<S>, result)
     }
   }
   if (userIsConcurrencySafe) {
     tool.isConcurrencySafe = (args: unknown): boolean => {
-      if (validate(args).length > 0) return false
-      return userIsConcurrencySafe(args as InferArgs<S>)
+      const normalized = coerceStringifiedArguments(parameters, args)
+      if (validate(normalized).length > 0) return false
+      return userIsConcurrencySafe(normalized as InferArgs<S>)
     }
   }
   return tool

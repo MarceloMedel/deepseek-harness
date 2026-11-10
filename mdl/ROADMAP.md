@@ -30,6 +30,8 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 22 | Visor de Markdown dentro de la GUI | [SPEC-022](specs/022-visor-markdown.md) | En implementación |
 | 23 | Visor de HTML generado dentro de la GUI | [SPEC-023](specs/023-visor-html.md) | Validada |
 | 24 | Plano privilegiado autenticado desde el hostname público | [SPEC-024](specs/024-plano-privilegiado-autenticado.md) | Validada |
+| 25 | Archivos adjuntos en la conversación | [SPEC-025](specs/025-archivos-adjuntos-conversacion.md) | En implementación |
+| 26 | Herramientas externas reproducibles: búsqueda multi-proveedor y MCP de Neon | [SPEC-026](specs/026-herramientas-externas-reproducibles.md) | En implementación |
 
 ## Dependencias
 
@@ -52,6 +54,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 - La Fase 22 no depende de una fase anterior: agrega una superficie nueva por el mismo mecanismo que `dsh-html-preview` y se valida sobre el contenedor reiniciado.
 - La Fase 23 parte de la Fase 22 validada: reemplaza la copia no versionada del visor de HTML por un bundle del repositorio con fila en el perfil `web`, retira el preset `html-preview` y se valida sobre el contenedor reiniciado.
 - La Fase 24 relaja la restricción que `SPEC-005` dejó explícitamente fuera de alcance, y solo puede hacerlo con una especificación propia y validación de seguridad (`MDL-SEC-02`): el plano privilegiado se habilita en el hostname público únicamente con una aserción de Cloudflare Access verificada dentro del proceso. No depende de otra fase y no cambia el comportamiento por defecto.
+- La Fase 25 no depende de una fase anterior y no modifica paquetes de upstream: agrega el botón, el arrastre y el extractor por el mecanismo de `SPEC-022` y `SPEC-023`, y se valida sobre el contenedor reiniciado.
 
 ## Próxima acción
 
@@ -62,6 +65,8 @@ La Fase 22 está desplegada y en uso: el lector abre los documentos del workspac
 La Fase 23 está validada: el visor de HTML vive en el repositorio y en el volumen, el usuario lo confirmó tras reiniciar el contenedor en escritorio y en el teléfono, y el uso real cerró los tres defectos de la pantalla completa (sin salida, marco sin pintar y documento cortado por desplazamiento anidado). Queda como observación una llamada real del agente a `html_preview`.
 
 La Fase 24 está validada: el plano privilegiado de configuración responde en `dsh.devmedel.com` con la aserción de Cloudflare Access verificada dentro del proceso, la página Modelos carga y guarda desde el teléfono y el escritorio, el modelo agregado sobrevive a la recarga y a la recreación del contenedor, y sin `DSH_ACCESS_AUD` el despliegue queda exactamente como antes. Fuera de la fase queda descargar `glm-5.3-flash:cloud` en el host antes de seleccionarlo.
+
+La Fase 25 está implementada y validada dentro de un proceso real pero no desplegada: `mdl/plugins/chat-files` aporta el botón de clip, el arrastre sobre la página, el depósito de los archivos en `.dsh-uploads/` del workspace con su referencia en el borrador, los extractores de PDF, DOCX y XLSX, y deja las imágenes en el carril existente. `check.mjs` pasa sus 58 comprobaciones, `--dump-config` compone la fila y una instancia aislada en el puerto 3099 sirvió el bundle y aceptó una carga real; un agente headless leyó un PDF depositado con `read_document`. Queda reconstruir la imagen y recrear el contenedor —el `entrypoint` publica el paquete— y ejercitar la GUI en escritorio y teléfono. Para que las imágenes lleguen al modelo hay que declarar `input: [text, image]` en `gemma4:cloud` o `glm-5.3-flash:cloud`, que informan visión y aceptaron una imagen por el endpoint; el despliegue sigue declarando `[text]`.
 
 ## Decisiones del despliegue VPS
 

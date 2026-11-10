@@ -1,0 +1,30 @@
+{
+  "name": "dsh-cat-mascot",
+  "version": "1.1.0",
+  "description": "Black-cat working mascot for DSH: serves the cat GIF over /cat-mascot and shows it above the composer while the agent is running",
+  "type": "module",
+  "main": "host.mjs",
+  "exports": {
+    ".": "./host.mjs",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "host.mjs",
+    "client.js",
+    "cordis.patch.yml",
+    "README.md",
+    "install.sh",
+    "cat.gif"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "license": "MIT",
+  "private": true
+}

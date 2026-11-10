@@ -1,0 +1,8 @@
+# The layer this bundle contributes to whichever profile lists it.
+#
+# One row, at the root of the host composition: the mascot publishes no service,
+# so it needs no isolate realm, and it consumes `webServer` from the host and
+# `slots` from the client exactly as it finds them.
+- insert:
+    - id: cat-mascot
+      name: dsh-cat-mascot
