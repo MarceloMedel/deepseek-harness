@@ -1,0 +1,34 @@
+{
+  "name": "dsh-chat-files",
+  "version": "1.0.0",
+  "description": "Chat attachments for DSH: a paperclip button and whole-page drag-and-drop that stage files into the session workspace as context, with PDF, DOCX and XLSX extraction",
+  "type": "module",
+  "main": "host.mjs",
+  "exports": {
+    ".": "./host.mjs",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "host.mjs",
+    "xlsx.mjs",
+    "client.js",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "dependencies": {
+    "fflate": "^0.8.3",
+    "mammoth": "^1.13.0",
+    "pdfjs-dist": "^6.5.438"
+  },
+  "license": "MIT",
+  "private": true
+}

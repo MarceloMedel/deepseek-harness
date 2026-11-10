@@ -140,9 +140,21 @@ COPY mdl/docker/entrypoint.sh /usr/local/bin/mdl-entrypoint
 # publishes.
 COPY mdl/plugins/md-preview /opt/mdl/plugins/md-preview
 COPY mdl/plugins/html-preview /opt/mdl/plugins/html-preview
+# The chat-attachment bundle (SPEC-025) carries its own extractor tree. It is
+# installed here because `.dockerignore` keeps node_modules out of the build
+# context and the runtime tree must not learn about pdf.js; the browser build,
+# source maps and type declarations of pdf.js are dropped, because this
+# deployment reads a PDF's text layer in Node and never renders a page.
+COPY mdl/plugins/chat-files /opt/mdl/plugins/chat-files
+RUN cd /opt/mdl/plugins/chat-files \
+    && npm ci --omit=dev --omit=optional --no-audit --no-fund \
+    && find node_modules -name '*.map' -delete \
+    && rm -rf node_modules/pdfjs-dist/build node_modules/pdfjs-dist/web \
+        node_modules/pdfjs-dist/types node_modules/pdfjs-dist/image_decoders \
+    && rm -rf /root/.npm
 RUN chmod 0755 /usr/local/bin/mdl-entrypoint \
-    && chmod -R a+rX /opt/mdl/plugins/md-preview /opt/mdl/plugins/html-preview \
-    && chmod 0755 /opt/mdl/plugins/md-preview/install.sh /opt/mdl/plugins/html-preview/install.sh \
+    && chmod -R a+rX /opt/mdl/plugins/md-preview /opt/mdl/plugins/html-preview /opt/mdl/plugins/chat-files \
+    && chmod 0755 /opt/mdl/plugins/md-preview/install.sh /opt/mdl/plugins/html-preview/install.sh /opt/mdl/plugins/chat-files/install.sh \
     && chmod 0644 /etc/nginx/nginx.conf /etc/mdl-harness/privileged-access.yml \
     && chown root:root /etc/nginx/nginx.conf
 
