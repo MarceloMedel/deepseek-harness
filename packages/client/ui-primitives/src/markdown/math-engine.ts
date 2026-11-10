@@ -48,12 +48,18 @@ export function subscribeMathLoaded(listener: () => void): () => void {
   return () => { listeners.delete(listener) }
 }
 
-/** Engine arrivals so far: 0 while unloaded, 1 afterwards (a render-time version). */
+/**
+ * Engine arrivals so far, for the `useSyncExternalStore` snapshot.
+ * @returns 0 while the engine is unloaded, 1 once it has arrived.
+ */
 export function mathLoadCount(): number {
   return loads
 }
 
-/** The resolved engine, or undefined while it is still loading. */
+/**
+ * The resolved engine, for the `useSyncExternalStore` snapshot.
+ * @returns the engine once it has loaded, or undefined while it is loading.
+ */
 export function mathEngine(): MathEngine | undefined {
   return engine
 }

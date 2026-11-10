@@ -27,6 +27,13 @@ interface WebBootEntry {
   inject?: string[]
   /** Stage-one prefetch mark: load the script for factory registration during module-face boot. */
   immediately?: boolean
+  /**
+   * Surface this row mounts with instead of at boot. A surface row's bundle is
+   * fetched and its entry created only when the shell opens that surface
+   * (`ctx.clientSurfaces.open`), so a visit that never opens it never pays for
+   * it. Absent means the row belongs to the boot tier.
+   */
+  surface?: string
 }
 ```
 
@@ -112,5 +119,5 @@ onRebuilt(listener: (id: string, rev: string) => void): () => void
 onGraphChanged(listener: () => void): () => void
 ```
 
-Source: [`packages/client/modules/src/index.ts:184`](../../packages/client/modules/src/index.ts)
+Source: [`packages/client/modules/src/index.ts:201`](../../packages/client/modules/src/index.ts)
 <!-- END GENERATED cordis-surface -->
