@@ -25,11 +25,35 @@ server:
   # this versioned file.
 
 engines:
-  # Measured from this deployment on 2026-11-10 (SPEC-028): mojeek, google,
-  # qwant and startpage answered a browser-like request, while duckduckgo
-  # returned its anti-bot challenge (202) and brave rate-limited the IP (429).
-  # Both stay off until a re-measurement shows otherwise; the engines that
-  # answered are left at their defaults.
+  # The image's shipped defaults leave nearly every general engine off — 260
+  # engines advertised, 7 enabled, and only `google cse` of those covers the
+  # open web. This list is the result of measuring each candidate from this
+  # host (SPEC-028 SRX-03), not of trusting a default: eight queries per engine,
+  # reading `unresponsive_engines` rather than HTTP status.
+  #
+  # Working, so switched on:
+  #   google cse  160 results, 20 per query, and the only engine that answered
+  #               every time (it takes the official CSE path, not the scrape)
+  #   bing        40 results, 10 per query on half the queries
+  - name: bing
+    disabled: false
+  #
+  # Measured as blocked from this IP, so explicitly off:
+  #   google      Suspended: access denied (the HTML scrape; `google cse` is the
+  #               one that works, so this would only waste a request per query)
+  #   qwant       Suspended: access denied
+  #   baidu       Suspended: CAPTCHA
+  #   duckduckgo  anti-bot challenge on the probe; kept off
+  #   brave       rate-limited the IP (429) on the probe; kept off
+  # `mojeek` and `startpage` are absent from this image entirely, so they are
+  # not listed. Re-measure before switching any of these back on: an engine's
+  # verdict depends on the host's IP and on its own anti-bot mood.
+  - name: google
+    disabled: true
+  - name: qwant
+    disabled: true
+  - name: baidu
+    disabled: true
   - name: duckduckgo
     disabled: true
   - name: brave
