@@ -117,6 +117,22 @@ npx neon@latest roles create --project-id <project-id> --branch production \
 
 El grafo por defecto es `/etc/mdl-harness/no-default-graph.json`, que no existe a propósito. Las diez herramientas aceptan un `project_path` opcional, así que una consulta que lo omita responde `graph.json not found` en vez de datos de otro proyecto; con `project_path=/srv/projects/<repo>` responde el grafo de ese repositorio y avisa de su frescura comparando el commit del grafo con el `HEAD` del proyecto. Construir o refrescar el grafo es una acción del operador (`graphify-out/graph.json` en cada repositorio), no del contenedor.
 
+**Motor de búsqueda propio.** [SPEC-028](../specs/028-searxng-como-motor-de-busqueda.md) añade el servicio `searxng` al compose: imagen fijada en una etiqueta concreta, sin `ports` —sólo `expose: 8080` en la red por defecto del proyecto—, `cpus: 1.0`, `mem_limit: 512m` y las tres capabilities que su entrypoint necesita para bajar de root. La configuración vive en `mdl/docker/searxng/settings.yml`, se monta de sólo lectura y trae `search.formats: [html, json]`: el adaptador del bundle pide `format=json` y SearXNG sólo sirve HTML por defecto, así que sin esa línea toda consulta falla antes de llegar a un motor. El limitador queda apagado porque el servicio no se publica y su único cliente es este despliegue.
+
+Los motores desactivados salen de una medición, no de una preferencia: `duckduckgo` devolvió su desafío anti-bot y `brave` limitó la tasa desde esta IP, mientras `mojeek`, `google`, `qwant` y `startpage` respondieron. Vuelve a medirse antes de reactivar cualquiera.
+
+El respaldo es Tavily (1 000 créditos al mes), cuya clave se carga desde la página de configuración del bundle y queda en `$DSH_HOME/.credentials.yaml`. Con `provider: searxng` y `enableFallback: true`, una caída del motor sigue devolviendo resultados.
+
+Comprobación:
+
+```sh
+# el motor responde JSON (lo que el adaptador necesita)
+sudo docker exec -u node mdl-harness-mdl-harness-1 \
+  curl -s 'http://searxng:8080/search?q=test&format=json' | head -c 200
+# y el despliegue no publica ningún puerto nuevo del motor
+sudo docker compose -f mdl/docker/compose.yml ps searxng
+```
+
 Comprobación:
 
 ```sh

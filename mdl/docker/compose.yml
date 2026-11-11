@@ -76,6 +76,52 @@ services:
     pids_limit: 512
     stop_grace_period: 20s
 
+  # SearXNG (SPEC-028): the deployment's own search aggregator, behind the
+  # multi-provider bundle. Internal only — no published port, no host socket,
+  # one network — so it needs no token and no public hardening; `limiter` is off
+  # in the mounted settings for the same reason.
+  searxng:
+    image: searxng/searxng:2026.11.9-57ff753ad
+    restart: unless-stopped
+    environment:
+      SEARXNG_BASE_URL: http://searxng:8080/
+      # The image's defaults are the upstream file's 127.0.0.1:8888; inside a
+      # container the bind must be the container interface and the port the one
+      # the DSH-side URL names.
+      SEARXNG_BIND_ADDRESS: 0.0.0.0
+      SEARXNG_PORT: "8080"
+      # Optional: without it SearXNG generates a secret per start. Sessions do
+      # not survive that, and nothing here depends on them, so an empty value is
+      # a working configuration rather than a misconfiguration.
+      SEARXNG_SECRET: ${SEARXNG_SECRET:-}
+    volumes:
+      # Configuration is versioned in the repository and read-only in the
+      # container; only the cache is a volume, and it holds nothing worth saving.
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+      - searxng-cache:/var/cache/searxng
+    # Reachable as `searxng:8080` from the DSH container on the project's own
+    # network; `expose` documents that and publishes nothing.
+    expose:
+      - "8080"
+    # The entrypoint starts as root, owns the cache volume, and drops to the
+    # `searxng` user, so it keeps exactly the three capabilities that needs.
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - default
+    # One query fans out to several engines in parallel; the host's 6 vCPU are
+    # shared with Ollama and personal-suite, so the motor gets one core.
+    cpus: 1.0
+    mem_limit: 512m
+    pids_limit: 256
+
+
 networks:
   edge:
     external: true
@@ -84,3 +130,4 @@ networks:
 volumes:
   mdl-dsh-home:
   mdl-workspace:
+  searxng-cache:
