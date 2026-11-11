@@ -1,0 +1,36 @@
+use_default_settings: true
+
+general:
+  instance_name: "mdl search"
+
+search:
+  safe_search: 0
+  # The DSH search bundle asks for `?format=json` (its SearXNG adapter sends
+  # `format=json` and `Accept: application/json`). SearXNG serves HTML only by
+  # default, so this pair is the integration rather than a preference: without
+  # `json` every query from the agent fails before it reaches an engine.
+  formats:
+    - html
+    - json
+
+server:
+  # The service publishes no port and only this deployment's own Docker network
+  # reaches it, so the anti-bot limiter would cost API calls and protect
+  # nothing. A public instance would need it on, plus the token the search
+  # bundle can send.
+  limiter: false
+  public_instance: false
+  image_proxy: false
+  # secret_key comes from SEARXNG_SECRET in the service environment, never from
+  # this versioned file.
+
+engines:
+  # Measured from this deployment on 2026-11-10 (SPEC-028): mojeek, google,
+  # qwant and startpage answered a browser-like request, while duckduckgo
+  # returned its anti-bot challenge (202) and brave rate-limited the IP (429).
+  # Both stay off until a re-measurement shows otherwise; the engines that
+  # answered are left at their defaults.
+  - name: duckduckgo
+    disabled: true
+  - name: brave
+    disabled: true

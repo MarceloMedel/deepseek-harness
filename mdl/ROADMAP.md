@@ -33,6 +33,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 25 | Archivos adjuntos en la conversación | [SPEC-025](specs/025-archivos-adjuntos-conversacion.md) | En implementación |
 | 26 | Herramientas externas reproducibles: búsqueda multi-proveedor y MCP de Neon | [SPEC-026](specs/026-herramientas-externas-reproducibles.md) | Validada |
 | 27 | Índice de código consultable por el agente (graphify) | [SPEC-027](specs/027-indice-de-codigo-graphify.md) | Validada |
+| 28 | SearXNG como motor de búsqueda del despliegue | [SPEC-028](specs/028-searxng-como-motor-de-busqueda.md) | En implementación |
 
 ## Dependencias
 
