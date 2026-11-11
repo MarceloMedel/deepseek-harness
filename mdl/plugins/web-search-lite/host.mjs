@@ -262,22 +262,32 @@ export function apply(ctx, config) {
     available: () => true,
     async search(request, signal) {
       const limit = request.maxResults ?? settings.maxResults
-      const links = []
-      if (settings.searxngUrl !== '') {
-        links.push({ id: 'searxng', run: (runSignal) => searchSearxng(settings.searxngUrl, request.query, limit, runSignal) })
-      }
       const tavilyKey = await credential(TAVILY_REF)
-      if (tavilyKey !== undefined) {
-        links.push({ id: 'tavily', run: (runSignal) => searchTavily(tavilyKey, request.query, limit, runSignal) })
-      }
-      links.push({ id: 'bing', run: (runSignal) => searchBing(request.query, limit, runSignal) })
       const braveKey = await credential(BRAVE_REF)
-      if (braveKey !== undefined) {
-        links.push({ id: 'brave', run: (runSignal) => searchBrave(braveKey, request.query, limit, runSignal) })
-      }
+
+      // The plan is the chain, in order. An unconfigured link stays in the plan
+      // with its reason instead of being dropped, because an error that names
+      // only the links that ran leaves the operator guessing whether Tavily was
+      // tried and refused or never existed at all.
+      const plan = [
+        settings.searxngUrl === ''
+          ? { id: 'searxng', skip: 'no searxngUrl configured' }
+          : { id: 'searxng', run: (runSignal) => searchSearxng(settings.searxngUrl, request.query, limit, runSignal) },
+        tavilyKey === undefined
+          ? { id: 'tavily', skip: `no ${TAVILY_REF} credential` }
+          : { id: 'tavily', run: (runSignal) => searchTavily(tavilyKey, request.query, limit, runSignal) },
+        { id: 'bing', run: (runSignal) => searchBing(request.query, limit, runSignal) },
+        braveKey === undefined
+          ? { id: 'brave', skip: `no ${BRAVE_REF} credential` }
+          : { id: 'brave', run: (runSignal) => searchBrave(braveKey, request.query, limit, runSignal) },
+      ]
 
       const failures = []
-      for (const link of links) {
+      for (const link of plan) {
+        if (link.skip !== undefined) {
+          failures.push(`${link.id}: ${link.skip}`)
+          continue
+        }
         const deadline = skippedUntil.get(link.id) ?? 0
         if (Date.now() < deadline) {
           failures.push(`${link.id}: skipped after a recent failure`)
