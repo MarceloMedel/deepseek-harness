@@ -33,7 +33,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 25 | Archivos adjuntos en la conversación | [SPEC-025](specs/025-archivos-adjuntos-conversacion.md) | En implementación |
 | 26 | Herramientas externas reproducibles: búsqueda multi-proveedor y MCP de Neon | [SPEC-026](specs/026-herramientas-externas-reproducibles.md) | Validada |
 | 27 | Índice de código consultable por el agente (graphify) | [SPEC-027](specs/027-indice-de-codigo-graphify.md) | Validada |
-| 28 | SearXNG como motor de búsqueda del despliegue | [SPEC-028](specs/028-searxng-como-motor-de-busqueda.md) | En implementación |
+| 28 | SearXNG como motor de búsqueda del despliegue | [SPEC-028](specs/028-searxng-como-motor-de-busqueda.md) | Validada |
 | 29 | Búsqueda web propia: cadena lite sin bundle de terceros | [SPEC-029](specs/029-busqueda-web-lite.md) | Validada |
 
 ## Dependencias
@@ -69,7 +69,15 @@ La Fase 23 está validada: el visor de HTML vive en el repositorio y en el volum
 
 La Fase 24 está validada: el plano privilegiado de configuración responde en `dsh.devmedel.com` con la aserción de Cloudflare Access verificada dentro del proceso, la página Modelos carga y guarda desde el teléfono y el escritorio, el modelo agregado sobrevive a la recarga y a la recreación del contenedor, y sin `DSH_ACCESS_AUD` el despliegue queda exactamente como antes. Fuera de la fase queda descargar `glm-5.3-flash:cloud` en el host antes de seleccionarlo.
 
-La Fase 25 está implementada y validada dentro de un proceso real pero no desplegada: `mdl/plugins/chat-files` aporta el botón de clip, el arrastre sobre la página, el depósito de los archivos en `.dsh-uploads/` del workspace con su referencia en el borrador, los extractores de PDF, DOCX y XLSX, y deja las imágenes en el carril existente. `check.mjs` pasa sus 58 comprobaciones, `--dump-config` compone la fila y una instancia aislada en el puerto 3099 sirvió el bundle y aceptó una carga real; un agente headless leyó un PDF depositado con `read_document`. Queda reconstruir la imagen y recrear el contenedor —el `entrypoint` publica el paquete— y ejercitar la GUI en escritorio y teléfono. Para que las imágenes lleguen al modelo hay que declarar `input: [text, image]` en `gemma4:cloud` o `glm-5.3-flash:cloud`, que informan visión y aceptaron una imagen por el endpoint; el despliegue sigue declarando `[text]`.
+La Fase 25 está desplegada y validada dentro de un proceso real —la imagen publica el paquete en cada arranque y `read_document` responde en las sesiones—: `mdl/plugins/chat-files` aporta el botón de clip, el arrastre sobre la página, el depósito de los archivos en `.dsh-uploads/` del workspace con su referencia en el borrador, los extractores de PDF, DOCX y XLSX, y deja las imágenes en el carril existente. `check.mjs` pasa sus 58 comprobaciones, `--dump-config` compone la fila y una instancia aislada en el puerto 3099 sirvió el bundle y aceptó una carga real; un agente headless leyó un PDF depositado con `read_document`. Queda ejercitar la GUI en escritorio y teléfono. Para que las imágenes lleguen al modelo hay que declarar `input: [text, image]` en `gemma4:cloud` o `glm-5.3-flash:cloud`, que informan visión y aceptaron una imagen por el endpoint; el despliegue sigue declarando `[text]`.
+
+La Fase 26 está validada: las herramientas externas se reproducen desde la imagen. La búsqueda multi-proveedor y el MCP de Neon se publican con el `entrypoint`, la clave de Neon entra por un montaje de sólo lectura que el overlay lee al activar la fila —nunca un valor de entorno, nunca en el volumen—, y el rol `mdl_reader` limita la escritura en la base. El catálogo pasó de 35 a 86 herramientas. Queda fuera de la fase el modo de escritura de Neon y sustituir el motor de búsqueda, que hicieron las fases 28 y 29.
+
+La Fase 27 está validada: el índice de código de `graphify` viaja en la imagen (`graphifyy[mcp]`, con el extra obligatorio), el `entrypoint` aplica su overlay cuando el binario existe y el grafo por defecto es una ruta inexistente a propósito, de modo que una consulta sin `project_path` falla en voz alta en lugar de responder por otro proyecto. El catálogo llegó a 97 herramientas y el grafo de `pipay-sii` declara su propia antigüedad contra el `HEAD` del repositorio.
+
+La Fase 28 está validada: SearXNG corre como servicio propio del compose, sin puertos publicados, con `formats: [html, json]` y una lista de motores medida. `google cse` es el que sostiene la cobertura general —160 de 160 resultados en la prueba— y `bing` quedó fuera al devolver resultados ajenos a la consulta. Su respaldo por el que respondía la fase fue retirado con el bundle en la Fase 29.
+
+La Fase 29 está validada: `web_search` lo sirve un proveedor del repositorio con la cadena fija SearXNG → Tavily → Bing → Brave, sin bundle de terceros. El eslabón que falla se omite 30 s, el error nombra a cada eslabón con su motivo y el eslabón raspado exige que la fuente mencione la consulta. Degradación probada con el motor inalcanzable: 2 573 ms en el primer intento y 37 ms en el segundo, con Tavily respondiendo en ambos.
 
 ## Decisiones del despliegue VPS
 
