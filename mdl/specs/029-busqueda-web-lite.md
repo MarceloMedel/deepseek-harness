@@ -1,6 +1,6 @@
 # SPEC-029 — Búsqueda web propia: una cadena lite sin bundle de terceros
 
-Estado: Aprobada
+Estado: Validada
 Fase: 29
 Commit base: `d9939f0077`
 Aprobación para iniciar: usuario, 2026-11-10 — «can I have a local lite solution? I only want to use searcxng -> tavily -> bing -> brave», aprobada la implementación en el mismo diálogo
@@ -81,18 +81,18 @@ Ejecutada el 2026-11-10 sobre el despliegue, con el plugin ya publicado en el vo
 |---|---|---|
 | `LIT-01` cadena y servicio | Cumplido | `check.mjs` monta el plugin (proveedor `lite`, `available: true`) y una búsqueda real devuelve cinco fuentes en 789 ms, todas de `docs.searxng.org` para una consulta sobre la configuración de SearXNG |
 | `LIT-02` eslabón sin configurar | Cumplido | Sin `BRAVE_API_KEY`, `check.mjs` informa «brave key: absent (link skipped)» y la búsqueda usa el motor sin penalización |
-| `LIT-05` relevancia del raspado | Cumplido en código, pendiente de ejecución | El eslabón exige que la fuente mencione un término de la consulta; la primera medición del motor mostró por qué: Bing devolvió TikTok para «receta de pan amasado» y criptografía para «searxng documentation» |
+| `LIT-04` error agregado | Cumplido | Sin credenciales y con el motor caído: `code=WEB_PROVIDER_ERROR` y el mensaje nombra los cuatro eslabones en orden de cadena —`searxng: The operation was aborted due to timeout; tavily: no TAVILY_API_KEY credential; bing: bing returned no results; brave: no BRAVE_API_KEY credential`— incluidos los no configurados, que antes no aparecían |
+| `LIT-05` relevancia del raspado | Cumplido | Una medición del eslabón raspado devolvió `bing returned 3 results, none mentioning the query` y la cadena siguió en lugar de entregar fuentes ajenas; es el mismo comportamiento que obligó a retirar `bing` del motor |
 | `LIT-06` superficie única | Cumplido | La sección `web-search-multi` salió de `$DSH_HOME/settings.yaml` y ninguna página la escribe ya |
 | `LIT-07` retirada del bundle | Cumplido | Directorio borrado del repositorio, filas retiradas de la capa de parche, paquete borrado de `profiles/node_modules`, y `web-search-multi` fuera del bucle del entrypoint y del `Dockerfile` |
 | `LIT-08` catálogo | Cumplido | 97 herramientas / 83 896 bytes antes y después |
-| `LIT-03` motor caído | Pendiente | Requiere detener SearXNG y buscar dos veces |
-| Migración en imagen | Pendiente | Requiere reconstruir: el bucle del entrypoint todavía nombra `web-search-multi` en la imagen en ejecución |
+| `LIT-03` motor caído | Cumplido | Con `searxngUrl` apuntado a una dirección no enrutable: primer intento 3 fuentes en **2 573 ms** (el motor agotó su presupuesto de 2,5 s y Tavily respondió) y segundo intento 3 fuentes en **37 ms**, porque el eslabón quedó omitido por la ventana de 30 s |
+| Migración en imagen | Cumplido | Tras reconstruir: `/opt/mdl/plugins` lista `web-search-lite` y ya no `web-search-multi`, el bucle del entrypoint nombra cinco bundles con `web-search-lite` al final, y la capa de parche del volumen siguió con sus dos referencias a `lite` y **cero** filas del bundle retirado — el instalador viejo ya no corre, así que nada resucitó |
+| Reinicio del motor | Cumplido | `bing`, `google`, `qwant`, `baidu`, `duckduckgo` y `brave` desactivados; `google cse` responde y una consulta sobre la configuración de SearXNG devuelve la discusión de SearXNG sobre ese mismo motor |
 
 ## Resultado y pendientes
 
 - Resultado: el despliegue ya busca por la cadena propia —SearXNG vivo, Tavily detrás— publicada como plugin del repositorio y sin código de terceros. La migración del volumen está hecha.
 - Pendientes:
-  - Reconstruir la imagen para que el bucle del entrypoint deje de publicar el bundle retirado al recrear el contenedor.
-  - `LIT-03`: la prueba de degradación con el motor detenido.
-  - Reiniciar `searxng` para que su lista de motores sin Bing entre en vigor.
-- Decisión de salida: pendiente.
+  - Un reinicio del proceso aplica la corrección del mensaje de error agregado: el plugin publicado en el volumen está actualizado, pero el proceso en marcha conserva el módulo que importó al arrancar.
+- Decisión de salida: validada; la cadena propia sustituye al bundle de terceros y la degradación está probada, no sólo configurada.

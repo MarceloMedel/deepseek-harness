@@ -150,6 +150,19 @@ sudo docker exec -u node mdl-harness-mdl-harness-1 \
 
 Una escritura a través del rol fijado responde `cannot execute DELETE in a read-only transaction` (`SQLSTATE 25006`), y las lecturas y los diagnósticos `inspect_database` siguen funcionando con ese rol.
 
+## Correr las compuertas del repositorio dentro del contenedor
+
+La imagen de runtime no trae `pnpm`, así que `pnpm run …` no existe aquí y las compuertas que lo requieren (`doc-sync`, `change-scope`, el typecheck del `pre-push`) fallan con `pnpm: not found`. `corepack` sí está, y basta con darle un `COREPACK_HOME` escribible y un shim en el `PATH`:
+
+```sh
+mkdir -p /tmp/pnpm-shim /tmp/corepack
+printf '#!/bin/sh\nexec /usr/local/bin/node /usr/local/lib/node_modules/corepack/dist/corepack.js pnpm "$@"\n' > /tmp/pnpm-shim/pnpm
+chmod +x /tmp/pnpm-shim/pnpm
+PATH=/tmp/pnpm-shim:$PATH COREPACK_HOME=/tmp/corepack pnpm --version   # 11.7.0
+```
+
+Sin eso, las compuertas se corren desde el host o quedan pendientes, y `dsh plugin` sigue sin poder instalarse nada: es un forwarder de `pnpm`.
+
 ## Sandbox
 
 La cadena Linux de `dsh-sandbox-local` prueba `bwrap` y recurre a Landlock. Dentro del contenedor `bwrap` no puede crear user namespaces por el perfil AppArmor, así que el runner efectivo es Landlock. La imagen compila el launcher (`native/landlock-run`) durante la build; sin ese binario el sandbox se queda sin runners y `bash` falla cerrado.
