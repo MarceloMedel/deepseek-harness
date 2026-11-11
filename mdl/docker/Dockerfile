@@ -161,9 +161,9 @@ COPY mdl/plugins/md-preview /opt/mdl/plugins/md-preview
 COPY mdl/plugins/html-preview /opt/mdl/plugins/html-preview
 # The black-cat working mascot: plain-JS bundle, ships its own GIF.
 COPY mdl/plugins/cat-mascot /opt/mdl/plugins/cat-mascot
-# The multi-provider search bundle (SPEC-026) publishes its compiled `lib/`, so it
-# is copied as-is: no install step, no dependency tree, no network in the build.
-COPY mdl/plugins/web-search-multi /opt/mdl/plugins/web-search-multi
+# The lite search provider (SPEC-029) is a single host-side module with no
+# dependency tree, so it is copied as-is: no install step and no network.
+COPY mdl/plugins/web-search-lite /opt/mdl/plugins/web-search-lite
 # The chat-attachment bundle (SPEC-025) carries its own extractor tree. It is
 # installed here because `.dockerignore` keeps node_modules out of the build
 # context and the runtime tree must not learn about pdf.js; the browser build,
@@ -177,8 +177,8 @@ RUN cd /opt/mdl/plugins/chat-files \
         node_modules/pdfjs-dist/types node_modules/pdfjs-dist/image_decoders \
     && rm -rf /root/.npm
 RUN chmod 0755 /usr/local/bin/mdl-entrypoint \
-    && chmod -R a+rX /opt/mdl/plugins/md-preview /opt/mdl/plugins/html-preview /opt/mdl/plugins/cat-mascot /opt/mdl/plugins/chat-files /opt/mdl/plugins/web-search-multi \
-    && chmod 0755 /opt/mdl/plugins/md-preview/install.sh /opt/mdl/plugins/html-preview/install.sh /opt/mdl/plugins/cat-mascot/install.sh /opt/mdl/plugins/chat-files/install.sh /opt/mdl/plugins/web-search-multi/install.sh \
+    && chmod -R a+rX /opt/mdl/plugins/md-preview /opt/mdl/plugins/html-preview /opt/mdl/plugins/cat-mascot /opt/mdl/plugins/chat-files /opt/mdl/plugins/web-search-lite \
+    && chmod 0755 /opt/mdl/plugins/md-preview/install.sh /opt/mdl/plugins/html-preview/install.sh /opt/mdl/plugins/cat-mascot/install.sh /opt/mdl/plugins/chat-files/install.sh /opt/mdl/plugins/web-search-lite/install.sh \
     && chmod 0644 /etc/nginx/nginx.conf /etc/mdl-harness/privileged-access.yml /etc/mdl-harness/neon-mcp.yml /etc/mdl-harness/graphify-mcp.yml \
     && chown root:root /etc/nginx/nginx.conf
 

@@ -81,7 +81,11 @@ El backend de subagentes `subagent-claude-code` ya no arrastra el SDK oficial co
 
 [SPEC-026](../specs/026-herramientas-externas-reproducibles.md) hace que estas dos capacidades sobrevivan a un volumen vacío y a una imagen reconstruida. Las dos son opcionales en el arranque: sin configuración, el despliegue compone exactamente lo de antes.
 
-**Búsqueda multi-proveedor.** El bundle `mdl/plugins/web-search-multi/` se publica con su `install.sh` desde el entrypoint, como los bundles de GUI. Reemplaza al proveedor `deepseek-official`, que sin `DEEPSEEK_API_KEY` hacía fallar `web_search`; los motores sin clave que responden desde este VPS son Bing y Baidu. El instalador no necesita `pnpm`: copia el paquete a `profiles/node_modules/` y escribe las dos entradas de parche del bundle.
+**Búsqueda web.** [SPEC-029](../specs/029-busqueda-web-lite.md) la sirve un proveedor propio, `mdl/plugins/web-search-lite`, con una cadena fija: SearXNG (el motor de esta fase, [SPEC-028](../specs/028-searxng-como-motor-de-busqueda.md)), Tavily con su clave del servicio de credenciales, Bing raspado y Brave, que queda inerte hasta que exista `BRAVE_API_KEY`. El primero que devuelve una fuente gana; un eslabón que falla se omite 30 s, y cuando fallan todos el error nombra a cada uno y su motivo. La cadena vive en la capa de parche y no hay página de configuración, así que nada puede ensombrecerla.
+
+SearXNG trae `search.formats: [html, json]` —el adaptador pide JSON y el motor sólo sirve HTML por defecto— y los motores desactivados salen de una medición: `google cse` responde siempre y es el que sostiene al motor, mientras `bing` devolvió resultados ajenos a la consulta, `google` y `qwant` respondieron «access denied» y `baidu` pidió CAPTCHA. Vuelve a medirse antes de reactivar cualquiera.
+
+El bundle de terceros `dsh-web-search-multi` de `SPEC-026` quedó retirado: sus filas, su paquete y su sección de `settings.yaml` se quitaron en la migración, y su nombre salió del bucle de bundles del entrypoint.
 
 **MCP de Neon.** La fila vive en el overlay `mdl/docker/neon-mcp.yml`, que se aplica con `--patch` sólo si existen las dos condiciones siguientes:
 

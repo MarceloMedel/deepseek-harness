@@ -34,11 +34,14 @@ engines:
   # Working, so switched on:
   #   google cse  160 results, 20 per query, and the only engine that answered
   #               every time (it takes the official CSE path, not the scrape)
-  #   bing        40 results, 10 per query on half the queries
-  - name: bing
-    disabled: false
   #
-  # Measured as blocked from this IP, so explicitly off:
+  # Measured as worse than absent, so explicitly off:
+  #   bing        answered half the queries, but with results unrelated to them:
+  #               "receta de pan amasado" returned TikTok brand-deal pages and
+  #               "searxng documentation" returned zk-crypto papers. Bing serves
+  #               the bot a generic page whose links the parser reads as hits, so
+  #               a wrong answer replaced no answer. That is the reason it is off
+  #               while `google cse` carries the motor.
   #   google      Suspended: access denied (the HTML scrape; `google cse` is the
   #               one that works, so this would only waste a request per query)
   #   qwant       Suspended: access denied
@@ -48,6 +51,8 @@ engines:
   # `mojeek` and `startpage` are absent from this image entirely, so they are
   # not listed. Re-measure before switching any of these back on: an engine's
   # verdict depends on the host's IP and on its own anti-bot mood.
+  - name: bing
+    disabled: true
   - name: google
     disabled: true
   - name: qwant

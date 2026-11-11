@@ -1,0 +1,25 @@
+{
+  "name": "dsh-web-search-lite",
+  "version": "1.0.0",
+  "description": "A single ctx.web search provider with a fixed chain: this deployment's SearXNG, then Tavily, then Bing, then Brave",
+  "type": "module",
+  "main": "host.mjs",
+  "exports": {
+    ".": "./host.mjs",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "host.mjs",
+    "cordis.patch.yml",
+    "README.md",
+    "install.sh",
+    "check.mjs"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "license": "MIT",
+  "private": true
+}
