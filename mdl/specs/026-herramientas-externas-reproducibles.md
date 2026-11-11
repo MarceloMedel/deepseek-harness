@@ -68,7 +68,7 @@ Hechos verificados que deciden el diseño:
 - `MDL-SEC-02`: esta especificación es la que autoriza una conexión saliente a un servicio externo (Neon) y el acceso del agente, en sólo lectura, a una base de datos de producción. La validación de seguridad es `EXT-06` más `EXT-09`.
 - Las filas y los nombres visibles conservan el contrato de upstream: `serverName`, prefijo `mcp__<serverName>__<herramienta>` y el único `web_search` ya publicado.
 - Ningún valor de despliegue se escribe en archivos versionados: el identificador de proyecto llega por entorno y la credencial por montaje.
-- El bundle es código de terceros con licencia MIT y publica red y `workspace-write` en sus propias declaraciones; se fija a un commit, no a una referencia móvil.
+- El bundle es código de terceros con licencia MIT y publica red y `workspace-write` en sus propias declaraciones; se fija a un commit, no a una referencia móvil. [SPEC-029](029-busqueda-web-lite.md) retiró después ese bundle: la búsqueda la sirve un proveedor propio con cadena fija, y esta fase conserva el MCP de Neon y la reproducibilidad de las herramientas externas.
 - La imagen no gana dependencias nuevas ni pasos de red: el bundle se copia con su `lib/` publicado y no declara dependencias de ejecución.
 
 ## Implementación prevista

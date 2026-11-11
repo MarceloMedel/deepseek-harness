@@ -87,12 +87,20 @@ Este documento posee el alcance de la fase; el contrato de producto está en [..
 
 ## Validación ejecutada
 
+Ejecutada el 2026-11-10 sobre el despliegue, con el servicio ya en marcha:
+
 | Comprobación | Resultado | Evidencia |
 |---|---|---|
-| Pendiente | No ejecutada | Pendiente |
+| `SRX-01` servicio interno | Cumplido | Responde en `http://searxng:8080` desde dentro del contenedor de DSH; el compose no declara `ports`, sólo `expose: 8080` |
+| `SRX-02` JSON y secreto | Cumplido | `GET /search?format=json` devuelve `results`; el único `SEARXNG_SECRET` del repositorio es la referencia `${SEARXNG_SECRET:-}` del compose |
+| `SRX-03` motores medidos | Cumplido | Ocho consultas por motor leyendo `unresponsive_engines`: `google cse` 160 resultados (20 por consulta, siempre responde) y `bing` 40 (10 por consulta, la mitad de las veces) funcionan; `google` (HTML) y `qwant` responden `Suspended: access denied` en 8/8, y `baidu` `Suspended: CAPTCHA` en 8/8, así que quedan desactivados junto a `duckduckgo` y `brave`. `mojeek` y `startpage` no existen en esta imagen |
+| `SRX-04` DSH usa el motor | Cumplido | La ruta `/_dsh/web-search-multi/settings` informa `provider: searxng`, `searxngUrl: http://searxng:8080`, `enableFallback: true`, cambiado por la capa de parche recargada en caliente y sin reconstruir la imagen; una llamada real a `web_search` devolvió el mismo conjunto de hosts que el motor para esa consulta (`docs.searxng.org`, `contabo.com`, `github.com`, `perlod.com`, …) |
+| `SRX-05` sin credencial nueva | Cumplido | `$DSH_HOME/.credentials.yaml` contiene sólo `TAVILY_API_KEY`; el motor responde por nombre de red y no usa token |
+| `SRX-06` catálogo sin cambios | Cumplido | 97 herramientas / 83 896 bytes, idéntico al total previo a la fase |
+| `SRX-07` degradación | Pendiente | Requiere detener el servicio y buscar; el respaldo ya está configurado (`enableFallback: true`, Tavily con 1 000 créditos mensuales) |
 
 ## Resultado y pendientes
 
-- Resultado: pendiente de aprobación.
+- Resultado: implementado y en marcha. `web_search` lo sirve el motor propio (20–30 resultados por consulta en 0,45–1,4 s) con Tavily detrás como respaldo autenticado.
 - Pendientes o excepciones aceptadas: ninguno por defecto.
 - Decisión de salida: pendiente.

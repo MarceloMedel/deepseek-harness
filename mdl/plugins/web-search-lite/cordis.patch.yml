@@ -1,0 +1,15 @@
+# The layer this bundle contributes to whichever profile lists it.
+#
+# One row registers the provider; the second points the `web` seam at it. The
+# chain order lives in the plugin (searxng → tavily → bing → brave), so this
+# file carries no ordering of its own and the Settings page has no say.
+- insert:
+    - id: web-search-lite
+      name: dsh-web-search-lite
+      config:
+        searxngUrl: http://searxng:8080
+
+- id: web
+  name: '@deepseek-ai/dsh-web'
+  config:
+    searchProvider: lite
