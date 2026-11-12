@@ -39,6 +39,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 31 | Stack de desarrollo: `web_fetch` con guard, compuertas de seguridad y búsqueda estructural | [SPEC-031](specs/031-stack-herramientas-desarrollo.md) | Validada |
 | 32 | Navegador headless para el gate visual | [SPEC-032](specs/032-navegador-headless.md) | Validada |
 | 33 | GIF de PR sin ffmpeg: encoder Pillow en la skill | [SPEC-033](specs/033-gif-sin-ffmpeg.md) | Validada |
+| 34 | LSP como herramienta: medido y no montado | [SPEC-034](specs/034-lsp-medido-no-montado.md) | Rechazada |
 
 ## Dependencias
 
@@ -66,6 +67,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 - La Fase 31 parte de la Fase 29 (comparte el seam `web`) y no toca los presets: la herramienta de fetch se enciende en la capa global del registro y los binarios de seguridad entran a la imagen, así que se valida sobre la imagen reconstruida y el despliegue reiniciado.
 - La Fase 32 parte de la Fase 30 (completa su `ARC-05`) y se valida con el tamaño medido antes de aceptarlo: por encima de 500 MB la fase se replantea. `ffmpeg` queda fuera de alcance con su costo medido, así que la skill de GIFs sigue bloqueada.
 - La Fase 33 parte de la Fase 32 (el navegador es la otra mitad de la captura) y se valida midiendo el artefacto: tamaño, línea de tiempo y fidelidad del color de acento contra la referencia de ffmpeg.
+- La Fase 34 cierra la Tanda 3 y no depende de ninguna anterior: se rechazó tras medir que el proveedor actual limita las referencias al archivo consultado. Reabrirla exige un proveedor que mantenga el proyecto cargado y selección de proyecto por cara.
 
 ## Próxima acción
 
@@ -94,6 +96,8 @@ La Fase 31 está validada: los tres binarios viajan en la imagen (gitleaks 8.30.
 La Fase 32 está validada: el gate visual de `archify` corre bajo el sandbox del agente y devuelve los cuatro gates en `pass` contra el envoltorio que la imagen instala. Exigió descubrir dos límites medidos —Landlock deja `/dev/shm` sin escritura y `$HOME` no es escribible, así que Chrome abortaba con `SIGTRAP`— y resolverlos con un envoltorio en `ARCHIFY_CHROME` que además baja el core a cero, porque un crash había dejado dos de 19 MB en el workspace. La medición corrigió dos veces la estimación de la propuesta: `apt` costaba +858 MB y quedó descartado, y las bibliotecas reales son +308 MB, no +40 MB de una lista curada. El navegador queda en 310 MB y el delta medido de las dos últimas fases en +633 MB de imagen. `ffmpeg` quedó fuera con su costo medido, así que la skill de GIFs sigue bloqueada por él, y la Tanda 3 (LSP como herramienta) sigue fuera de fase.
 
 La Fase 33 está validada: `record-browser-gif` corre de punta a punta dentro del contenedor sin ningún binario de medios. La comparación medida decidió el encoder y también corrigió la primera estimación: `ffmpeg` costaba +451 MB por `apt` y 552 MB extraídos, `python3-pil` cuesta +6,1 MB, y el primer intento con Pillow empeoraba el color de marca (`#d40000` → `#704e50`) mientras el error medio global decía que era mejor — lo arregló reservar los colores saturados antes de cubrir la paleta y quitar el dithering, que además deja el archivo en un tercio del de ffmpeg. El circuito completo desde la imagen reconstruida produjo un GIF de 70 KB con tres estados y el acento a distancia 27.
+
+La Fase 34 cierra la Tanda 3 con un no medido. El costo de montar la familia LSP es despreciable —`initialize` en 132–152 ms, consultas calientes de 8 a 112 ms y 67 MB de memoria sobre 2 591 archivos—, pero el proveedor abre y cierra un documento por consulta, y tsserver busca referencias sólo entre documentos cargados: `ToolDefinition`, que aparece 121 veces en 36 archivos, devuelve 16 referencias en un archivo con el archivo consultado abierto, 25 en cuatro con el paquete abierto, y vuelve a 16 al cerrarlos. La definición cruzada aterriza en `lib/types/*.d.ts` y la implementación de una costura devuelve la interfaz, no el proveedor. Montarla habría empeorado el trabajo con un costo casi nulo, que es exactamente el error que la medición existía para evitar. Reabrirla exige un proveedor que mantenga el proyecto cargado y selección de proyecto por cara, con la matriz de validación ya escrita.
 
 ## Decisiones del despliegue VPS
 
