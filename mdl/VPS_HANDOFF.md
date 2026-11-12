@@ -54,7 +54,7 @@ El plano privilegiado de DSH (`settings.*`, `credentials.*`, `llm.discoverModels
 
 ## Proyectos del host
 
-El contenedor monta `/srv/projects` en lectura-escritura en la misma ruta (`MDL_PROJECTS_DIR` cambia el origen). Para trabajar sobre un repo, elegí esa carpeta como workspace desde la GUI por loopback; el sandbox confina las escrituras al workspace elegido y `secrets` sigue inaccesible para el usuario `node`. Los proyectos no forman parte del backup diario.
+El contenedor monta `/srv/projects` en lectura-escritura en la misma ruta (`MDL_PROJECTS_DIR` cambia el origen). Para trabajar sobre un repo, elegí esa carpeta como workspace desde la GUI por loopback; el sandbox confina las escrituras al workspace elegido. `secrets` queda inaccesible para `node` por defecto; la lectura se concede **por app** con ACL POSIX para el uid 1000 (`sudo mdl-secrets grant <app>`, ver `/srv/projects/_infra/secrets/`), hoy sólo `pipay-sii`. Cualquier sesión puede leer los secretos de una app concedida. Los proyectos no forman parte del backup diario.
 
 El contenedor autentica git y `gh` con un único token de GitHub por HTTPS, montado en solo lectura desde `/home/ubuntu/.config/mdl-harness/gh/token` (`MDL_GH_DIR` cambia el origen). Ese token está limitado a la cuenta y alcanza cualquier repositorio al que se le dé acceso; con él funcionan `clone`, `push` y la apertura de PR, sin configuración por repositorio. Para revocarlo: GitHub → Settings → Developer settings → Fine-grained tokens, y reemplazar el archivo del host.
 

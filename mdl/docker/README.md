@@ -28,7 +28,7 @@ Para cambiar de modelo, editá `$DSH_HOME/settings.yaml` dentro del volumen o us
 
 El contenedor monta `${MDL_PROJECTS_DIR:-/srv/projects}` en la misma ruta absoluta, en lectura-escritura. Si la ruta no existe, Docker la crea como `root` y el agente no podrá escribir hasta corregir el dueño. Para trabajar sobre un proyecto, abrí la GUI por loopback (`ssh -L 3081:127.0.0.1:3081 USUARIO@VPS`), creá una sesión y elegí la carpeta con el selector; el sandbox confina las escrituras a ese workspace.
 
-`/srv/projects/secrets` es `root:root` modo 700 y el usuario `node` no puede leerlo aunque el directorio padre esté montado. Una sesión con `danger-full-access` sí podría escribir en cualquier punto del montaje.
+`/srv/projects/secrets` es `root:root` modo 700 y el usuario `node` no puede leerlo por defecto aunque el directorio padre esté montado. La lectura se concede **por app** con ACL POSIX para el uid 1000 (`sudo mdl-secrets grant <app>`; fuente y política en `/srv/projects/_infra/secrets/`, copia instalada `/usr/local/sbin/mdl-secrets`). Hoy está concedida `pipay-sii`; `personal-suite` y `gateway` no. Un solo contenedor atiende todas las sesiones, así que cualquier sesión puede leer los secretos de una app concedida: concedé sólo lo necesario y revocá al terminar. Una sesión con `danger-full-access` sí podría escribir en cualquier punto del montaje.
 
 Los proyectos no entran en el backup diario: se respaldan por git. El volumen `mdl-workspace` sigue disponible para sesiones sin proyecto.
 
