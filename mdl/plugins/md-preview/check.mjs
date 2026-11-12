@@ -59,6 +59,11 @@ writeFileSync(join(workspace, 'README.md'), '# Title\n\n![d](docs/img/a.png)\n')
 writeFileSync(join(workspace, 'docs/guide.md'), '## Guide\n\nBody\n')
 writeFileSync(join(workspace, 'docs/img/a.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47]))
 writeFileSync(join(workspace, 'node_modules/skip/x.md'), '# not listed\n')
+// A document bigger than the viewer's own read limit: it cannot be rendered,
+// and it must still download (SPEC-036, DL-04).
+writeFileSync(join(workspace, 'big.md'), `# Big\n\n${'x'.repeat(2 * 1024 * 1024 + 64)}\n`)
+// An accented name exercises the RFC 5987 form of the header (DL-03).
+writeFileSync(join(workspace, 'docs/informe-técnico.md'), '# Informe\n\nAcentos\n')
 // A symlink whose real target is outside the workspace must never be offered.
 writeFileSync(join(harnessDir, 'outside.md'), '# secret outside\n')
 symlinkSync(join(harnessDir, 'outside.md'), join(workspace, 'docs/escape.md'))
@@ -97,9 +102,10 @@ await new Promise(settle => setTimeout(settle, 50))
 function call(url, method = 'GET') {
   return new Promise((done) => {
     const res = {
-      headersSent: false, status: 0, body: '',
-      writeHead(status) {
+      headersSent: false, status: 0, headers: {}, body: '',
+      writeHead(status, headers) {
         this.status = status
+        this.headers = headers ?? {}
         this.headersSent = true
       },
       end(body) {
@@ -121,7 +127,8 @@ check('registers one prefix route and the tool',
   routes.map(route => route.path).join())
 const listing = await json('/md-viewer/s1/__list')
 check('lists the workspace documents by path',
-  listing.files.map(file => file.path).join() === 'README.md,docs/guide.md', JSON.stringify(listing.files))
+  listing.files.map(file => file.path).join() === 'README.md,big.md,docs/guide.md,docs/informe-técnico.md',
+  JSON.stringify(listing.files))
 check('skips node_modules', !listing.files.some(file => file.path.includes('node_modules')))
 check('omits a symlink that leaves the workspace', !listing.files.some(file => file.path.includes('escape')))
 const doc = await json('/md-viewer/s1/__doc?path=README.md')
@@ -139,6 +146,39 @@ check('refuses an asset outside the workspace', (await call('/md-viewer/s1/docs/
 check('answers an unknown session with 404', (await call('/md-viewer/nope/__list')).status === 404)
 check('refuses a write method', (await call('/md-viewer/s1/__list', 'POST')).status === 405)
 
+// ── download (SPEC-036) ──
+console.log('download')
+
+const saved = await call('/md-viewer/s1/README.md?download=1')
+check('DL-01 a document downloads whole, with its name and its type',
+  saved.status === 200
+  && saved.body === '# Title\n\n![d](docs/img/a.png)\n'
+  && saved.headers['content-type']?.startsWith('text/markdown') === true
+  && saved.headers['content-disposition'] === 'attachment; filename="README.md"; filename*=UTF-8\'\'README.md',
+  `${saved.status} | ${saved.headers['content-disposition']} | ${saved.body.slice(0, 20)}`)
+const displayed = await call('/md-viewer/s1/README.md')
+check('DL-06 without the parameter the route answers exactly as before',
+  displayed.status === 200 && displayed.body === saved.body
+  && displayed.headers['content-disposition'] === undefined,
+  String(displayed.headers['content-disposition']))
+const accent = await call('/md-viewer/s1/docs/informe-t%C3%A9cnico.md?download=1')
+const accentHeader = String(accent.headers['content-disposition'] ?? '')
+const accentName = /filename\*=UTF-8''([^;]+)/.exec(accentHeader)?.[1]
+check('DL-03 an accented name travels in filename* and decodes to itself',
+  accent.status === 200
+  && decodeURIComponent(accentName ?? '') === 'informe-técnico.md'
+  && /filename="[\x20-\x7e]+"/.test(accentHeader),
+  accentHeader)
+const big = await call('/md-viewer/s1/big.md?download=1')
+check('DL-04 a document over the viewer limit downloads entire',
+  big.status === 200 && big.body.length > 2 * 1024 * 1024,
+  `${big.status} ${big.body.length}`)
+check('DL-04b the viewer still refuses to render that document',
+  (await json('/md-viewer/s1/__doc?path=big.md')).ok === false)
+check('DL-05 a traversal path is refused even when it asks for a download',
+  (await call('/md-viewer/s1/..%2F..%2Fetc%2Fpasswd.md?download=1')).status !== 200
+  && (await call('/md-viewer/s1/docs/escape.md?download=1')).status === 403)
+
 // ── client half ─────────────────────────────────────────────────────────────
 
 console.log('client half')
@@ -153,18 +193,16 @@ globalThis.window = dom.window
 globalThis.document = dom.window.document
 Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, configurable: true })
 globalThis.location = dom.window.location
-globalThis.Blob = dom.window.Blob
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
-globalThis.URL.createObjectURL = () => 'blob:stub'
-globalThis.URL.revokeObjectURL = () => {}
 
 // A matchMedia whose viewport the run can flip, so one pass covers both layouts.
 let narrow = true
+let installedApp = false
 const queries = []
 dom.window.matchMedia = (media) => {
   const query = {
     media,
-    matches: narrow,
+    matches: media.includes('display-mode') ? installedApp : narrow,
     listeners: new Set(),
     addEventListener(_type, listener) { query.listeners.add(listener) },
     removeEventListener(_type, listener) { query.listeners.delete(listener) },
@@ -200,6 +238,14 @@ const documents = {
 let clipboard = null
 globalThis.fetch = async (url) => {
   const body = value => ({ ok: true, json: async () => value })
+  if (String(url).includes('download=1')) {
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({}),
+      blob: async () => new dom.window.Blob(['# Project\n'], { type: 'text/markdown; charset=utf-8' }),
+    }
+  }
   if (url.includes('/__list')) {
     return body({
       ok: true, root: '/workspace/demo', truncated: false,
@@ -213,8 +259,8 @@ globalThis.fetch = async (url) => {
   throw new Error(`unexpected fetch ${url}`)
 }
 dom.window.navigator.clipboard = { writeText: async (value) => { clipboard = value } }
-const downloads = []
-dom.window.HTMLAnchorElement.prototype.click = function () { downloads.push(this.download) }
+// jsdom cannot navigate, so a clicked download link must not throw.
+dom.window.HTMLAnchorElement.prototype.click = function () {}
 
 let handoff
 globalThis.window.__ModuleLoader__ = { load: (value) => { handoff = value } }
@@ -252,10 +298,15 @@ const mod = handoff.factory((spec) => {
   if (spec === '@deepseek-ai/dsh-client-ui-primitives') return { MarkdownText, writeClipboard }
   throw new Error(`unexpected require: ${spec}`)
 })
+let activeLocale = 'en'
+const localeListeners = new Set()
 const seats = []
 mod.apply({
   effect(fn) { return fn() },
-  locale: { getLocale: () => ({ active: 'en' }), subscribe: () => () => {} },
+  locale: {
+    getLocale: () => ({ active: activeLocale }),
+    subscribe: (listener) => { localeListeners.add(listener); return () => localeListeners.delete(listener) },
+  },
   slots: {
     inject(_name, callback) { callback() },
     register(registration, Component) {
@@ -322,6 +373,9 @@ check('picking a document switches to the document pane', document.querySelector
 check('the document pane shows the file name and a back button',
   document.querySelector('.dsh-mdp-mname')?.textContent === 'guide.md' && iconButton('Back to the list') !== null)
 check('the document renders', document.querySelector('.stub-markdown')?.textContent.includes('Guide'))
+check('DL-07 the phone pane saves the document it is showing',
+  document.querySelector('a.dsh-mdp-ibtn[download]')?.getAttribute('href')?.endsWith('/md-viewer/s1/docs/guide.md?download=1') === true,
+  document.querySelector('a.dsh-mdp-ibtn[download]')?.getAttribute('href'))
 
 click(iconButton('Outline'))
 await settle()
@@ -369,9 +423,11 @@ await settle()
 check('copy sends the whole document to the clipboard', clipboard !== null && clipboard.startsWith('# Project'))
 check('copy reports success in the toolbar', toolbar().some(node => node.textContent === 'Copied ✓'))
 
-click(toolbar().find(node => node.textContent === 'Download'))
-await settle()
-check('download names the file after the document', downloads.join() === 'README.md', downloads.join())
+const downloadLink = document.querySelector('a.dsh-mdp-btn[download]')
+check('DL-07 the toolbar saves through the route, naming the document',
+  downloadLink?.getAttribute('href') === 'http://127.0.0.1:3080/md-viewer/s1/README.md?download=1'
+  && downloadLink?.getAttribute('download') === 'README.md',
+  `${downloadLink?.getAttribute('href')} | ${downloadLink?.getAttribute('download')}`)
 
 await React.act(async () => {
   extraRoot.render(React.createElement(seat('tool.call.toolview'), {
@@ -441,9 +497,64 @@ const newTabEvent = new dom.window.MouseEvent('click', { bubbles: true, cancelab
 newTab.dispatchEvent(newTabEvent)
 check('a link that asks for a new tab is left alone', newTabEvent.defaultPrevented === false)
 
+activeLocale = 'es'
+await React.act(async () => {
+  for (const listener of localeListeners) listener()
+  await new Promise(done => setTimeout(done, 30))
+})
+check('DL-07 the download control is labelled in Spanish',
+  document.querySelector('a.dsh-mdp-btn[download]')?.textContent === 'Descargar',
+  document.querySelector('a.dsh-mdp-btn[download]')?.textContent)
+activeLocale = 'en'
+await React.act(async () => {
+  for (const listener of localeListeners) listener()
+  await new Promise(done => setTimeout(done, 30))
+})
+
 click(document.querySelector('.dsh-mdp-hbtn'))
 await settle()
 check('the header button closes the panel again', document.querySelector('.dsh-mdp-card') === null)
+
+// ── installed app: saving must not take the application away ──
+// A standalone window has no tab, no download manager and no address bar, so a
+// navigation loses the GUI itself.
+console.log('installed app')
+
+const sharedFiles = []
+Object.defineProperty(dom.window.navigator, 'standalone', { value: true, configurable: true })
+Object.defineProperty(dom.window.navigator, 'canShare', {
+  value: (data) => Array.isArray(data?.files) && data.files.length === 1,
+  configurable: true,
+})
+Object.defineProperty(dom.window.navigator, 'share', {
+  value: async (data) => { sharedFiles.push(data.files[0]) },
+  configurable: true,
+})
+installedApp = true
+// Re-render so the panel resolves where it is running, and reopen it.
+setNarrow(true)
+await settle()
+setNarrow(false)
+await settle()
+click(document.querySelector('.dsh-mdp-hbtn'))
+await settle(300)
+
+const readerCard = () => document.querySelector('.dsh-mdp-card')
+const cardBar = () => [...(readerCard()?.querySelectorAll('.dsh-mdp-btn') ?? [])]
+check('the save is a control, not a navigation',
+  readerCard()?.querySelector('a.dsh-mdp-btn[download]') === null
+  && cardBar().some(node => node.textContent === 'Download'),
+  cardBar().map(node => `${node.tagName}:${node.textContent}`).join())
+click(cardBar().find(node => node.textContent === 'Download'))
+await settle(400)
+const shownPath = String(readerCard()?.querySelector('.dsh-mdp-sub')?.textContent ?? '')
+const shownDoc = shownPath.slice(shownPath.lastIndexOf('/') + 1)
+check('the system sheet receives the document as a file',
+  sharedFiles.length === 1
+  && sharedFiles[0].name === shownDoc
+  && String(sharedFiles[0].type).startsWith('text/markdown'),
+  `${sharedFiles.length} | ${sharedFiles[0]?.name} | ${sharedFiles[0]?.type} | shown ${shownDoc}`)
+check('saving leaves the reader open', readerCard() !== null)
 
 rmSync(harnessDir, { recursive: true, force: true })
 console.log(`\n${checks - failures}/${checks} checks passed`)

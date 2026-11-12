@@ -7,7 +7,7 @@ HTML viewer for the DSH web GUI: a panel that renders the pages of the session w
 Three surfaces, all composed by slot registration from `client.js`:
 
 - An `HTML` toggle in the session header (`conversation.session.header.actions`) opens and closes the viewer.
-- The viewer itself (`shell.overlay`) lists the workspace's HTML pages and frames the selected one over the conversation.
+- The viewer itself (`shell.overlay`) lists the workspace's HTML pages, frames the selected one over the conversation, and offers `Descargar` beside `Abrir ↗` to save it to the device.
 - A card under each `html_preview` call (`tool.call.toolview`) renders the page the agent opened.
 
 The page is framed as `srcdoc`. The host half rewrites the page's relative references — `src`, `href`, `poster`, and `url()` inside CSS — into route URLs before the browser sees them, so a generated page that references a stylesheet, a script, an image, a font or a JSON data file renders complete. Root-absolute references name the workspace root, not the shell's site root; a reference ending in `/` keeps its slash, because it names a directory. References the browser already resolves on its own are left alone: fragment-only, protocol-relative, any scheme (`https:`, `data:`, `mailto:`), and anything already pointing at the route, which keeps the rewrite idempotent.
@@ -38,8 +38,18 @@ That width is the shell's own phone breakpoint (`MOBILE_MAX`), and the panel's f
 | `GET /html-viewer/<sessionId>/__doc?path=<p>` | One page: its path, directory, size and source with relative references rebased |
 | `GET /html-viewer/<sessionId>/__page?path=<p>&back=<url>&lang=<l>` | The document `Abrir ↗` opens: the page framed under a chrome bar with the way back |
 | `GET /html-viewer/<sessionId>/<path>` | Raw bytes of one workspace file, for the tab and for the assets a page references |
+| `GET /html-viewer/<sessionId>/<path>?download` | The same bytes as a save: `Content-Disposition: attachment` built from the resolved base name |
 
-Every path is fenced to the session workspace with `fs.contains`, which also rejects a symlink whose real target escapes it; the listing never offers such a file.
+Every path is fenced to the session workspace with `fs.contains`, which also rejects a symlink whose real target escapes it; the listing never offers such a file. The download rides that same fenced read — it adds a header, not a route — so a page too large for the viewer to frame still downloads, and a folder downloads as its own `index.html`. The name travels as an ASCII `filename` fallback plus RFC 5987 `filename*`, and only the resolved base name reaches the header, so a received path cannot inject one.
+
+### Saving inside an installed app
+
+A standalone window — the GUI on a phone, launched from the home screen — has no tab, no download manager and no address bar, so a navigation does not open the file beside the application: it replaces the application with it, and the user has to relaunch to get back. Both controls therefore change shape when the GUI runs installed:
+
+- `Abrir ↗` is not offered. It exists to hand the page to a tab, and an installed window has none. The page is already framed full width at the phone breakpoint.
+- `Descargar` becomes a control that fetches the bytes from the same route and hands them to the system share sheet as a `File`, which is dismissed back into the app. A cancelled sheet changes nothing; a sheet this engine cannot provide falls back to the plain download, so the file is never unreachable.
+
+Both rules are decided at render time from `navigator.standalone` or the `(display-mode: standalone)` media query, so a desktop tab keeps the plain download and the tab link.
 
 `html_preview(path)` is the model-facing entry point: it validates the path and returns the path, the size and the page's URL under the route.
 
@@ -68,7 +78,7 @@ The composed configuration is read once at process start, so the viewer appears 
 DSH_HOME=/data/dsh node check.mjs
 ```
 
-The checks cover route registration, the workspace listing, containment for traversal and symlink escapes, reference rebasing, both layouts, opening a page and returning to the list, the tool card and the locale table. They do not cover how the real browser paints a framed page, which needs a browser.
+The checks cover route registration, the workspace listing, containment for traversal and symlink escapes, reference rebasing, both layouts, opening a page and returning to the list, the tool card and the locale table. The download section proves the header and the type, the RFC 5987 name of an accented page, a folder downloading as its own `index.html`, that a traversal path asks in vain, and that the route without the parameter answers exactly as before. They do not cover how the real browser paints a framed page, which needs a browser.
 
 ## Known Limitations and Deferred Work
 

@@ -8,6 +8,12 @@
  *   GET /md-viewer/<sessionId>/__list          → { ok, root, files[], truncated }
  *   GET /md-viewer/<sessionId>/__doc?path=<p>  → { ok, path, dir, text, sizeBytes, title }
  *   GET /md-viewer/<sessionId>/<path>          → raw bytes of one workspace file
+ *   GET /md-viewer/<sessionId>/<path>?download → the same bytes as a save
+ *
+ * `?download` adds `Content-Disposition: attachment` to the raw route, so the
+ * document is saved instead of displayed. It carries no size limit of its own:
+ * the raw route already bounds what it serves, and a document too large for the
+ * viewer is still downloadable.
  *
  * Every served path is fenced to the session workspace with `fs.contains`,
  * which also rejects symlinks escaping it. Nothing here publishes a service:
@@ -161,6 +167,20 @@ function queryParam(query, key) {
 function dirOf(rel) {
   const cut = String(rel).lastIndexOf('/')
   return cut < 0 ? '' : String(rel).slice(0, cut)
+}
+
+/**
+ * The `Content-Disposition` of one download, built from the resolved base name.
+ * @param rel - the workspace-relative path, already resolved and fenced; only
+ *   its base name is used, so a received path can never reach the header.
+ * @returns the header value: an ASCII `filename` fallback plus the RFC 5987
+ *   `filename*`, so an accented name arrives as itself.
+ */
+function contentDisposition(rel) {
+  const base = String(rel).slice(String(rel).lastIndexOf('/') + 1)
+  const ascii = base.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_')
+  const encoded = encodeURIComponent(base).replace(/['()*!]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`)
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`
 }
 
 /** Order by path, so the browser's folder tree lists siblings together. */
@@ -368,12 +388,17 @@ export function apply(ctx) {
         return
       }
       const bytes = await ctx.fs.readBytes(found.target, undefined, MAX_ASSET_BYTES)
-      res.writeHead(200, {
+      const headers = {
         'content-type': mimeOf(parsed.rel),
         'content-length': String(bytes.length),
         'cache-control': 'no-store',
         'x-content-type-options': 'nosniff',
-      })
+      }
+      // `?download` turns the same fenced bytes into a save instead of a display.
+      if (queryParam(parsed.query, 'download') !== undefined) {
+        headers['content-disposition'] = contentDisposition(parsed.rel)
+      }
+      res.writeHead(200, headers)
       res.end(method === 'HEAD' ? undefined : bytes)
     } catch (error) {
       ctx.logger.warn(error instanceof Error ? error : new Error(String(error)))

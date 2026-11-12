@@ -9,6 +9,12 @@
  *   GET /html-viewer/<sessionId>/__list          → { ok, root, files[], truncated }
  *   GET /html-viewer/<sessionId>/__doc?path=<p>  → { ok, path, dir, html, sizeBytes }
  *   GET /html-viewer/<sessionId>/<path>          → raw bytes of one workspace file
+ *   GET /html-viewer/<sessionId>/<path>?download → the same bytes as a save
+ *
+ * `?download` adds `Content-Disposition: attachment` to the raw route, so the
+ * page is saved instead of opened. It carries no size limit of its own: the raw
+ * route already bounds what it serves, and a page too large for the viewer is
+ * still downloadable.
  *
  * The panel frames the page with `srcdoc`, because that is what paints inside
  * the shell. A srcdoc document resolves relative references against the shell's
@@ -348,6 +354,20 @@ function dirOf(rel) {
   return cut < 0 ? '' : String(rel).slice(0, cut)
 }
 
+/**
+ * The `Content-Disposition` of one download, built from the resolved base name.
+ * @param rel - the workspace-relative path, already resolved and fenced; only
+ *   its base name is used, so a received path can never reach the header.
+ * @returns the header value: an ASCII `filename` fallback plus the RFC 5987
+ *   `filename*`, so an accented name arrives as itself.
+ */
+function contentDisposition(rel) {
+  const base = String(rel).slice(String(rel).lastIndexOf('/') + 1)
+  const ascii = base.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_')
+  const encoded = encodeURIComponent(base).replace(/['()*!]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`)
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`
+}
+
 /** Order by path, so the list reads like the workspace tree. */
 function comparePages(a, b) {
   return a.path < b.path ? -1 : a.path > b.path ? 1 : 0
@@ -675,12 +695,17 @@ export function apply(ctx) {
         return
       }
       const bytes = await ctx.fs.readBytes(target, undefined, MAX_ASSET_BYTES)
-      res.writeHead(200, {
+      const headers = {
         'content-type': mimeOf(servedRel),
         'content-length': String(bytes.length),
         'cache-control': 'no-store',
         'x-content-type-options': 'nosniff',
-      })
+      }
+      // `?download` turns the same fenced bytes into a save instead of a display.
+      if (queryParam(parsed.query, 'download') !== undefined) {
+        headers['content-disposition'] = contentDisposition(servedRel)
+      }
+      res.writeHead(200, headers)
       res.end(method === 'HEAD' ? undefined : bytes)
     } catch (error) {
       ctx.logger.warn(error instanceof Error ? error : new Error(String(error)))

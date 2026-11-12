@@ -58,6 +58,9 @@ window.__ModuleLoader__.load({
         loading: 'Rendering the page…',
         refresh: 'Refresh',
         reload: 'Reload',
+        download: 'Download',
+        downloadTitle: 'Save this page to the device',
+        shareFailed: 'This device could not share the page.',
         open: 'Open ↗',
         openTitle: 'Open the page in its own tab',
         close: 'Close',
@@ -79,6 +82,9 @@ window.__ModuleLoader__.load({
         loading: 'Renderizando la página…',
         refresh: 'Actualizar',
         reload: 'Recargar',
+        download: 'Descargar',
+        downloadTitle: 'Guardar esta página en el dispositivo',
+        shareFailed: 'Este dispositivo no pudo compartir la página.',
         open: 'Abrir ↗',
         openTitle: 'Abrir la página en su propia pestaña',
         close: 'Cerrar',
@@ -162,6 +168,59 @@ window.__ModuleLoader__.load({
       const back = typeof window !== 'undefined' && typeof window.location?.href === 'string' ? window.location.href : ''
       const query = `path=${encodeURIComponent(path)}&lang=${encodeURIComponent(locale)}`
       return `${ROUTE}/${encodeURIComponent(String(sessionId))}/__page?${query}${back === '' ? '' : `&back=${encodeURIComponent(back)}`}`
+    }
+
+    /**
+     * The raw route that saves one page instead of framing it. The host answers
+     * with `Content-Disposition`, so the name and the type come from the file on
+     * the server; `download` keeps the browser on that path even before it reads
+     * the header.
+     */
+    function downloadUrlFor(sessionId, path) {
+      const encoded = String(path).split('/').map(part => encodeURIComponent(part)).join('/')
+      return `${ROUTE}/${encodeURIComponent(String(sessionId))}/${encoded}?download=1`
+    }
+
+    /**
+     * Whether the GUI is running as an installed app rather than in a browser
+     * tab. That case has no tab, no download manager and no address bar: any
+     * navigation takes the application itself away from the user.
+     */
+    function isStandalone() {
+      if (typeof window === 'undefined') return false
+      if (window.navigator?.standalone === true) return true
+      try {
+        return window.matchMedia?.('(display-mode: standalone)')?.matches === true
+      } catch {
+        return false
+      }
+    }
+
+    /** Whether this engine can hand a file to the system share sheet. */
+    function canShareFiles() {
+      return typeof navigator !== 'undefined'
+        && typeof navigator.canShare === 'function'
+        && typeof navigator.share === 'function'
+        && typeof File === 'function'
+    }
+
+    /**
+     * Save one page through the system share sheet, which returns to the app
+     * instead of replacing it. The bytes come from the same download route, so
+     * the name and the type are the file's own.
+     * @param url - the download route for one page.
+     * @param name - the file name to hand the sheet.
+     * @returns true when the sheet handled it; false when this engine cannot.
+     */
+    async function sharePage(url, name) {
+      if (!canShareFiles()) return false
+      const response = await fetch(url)
+      if (response.ok !== true) throw new Error(`HTTP ${String(response.status)}`)
+      const blob = await response.blob()
+      const file = new File([blob], name, { type: blob.type === '' ? 'text/html' : blob.type })
+      if (navigator.canShare({ files: [file] }) !== true) return false
+      await navigator.share({ files: [file], title: name })
+      return true
     }
 
     /** Human-readable byte count. */
@@ -306,8 +365,44 @@ window.__ModuleLoader__.load({
       const [doc, setDoc] = React.useState({ status: 'idle', html: null, size: 0, path: '', dir: '', error: null })
       const [generation, setGeneration] = React.useState(0)
       const [frameTick, setFrameTick] = React.useState(0)
+      const [notice, setNotice] = React.useState('')
+      const noticeTimer = React.useRef(null)
+      // In an installed app there is no tab to open and no download manager, so
+      // both the save and the open control must stay inside this window.
+      const installed = isStandalone()
 
       React.useEffect(() => store.subscribe(next => setSnapshot(next)), [])
+
+      React.useEffect(() => () => {
+        if (noticeTimer.current !== null) clearTimeout(noticeTimer.current)
+      }, [])
+
+      /** Say what happened where the toolbar can show it. */
+      const report = (text) => {
+        setNotice(text)
+        if (noticeTimer.current !== null) clearTimeout(noticeTimer.current)
+        noticeTimer.current = setTimeout(() => setNotice(''), 6000)
+      }
+
+      /**
+       * Save the selected page. In an installed app the system sheet keeps the
+       * application where it is; a browser tab keeps the plain download, which
+       * saves without navigating.
+       */
+      const savePage = async () => {
+        if (selectedPath === null) return
+        const url = downloadUrlFor(snapshot.sessionId, selectedPath)
+        if (!installed) return
+        try {
+          const shared = await sharePage(url, nameOf(selectedPath))
+          if (shared) return
+        } catch (error) {
+          if (error?.name === 'AbortError') return
+          report(t.shareFailed)
+          return
+        }
+        report(t.shareFailed)
+      }
 
       React.useEffect(() => {
         if (snapshot.open !== true || snapshot.sessionId === '') return undefined
@@ -345,6 +440,7 @@ window.__ModuleLoader__.load({
 
       const t = strings(snapshot.locale)
       const selected = snapshot.path
+      const selectedPath = selected
       const known = selected === null ? undefined : listing.files.find(file => file.path === selected)
       const link = selected === null ? null : openUrlFor(snapshot.sessionId, selected, snapshot.locale)
 
@@ -353,18 +449,26 @@ window.__ModuleLoader__.load({
             selected === null ? null : iconButton('←', t.back, () => setPane('list')),
             React.createElement('span', { className: 'dsh-hp-title' }, selected === null ? t.panelTitle : nameOf(selected)),
             React.createElement('span', { className: 'dsh-hp-spacer' }),
+            notice === '' ? null : React.createElement('span', { className: 'dsh-hp-sub' }, notice),
             iconButton('⟳', t.reload, () => setFrameTick(tick => tick + 1)),
-            link === null ? null : React.createElement('a', { className: 'dsh-hp-ibtn', href: link, target: '_blank', rel: 'noreferrer noopener', title: t.openTitle, 'aria-label': t.openTitle }, '↗'),
+            selected === null ? null : installed
+              ? iconButton('⤓', t.downloadTitle, () => { void savePage() })
+              : React.createElement('a', { className: 'dsh-hp-ibtn', href: downloadUrlFor(snapshot.sessionId, selected), download: nameOf(selected), title: t.downloadTitle, 'aria-label': t.downloadTitle }, '⤓'),
+            link === null || installed ? null : React.createElement('a', { className: 'dsh-hp-ibtn', href: link, target: '_blank', rel: 'noreferrer noopener', title: t.openTitle, 'aria-label': t.openTitle }, '↗'),
             iconButton('✕', t.closeTitle, () => store.close()),
           )
         : React.createElement('div', { className: 'dsh-hp-bar' },
             React.createElement('span', { className: 'dsh-hp-title' }, t.panelTitle),
             listing.root !== '' ? React.createElement('span', { className: 'dsh-hp-sub', title: listing.root }, listing.root) : null,
             React.createElement('span', { className: 'dsh-hp-spacer' }),
+            notice === '' ? null : React.createElement('span', { className: 'dsh-hp-sub' }, notice),
             known === undefined ? null : React.createElement('span', { className: 'dsh-hp-chip' }, formatSize(known.size)),
             button(t.refresh, () => setGeneration(value => value + 1)),
             selected === null ? null : button(t.reload, () => setFrameTick(tick => tick + 1)),
-            link === null ? null : React.createElement('a', { className: 'dsh-hp-btn', href: link, target: '_blank', rel: 'noreferrer noopener', title: t.openTitle }, t.open),
+            selected === null ? null : installed
+              ? button(t.download, () => { void savePage() })
+              : React.createElement('a', { className: 'dsh-hp-btn', href: downloadUrlFor(snapshot.sessionId, selected), download: nameOf(selected), title: t.downloadTitle }, t.download),
+            link === null || installed ? null : React.createElement('a', { className: 'dsh-hp-btn', href: link, target: '_blank', rel: 'noreferrer noopener', title: t.openTitle }, t.open),
             button(t.close, () => store.close()),
           )
 

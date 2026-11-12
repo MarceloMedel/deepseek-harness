@@ -7,7 +7,7 @@ Markdown reader for the DSH web GUI: a panel that renders the `.md` files of the
 Three surfaces, all composed by slot registration from `client.js`:
 
 - A `MD` toggle in the session header (`conversation.session.header.actions`) opens and closes the reader.
-- The reader itself (`shell.overlay`) shows the workspace's Markdown files grouped by folder, the selected document, and its heading outline.
+- The reader itself (`shell.overlay`) shows the workspace's Markdown files grouped by folder, the selected document, its heading outline, and a `Download` control that saves the open file to the device.
 - A card under each `md_preview` call (`tool.call.toolview`) renders the document the agent opened.
 
 A document link opens the reader from anywhere in the application, not only from inside it. A reply that links the report it just wrote renders a plain anchor, and the shell has no route for a workspace path, so the click navigated away; a file token — an inline-code mention or a produced-files chip — reached the chat view's OS file opener instead. One delegated click listener covers both, reading the attribute each control already publishes: the anchor's `href` and the button's `title`, which those controls set to the full path. It requires the title to be a bare path, so an unrelated control whose label merely ends in `.md` is untouched.
@@ -35,8 +35,11 @@ Folders are collapsed until opened; opening a document reveals the folders that 
 | `GET /md-viewer/<sessionId>/__list` | The workspace's Markdown files, ordered by path |
 | `GET /md-viewer/<sessionId>/__doc?path=<p>` | One document's source, directory, title and size |
 | `GET /md-viewer/<sessionId>/<path>` | Raw bytes of one workspace file, for the images and files a document references |
+| `GET /md-viewer/<sessionId>/<path>?download` | The same bytes as a save: `Content-Disposition: attachment` built from the resolved base name |
 
-Every path is fenced to the session workspace with `fs.contains`, which also rejects a symlink whose real target escapes it; the listing never offers such a file.
+In a standalone window — the GUI on a phone, launched from the home screen — there is no download manager and no address bar, so a navigation replaces the application with the file and the user has to relaunch to get back. `Download` therefore becomes a control that fetches the bytes from the same route and hands them to the system share sheet as a `File`, which is dismissed back into the app; a cancelled sheet changes nothing, and a sheet this engine cannot provide falls back to the plain download so the file is never unreachable. A browser tab keeps the plain download link.
+
+Every path is fenced to the session workspace with `fs.contains`, which also rejects a symlink whose real target escapes it; the listing never offers such a file. `Download` uses that same fenced read rather than a `Blob` of the text the reader holds, so what arrives is the file on the server: a document larger than the reader's own 2 MB limit cannot be rendered but still downloads whole, and on a phone whose GUI is an installed app the save is a normal download instead of a blob the shell has to handle. The name travels as an ASCII `filename` fallback plus RFC 5987 `filename*`, and only the resolved base name reaches the header.
 
 `md_preview(path)` is the model-facing entry point: it validates the path, reads the document's title, and returns the path and size the card needs.
 
@@ -65,7 +68,7 @@ The composed configuration is read once at process start, so the reader appears 
 DSH_HOME=/data/dsh node check.mjs
 ```
 
-The checks cover route registration, the workspace listing, containment for traversal and symlink escapes, both layouts, the collapsed folder tree, opening a document and returning to the list, the outline as a column and as a sheet, link following, copy, download and the tool card. They do not cover the visual result of the real `MarkdownText`, the outline's scroll jump, or reading-position retention, which need a browser with layout.
+The checks cover route registration, the workspace listing, containment for traversal and symlink escapes, both layouts, the collapsed folder tree, opening a document and returning to the list, the outline as a column and as a sheet, link following, copy and the tool card. The download section proves the header, the RFC 5987 name of an accented file, that a document over the reader's limit still downloads whole, that a traversal path asks in vain, and that the route without the parameter answers exactly as before. They do not cover the visual result of the real `MarkdownText`, the outline's scroll jump, or reading-position retention, which need a browser with layout.
 
 ## Known Limitations and Deferred Work
 

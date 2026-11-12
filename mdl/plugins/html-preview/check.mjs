@@ -77,6 +77,8 @@ writeFileSync(join(workspace, 'img/a.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47]
 writeFileSync(join(workspace, 'base/page.html'), '<base href="assets/"><img src="logo.png">\n')
 writeFileSync(join(workspace, 'node_modules/skip/x.html'), '<p>not listed</p>\n')
 writeFileSync(join(workspace, 'notes.md'), '# not a page\n')
+// An accented name exercises the RFC 5987 form of the header (SPEC-036, DL-03).
+writeFileSync(join(workspace, 'docs/informe-técnico.html'), '<p>informe</p>\n')
 // A symlink whose real target is outside the workspace must never be offered.
 writeFileSync(join(harnessDir, 'outside.html'), '<p>secret outside</p>\n')
 symlinkSync(join(harnessDir, 'outside.html'), join(workspace, 'docs/escape.html'))
@@ -143,7 +145,8 @@ check('registers one prefix route and the tool',
   routes.map(route => route.path).join())
 const listing = await json('/html-viewer/s1/__list')
 check('lists the workspace pages with the entry page first',
-  listing.files.map(file => file.path).join() === 'index.html,site/index.html,base/page.html,docs/other.html', JSON.stringify(listing.files))
+  listing.files.map(file => file.path).join() === 'index.html,site/index.html,base/page.html,docs/informe-técnico.html,docs/other.html',
+  JSON.stringify(listing.files))
 check('skips node_modules', !listing.files.some(file => file.path.includes('node_modules')))
 check('omits a symlink that leaves the workspace', !listing.files.some(file => file.path.includes('escape')))
 check('omits a non-page file', !listing.files.some(file => file.path === 'notes.md'))
@@ -215,6 +218,36 @@ check('serves the page source unrewritten on the raw route',
   && (await call('/html-viewer/s1/index.html')).body.includes('href="style.css"'))
 check('serves index.html for a folder', (await call('/html-viewer/s1/site')).body.includes('site entry'))
 check('refuses an asset outside the workspace', (await call('/html-viewer/s1/docs/escape.html')).status === 403)
+// ── download (SPEC-036) ──
+console.log('download')
+
+const saved = await call('/html-viewer/s1/index.html?download=1')
+check('DL-02 a page downloads whole, with its name and its type',
+  saved.status === 200
+  && saved.body.includes('<link rel="stylesheet" href="style.css">')
+  && saved.headers['content-type']?.startsWith('text/html') === true
+  && saved.headers['content-disposition'] === 'attachment; filename="index.html"; filename*=UTF-8\'\'index.html',
+  `${saved.status} | ${saved.headers['content-disposition']}`)
+const displayed = await call('/html-viewer/s1/index.html')
+check('DL-06 without the parameter the route answers exactly as before',
+  displayed.status === 200 && displayed.body === saved.body
+  && displayed.headers['content-disposition'] === undefined,
+  String(displayed.headers['content-disposition']))
+const accent = await call('/html-viewer/s1/docs/informe-t%C3%A9cnico.html?download=1')
+const accentHeader = String(accent.headers['content-disposition'] ?? '')
+const accentName = /filename\*=UTF-8''([^;]+)/.exec(accentHeader)?.[1]
+check('DL-03 an accented name travels in filename* and decodes to itself',
+  accent.status === 200
+  && decodeURIComponent(accentName ?? '') === 'informe-técnico.html'
+  && /filename="[\x20-\x7e]+"/.test(accentHeader),
+  accentHeader)
+check('DL-05 a traversal path is refused even when it asks for a download',
+  (await call('/html-viewer/s1/..%2F..%2Fetc%2Fpasswd.html?download=1')).status !== 200
+  && (await call('/html-viewer/s1/docs/escape.html?download=1')).status === 403)
+check('a folder download names its own entry page',
+  (await call('/html-viewer/s1/site?download=1')).headers['content-disposition']?.includes('filename="index.html"') === true,
+  (await call('/html-viewer/s1/site?download=1')).headers['content-disposition'])
+
 check('answers an unknown session with 404', (await call('/html-viewer/nope/__list')).status === 404)
 check('refuses a write method', (await call('/html-viewer/s1/__list', 'POST')).status === 405)
 check('refuses a NUL in the route', (await call('/html-viewer/s1/index%00.html')).status === 403)
@@ -256,11 +289,12 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
 // A matchMedia whose viewport the run can flip, so one pass covers both layouts.
 let narrow = true
+let installedApp = false
 const queries = []
 dom.window.matchMedia = (media) => {
   const query = {
     media,
-    matches: narrow,
+    matches: media.includes('display-mode') ? installedApp : narrow,
     listeners: new Set(),
     addEventListener(_type, listener) { query.listeners.add(listener) },
     removeEventListener(_type, listener) { query.listeners.delete(listener) },
@@ -293,6 +327,14 @@ const requested = []
 globalThis.fetch = async (url) => {
   requested.push(url)
   const body = value => ({ ok: true, json: async () => value })
+  if (String(url).includes('download=1')) {
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({}),
+      blob: async () => new dom.window.Blob(['<p>page</p>'], { type: 'text/html; charset=utf-8' }),
+    }
+  }
   if (url.includes('/__list')) {
     return body({
       ok: true, root: '/workspace/demo', truncated: false,
@@ -389,13 +431,16 @@ check('the list shows every page, entry pages first',
 check('a phone opens on the list, with no page framed yet', document.querySelector('.dsh-hp-doc') === null)
 check('the phone toolbar offers reload, open and close as icons',
   iconButton('Reload') !== null && iconButton('Close the viewer') !== null
-  && document.querySelector('a.dsh-hp-ibtn')?.getAttribute('href')?.startsWith('/html-viewer/s1/__page?path=index.html&lang=en&back='))
+  && document.querySelector('a.dsh-hp-ibtn[target="_blank"]')?.getAttribute('href')?.startsWith('/html-viewer/s1/__page?path=index.html&lang=en&back='))
 
 click([...document.querySelectorAll('.dsh-hp-item')].find(node => node.textContent === 'docs/other.html'))
 await settle()
 check('picking a page switches to the page pane', document.querySelector('.dsh-hp-doc')?.querySelector('.dsh-hp-frame') !== null)
 check('the page pane names the file and offers a way back',
   document.querySelector('.dsh-hp-title')?.textContent === 'other.html' && iconButton('Back to the list') !== null)
+check('DL-07 the phone pane saves the page it is showing',
+  document.querySelector('a.dsh-hp-ibtn[download]')?.getAttribute('href')?.endsWith('/html-viewer/s1/docs/other.html?download=1') === true,
+  document.querySelector('a.dsh-hp-ibtn[download]')?.getAttribute('href'))
 check('the frame receives the page source as srcdoc',
   document.querySelector('.dsh-hp-frame')?.getAttribute('srcdoc') === '<p>other page</p>')
 click(iconButton('Back to the list'))
@@ -408,7 +453,8 @@ await settle()
 check('a wide viewport keeps the list and the page together',
   document.querySelector('.dsh-hp-card')?.getAttribute('data-narrow') === 'false'
   && document.querySelector('.dsh-hp-list') !== null && document.querySelector('.dsh-hp-doc') !== null)
-check('the wide toolbar is labelled', toolbar().join() === 'Refresh,Reload,Open ↗,Close', toolbar().join())
+check('the wide toolbar is labelled, download included',
+  toolbar().join() === 'Refresh,Reload,Download,Open ↗,Close', toolbar().join())
 click([...document.querySelectorAll('.dsh-hp-item')].find(node => node.textContent === 'index.html'))
 await settle()
 check('the wide list swaps the framed page in place',
@@ -416,9 +462,12 @@ check('the wide list swaps the framed page in place',
   && document.querySelector('.dsh-hp-list') !== null)
 check('the framed page carries its rebased references',
   document.querySelector('.dsh-hp-frame')?.getAttribute('srcdoc')?.includes('/html-viewer/s1/style.css'))
+check('DL-07 the wide toolbar saves the page it is showing',
+  document.querySelector('a.dsh-hp-btn[download]')?.getAttribute('href')?.endsWith('/html-viewer/s1/index.html?download=1') === true,
+  document.querySelector('a.dsh-hp-btn[download]')?.getAttribute('href'))
 check('open points at the chrome document, with the way back and the locale',
   (() => {
-    const href = document.querySelector('a.dsh-hp-btn')?.getAttribute('href') ?? ''
+    const href = document.querySelector('a.dsh-hp-btn[target="_blank"]')?.getAttribute('href') ?? ''
     return href.startsWith('/html-viewer/s1/__page?path=index.html&lang=en&back=')
       && href.endsWith(encodeURIComponent('http://127.0.0.1:3080/'))
   })(),
@@ -464,6 +513,57 @@ await React.act(async () => {
 })
 const fallbackLabels = [...extra.querySelectorAll('.dsh-hp-btn')].map(node => node.textContent).join()
 check('a locale without copy falls back to English', fallbackLabels === 'Reload,Open ↗', fallbackLabels)
+
+// ── installed app: saving must not take the application away ──
+// A standalone window has no tab, no download manager and no address bar, so a
+// navigation loses the GUI itself. This is the case the reporter hit.
+console.log('installed app')
+
+const sharedFiles = []
+Object.defineProperty(dom.window.navigator, 'standalone', { value: true, configurable: true })
+Object.defineProperty(dom.window.navigator, 'canShare', {
+  value: (data) => Array.isArray(data?.files) && data.files.length === 1,
+  configurable: true,
+})
+Object.defineProperty(dom.window.navigator, 'share', {
+  value: async (data) => { sharedFiles.push(data.files[0]) },
+  configurable: true,
+})
+
+activeLocale = 'en'
+click(document.querySelector('.dsh-hp-hbtn'))
+await settle(300)
+
+check('an installed app offers no tab link to be stranded in',
+  document.querySelector('a[target="_blank"]') === null,
+  document.querySelector('a[target="_blank"]')?.outerHTML)
+check('the save is a control, not a navigation',
+  document.querySelector('a.dsh-hp-btn[download]') === null
+  && [...document.querySelectorAll('.dsh-hp-btn')].some(node => node.textContent === 'Download'))
+click([...document.querySelectorAll('.dsh-hp-btn')].find(node => node.textContent === 'Download'))
+await settle(400)
+check('the system sheet receives the page as a file',
+  sharedFiles.length === 1
+  && sharedFiles[0].name === 'index.html'
+  && String(sharedFiles[0].type).startsWith('text/html'),
+  `${sharedFiles.length} | ${sharedFiles[0]?.name} | ${sharedFiles[0]?.type}`)
+check('saving leaves the panel open', document.querySelector('.dsh-hp-card') !== null)
+click([...document.querySelectorAll('.dsh-hp-btn')].find(node => node.textContent === 'Close'))
+await settle()
+check('and it still closes afterwards', document.querySelector('.dsh-hp-card') === null)
+
+// A sheet the user dismisses must leave the panel exactly as it was.
+Object.defineProperty(dom.window.navigator, 'share', {
+  value: async () => { const error = new Error('cancelled'); error.name = 'AbortError'; throw error },
+  configurable: true,
+})
+click(document.querySelector('.dsh-hp-hbtn'))
+await settle(300)
+click([...document.querySelectorAll('.dsh-hp-btn')].find(node => node.textContent === 'Download'))
+await settle(400)
+check('a cancelled share reports nothing and keeps the panel',
+  document.querySelector('.dsh-hp-card') !== null
+  && [...document.querySelectorAll('.dsh-hp-sub')].every(node => node.textContent !== 'This device could not share the page.'))
 
 rmSync(harnessDir, { recursive: true, force: true })
 console.log(`\n${checks - failures}/${checks} checks passed`)
