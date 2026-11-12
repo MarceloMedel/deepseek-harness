@@ -75,7 +75,7 @@ Un bundle nuevo en `mdl/plugins/shell-panel/`. La mitad de host consume `shell`,
 
 ## Validación ejecutada
 
-Ejecutada el 2026-11-13 en `main`, sobre el checkout `/srv/projects/deepseek-harness`. `pnpm` no está en el `PATH` de este entorno, así que las compuertas que lo requieren no se ejecutaron.
+Ejecutada el 2026-11-13 en `main`, sobre el checkout `/srv/projects/deepseek-harness`. El entorno no expone `pnpm` en el `PATH`; las compuertas que lo necesitan se ejecutaron con el que aporta `corepack`.
 
 | Comprobación | Resultado | Evidencia |
 |---|---|---|
@@ -95,11 +95,11 @@ Ejecutada el 2026-11-13 en `main`, sobre el checkout `/srv/projects/deepseek-har
 | `node --experimental-strip-types scripts/verify-md-wrap.ts` | Pasa | 947 archivos sin prosa partida |
 | Reconstrucción de la imagen y arranque del contenedor | Pendiente | Requiere `pnpm`/Docker en un entorno que este agente no tiene |
 | Validación en teléfono y escritorio sobre el despliegue reconstruido | Pendiente | Requiere la imagen reconstruida y el proceso reiniciado |
-| Compuertas de `doc-sync` que usan `pnpm` | Pendiente | `pnpm` ausente en el entorno del agente |
+| `pnpm run doc-sync` | Pasa | 26 compuertas, 0 fallos, incluida la de presupuestos de documentación y la de notas de agente |
 
 ## Resultado y pendientes
 
 - Resultado: implementado, y compuesto en el despliegue reconstruido: el bundle instalado es el que sirve la ruta y responde por HTTP con la política de la sesión. También verificado en las dos mitades sin navegador ni proceso en marcha. Los tres requisitos negativos (`SHL-04`, `SHL-05`, `SHL-11`) se ejercen sobre el ejecutor y el runner reales, no sobre un doble.
 - Comportamiento observado al desplegar: una página ya cargada no adopta un plugin añadido al manifiesto con posterioridad, porque el manifiesto se inyecta en el HTML de arranque y el HMR solo refresca los módulos que la página ya tiene. La superficie aparece al recargar la página o al reabrir la app instalada; no es un defecto del bundle y no requiere otro despliegue.
-- Pendientes o excepciones aceptadas: las compuertas de `doc-sync` que necesitan `pnpm` no se ejecutaron en el entorno del agente, que no tiene `pnpm`; quedan para CI o para una máquina que lo tenga. Nada más queda abierto: la legibilidad en los tres temas y el cajón en el teléfono los confirmó el usuario sobre el despliegue reconstruido.
+- Pendientes o excepciones aceptadas: ninguna. Las compuertas de `doc-sync` sí se ejecutaron, con el `pnpm` que aporta `corepack`: 26 compuertas, 0 fallos. La legibilidad en los tres temas y el cajón en el teléfono los confirmó el usuario sobre el despliegue reconstruido.
 - Decisión de salida: la Fase 35 se cierra como Validada; el despliegue ya la sirve y no requiere otra reconstrucción.

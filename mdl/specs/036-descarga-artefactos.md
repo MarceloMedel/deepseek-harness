@@ -63,7 +63,7 @@ Las dos rutas ya están cercadas a la raíz del workspace con `fs.contains`, y l
 
 ## Validación ejecutada
 
-Ejecutada el 2026-11-13 en `main`, sobre el checkout `/srv/projects/deepseek-harness`. Los `check.mjs` de los dos bundles se ejecutan contra la copia publicada, así que ambos se publicaron primero con su `install.sh` en un `DSH_HOME` temporal (`/tmp/dl-check`) y se ejecutaron con ese mismo `DSH_HOME`; ninguna instalación del despliegue se tocó. `pnpm` no está en el `PATH` de este entorno.
+Ejecutada el 2026-11-13 en `main`, sobre el checkout `/srv/projects/deepseek-harness`. Los `check.mjs` de los dos bundles se ejecutan contra la copia publicada, así que ambos se publicaron primero con su `install.sh` en un `DSH_HOME` temporal (`/tmp/dl-check`) y se ejecutaron con ese mismo `DSH_HOME`; ninguna instalación del despliegue se tocó. Las compuertas que necesitan `pnpm` se ejecutaron con el que aporta `corepack`.
 
 | Comprobación | Resultado | Evidencia |
 |---|---|---|
@@ -83,11 +83,11 @@ Ejecutada el 2026-11-13 en `main`, sobre el checkout `/srv/projects/deepseek-har
 | Bundle publicado en el despliegue | Pasa | `/plugins/dsh-html-preview/client.js` y `/plugins/dsh-md-preview/client.js` se sirven con `200` desde el proceso en marcha, y los archivos publicados en el perfil son los de este cambio |
 | Corrección posterior: guardar en una app instalada | Pasa | Validado por el usuario en el iPhone: la primera versión dejaba la app en el archivo, sin forma de volver, y obligaba a reabrirla. Ahora `Abrir ↗` no se ofrece en una ventana instalada y `Descargar` entrega el archivo a la hoja de compartir, que vuelve a la app; `check.mjs` de los dos bundles prueba esa forma con un navegador `standalone` simulado, incluido el caso de la hoja cancelada |
 
-| Compuertas de `doc-sync` que usan `pnpm` | Pendiente | `pnpm` ausente en el entorno del agente |
+| `pnpm run doc-sync` | Pasa | 26 compuertas, 0 fallos, incluida la de presupuestos de documentación y la de notas de agente |
 
 ## Resultado y pendientes
 
 - Resultado: implementado y verificado en los dos bundles. La cabecera, el nombre acentuado, la descarga por encima del límite del visor, el cercado con el parámetro presente y la respuesta sin él están comprobados por `check.mjs`; los dos bundles publicados a un `DSH_HOME` temporal son los que se ejecutaron.
 - Corrección posterior al alcance: en una ventana instalada —la GUI en el teléfono— navegar hacia el archivo reemplazaba la aplicación y no había forma de volver, que es el defecto que el usuario reportó tras la primera entrega. Se corrigió dentro de esta misma fase porque es su regresión, y no con una fase nueva: `Abrir ↗` no se ofrece cuando la ventana está instalada, y `Descargar` entrega el archivo a la hoja de compartir en lugar de navegar. La regla la decide el render con `navigator.standalone` o `(display-mode: standalone)`, así que una pestaña de escritorio conserva la descarga simple y el enlace a la pestaña.
-- Pendientes o excepciones aceptadas: las compuertas de `doc-sync` que necesitan `pnpm` no se ejecutaron en el entorno del agente, que no tiene `pnpm`; quedan para CI o para una máquina que lo tenga. La descarga en el teléfono instalado y la legibilidad en los tres temas las confirmó el usuario sobre el despliegue.
+- Pendientes o excepciones aceptadas: ninguna. Las compuertas de `doc-sync` sí se ejecutaron, con el `pnpm` que aporta `corepack`: 26 compuertas, 0 fallos. La descarga en el teléfono instalado y la legibilidad en los tres temas las confirmó el usuario sobre el despliegue.
 - Decisión de salida: la Fase 36 se cierra como Validada.
