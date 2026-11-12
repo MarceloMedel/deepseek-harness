@@ -68,6 +68,7 @@ La imagen de runtime instala solo lo que el agente usa de verdad ([SPEC-017](../
 | `bubblewrap`, `tini`, `nginx-light` | Cadena de sandbox, entrypoint y proxy de `SPEC-004` |
 | `python3` + `uv` | Trabajo sobre proyectos Python; `uv` cubre `pip` y `venv` |
 | `gh` | PR y credencial de GitHub de `SPEC-010` a través del wrapper |
+| Navegador de Playwright (`1.61.1`) | Gate visual de `archify` sobre artefactos locales (`SPEC-032`) |
 
 Estas herramientas se retiraron porque ningún consumidor las necesita en runtime; reponer cualquiera es volver a agregarla a la lista de `apt` del `Dockerfile`:
 
@@ -154,11 +155,18 @@ Una escritura a través del rol fijado responde `cannot execute DELETE in a read
 
 El `SKILL.md` de la imagen lleva anexada la nota de [`archify-deployment-note.md`](archify-deployment-note.md) con las rutas absolutas del CLI, la raíz de recursos y el gate visual. Esa nota existe porque el cuerpo de la skill pide sustituir `bin/archify.mjs` por la ruta instalada y porque el agente, sin ella, intentó aprovisionar un navegador por su cuenta.
 
-El gate visual es opt-in. La imagen no trae Chrome ni Chromium, así que `finalize` termina con `browser-check: skipped`, el diagnóstico `viewer/chrome-unavailable`, el resto de los gates en `pass` y una salida distinta de cero; el artefacto queda entregado y la revisión visual queda declarada pendiente. Definir `ARCHIFY_CHROME` en el entorno del host y montar ese binario en el contenedor es lo que habilita el gate completo; sumar el navegador a la imagen se evaluó y se descartó por tamaño frente a [SPEC-017](../specs/017-optimizacion-imagen.md).
+El gate visual corre en la imagen desde [SPEC-032](../specs/032-navegador-headless.md). El navegador es el de `playwright@1.61.1` en `/opt/pw-browsers` —la misma revisión (`chromium-1228`) que el lockfile del repositorio ya fija, así que sirve al gate y a las pruebas del workspace— con las bibliotecas que `playwright install --with-deps` declara, podado de locales salvo `en-US` y del árbol `WidevineCdm` (71 MB que ningún artefacto local usa).
+
+La vía de `apt` se midió y se descartó: `chromium` + `ffmpeg` resolvían **+858 MB** sobre esta imagen y sólo `chromium` **+658 MB**, con `libllvm15` de 112 MB detrás. El navegador de Playwright son 379 MB en disco más 40 MB de bibliotecas, es decir ~350 MB tras la poda, dentro del techo de 500 MB que la fase se fijó.
+
+Dos variables acompañan al navegador. `ARCHIFY_CHROME` apunta al binario instalado por un enlace estable, y `ARCHIFY_CHROME_NO_SANDBOX=1` no es una comodidad: los namespaces de usuario están bloqueados para todo el contenedor —`unshare(CLONE_NEWUSER)` responde `EPERM`, el mismo límite que obliga a landlock en lugar de bwrap— así que el sandbox propio de Chromium no puede inicializar, y `archify` sólo antepone `--no-sandbox` con esa variable o con uid 0. El compose sube `shm_size` a 512 MB porque los flags de `archify` son fijos y `/dev/shm` de 64 MB es el modo de falla conocido de Chrome headless.
+
+El navegador sirve artefactos y servidores locales del workspace; ninguna herramienta del modelo lo expone como navegador de internet. `ffmpeg` y `ffprobe` quedan **fuera**: medidos en +451 MB por `apt` o 135-157 MB comprimidos como binario estático, rompen el techo junto al navegador, así que la skill `record-browser-gif` sigue bloqueada por esas dependencias.
 
 Comprobación:
 
 ```sh
+sudo docker exec -u node mdl-harness-mdl-harness-1 chrome-for-archify --version
 sudo docker exec -u node mdl-harness-mdl-harness-1 archify --help | head -5
 sudo docker exec -u node mdl-harness-mdl-harness-1 \
   node /opt/mdl/archify/bin/archify.mjs doctor | tail -2

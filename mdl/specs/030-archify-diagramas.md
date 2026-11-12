@@ -31,7 +31,7 @@ Este documento posee el alcance de la fase; el contrato de producto está en [..
 - `ARC-02` `/usr/local/bin/archify` lanza el CLI con el `node` de la imagen, y el árbol queda legible para el usuario `node`.
 - `ARC-03` La skill se publica en `$DSH_HOME/skills/archify` en cada arranque: se retira la copia anterior y se copia la de la imagen, de modo que un volumen vacío y una imagen reconstruida convergen al mismo contenido.
 - `ARC-04` El `SKILL.md` de la imagen lleva anexada una nota de despliegue que nombra la ruta absoluta del CLI, el lanzador en `PATH`, la raíz de recursos de la skill, que los artefactos van dentro del workspace y que `browser-check` no está disponible y no se debe instalar un navegador.
-- `ARC-05` El gate visual es opt-in: `compose.yml` pasa `ARCHIFY_CHROME` desde el entorno del host y la imagen no instala ningún navegador. Sin la variable, el comportamiento es el medido: `browser-check` se omite y el resto de los gates pasa.
+- `ARC-05` El gate visual es opt-in: `compose.yml` pasa `ARCHIFY_CHROME` desde el entorno del host y la imagen no instala ningún navegador. Sin la variable, el comportamiento es el medido: `browser-check` se omite y el resto de los gates pasa. **[SPEC-032](032-navegador-headless.md) supera este requisito**: el navegador pasa a la imagen, que queda como dueña de las dos variables.
 - `ARC-06` El catálogo de herramientas del modelo no cambia: la capacidad entra por el catálogo de skills, y ninguna herramienta nueva aparece en una sesión.
 - `ARC-07` El entrypoint informa una línea con la versión publicada y, en una imagen sin el árbol, avisa y arranca igual que antes.
 
