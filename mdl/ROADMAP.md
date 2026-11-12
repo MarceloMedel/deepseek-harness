@@ -38,6 +38,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 30 | Diagramas generados por el agente con archify | [SPEC-030](specs/030-archify-diagramas.md) | Validada |
 | 31 | Stack de desarrollo: `web_fetch` con guard, compuertas de seguridad y búsqueda estructural | [SPEC-031](specs/031-stack-herramientas-desarrollo.md) | Validada |
 | 32 | Navegador headless para el gate visual | [SPEC-032](specs/032-navegador-headless.md) | Validada |
+| 33 | GIF de PR sin ffmpeg: encoder Pillow en la skill | [SPEC-033](specs/033-gif-sin-ffmpeg.md) | En implementación |
 
 ## Dependencias
 
@@ -64,6 +65,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 - La Fase 30 no depende de una fase anterior y no toca la composición ni el catálogo de herramientas: instala una herramienta en la imagen y publica una skill en el volumen, y se valida sobre la imagen reconstruida.
 - La Fase 31 parte de la Fase 29 (comparte el seam `web`) y no toca los presets: la herramienta de fetch se enciende en la capa global del registro y los binarios de seguridad entran a la imagen, así que se valida sobre la imagen reconstruida y el despliegue reiniciado.
 - La Fase 32 parte de la Fase 30 (completa su `ARC-05`) y se valida con el tamaño medido antes de aceptarlo: por encima de 500 MB la fase se replantea. `ffmpeg` queda fuera de alcance con su costo medido, así que la skill de GIFs sigue bloqueada.
+- La Fase 33 parte de la Fase 32 (el navegador es la otra mitad de la captura) y se valida midiendo el artefacto: tamaño, línea de tiempo y fidelidad del color de acento contra la referencia de ffmpeg.
 
 ## Próxima acción
 

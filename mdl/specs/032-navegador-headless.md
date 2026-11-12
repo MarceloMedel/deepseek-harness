@@ -39,7 +39,7 @@ Hechos medidos el 2026-11-12:
 
 ## Fuera del alcance
 
-- **`ffmpeg` y `ffprobe`**, con su costo medido (+451 MB por `apt`, 135-157 MB como estático): la skill `record-browser-gif` sigue bloqueada por esas dependencias, declarada como pendiente.
+- **`ffmpeg` y `ffprobe`**, con su costo medido (+451 MB por `apt`, 135-157 MB como estático, 552 MB extraídos). **[SPEC-033](033-gif-sin-ffmpeg.md) resuelve el bloqueo sin ellos**: el encoder de la skill pasa a Pillow, que cuesta +6,1 MB.
 - Playwright como dependencia del agente: la imagen lleva el navegador, no el paquete; el repositorio usa el suyo y ambos apuntan a la misma revisión.
 - Chrome DevTools MCP y Playwright MCP: descartados por costo de catálogo (~13,7k tokens permanentes).
 - Dietar las bibliotecas que instala `playwright install --with-deps` a una lista propia: la primera lista curada se equivocó por 7×, así que no se repite sin medir.
@@ -96,5 +96,5 @@ Entorno: contenedor `mdl-harness`, imagen con el navegador instalado, 2026-11-12
 ## Resultado y pendientes
 
 - Resultado: validada sobre la imagen reconstruida. El gate visual corre bajo el sandbox del agente y pasa contra el envoltorio que la imagen instala, con los cuatro gates en `pass` y sin dejar cores en el workspace. El empaquetado quedó en 310 MB de navegador más las bibliotecas que su propio instalador declara.
-- Pendientes o excepciones aceptadas: `ffmpeg`/`ffprobe` quedan fuera con su costo medido, así que `record-browser-gif` sigue bloqueada por esas dependencias. El techo de 500 MB se retira como referencia: la fase quedó en ~505 MB comprimidos estimados dentro de un delta medido de +633 MB por las dos fases, y el despliegue lo aceptó al reconstruir. Dietar las bibliotecas de `playwright install --with-deps` queda como fase posible, no como pendiente abierto.
+- Pendientes o excepciones aceptadas: `ffmpeg`/`ffprobe` quedan fuera con su costo medido; el bloqueo de `record-browser-gif` lo resuelve [SPEC-033](033-gif-sin-ffmpeg.md) con Pillow. El techo de 500 MB se retira como referencia: la fase quedó en ~505 MB comprimidos estimados dentro de un delta medido de +633 MB por las dos fases, y el despliegue lo aceptó al reconstruir. Dietar las bibliotecas de `playwright install --with-deps` queda como fase posible, no como pendiente abierto.
 - Decisión de salida: validada; el navegador se usa para artefactos y servidores locales, nunca como navegador de internet del agente.

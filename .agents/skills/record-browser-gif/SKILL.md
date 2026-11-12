@@ -48,9 +48,11 @@ A GIF for a specific pull request demonstrates that pull request's tree, so stag
 
 Use the browser's own screenshot API. When it returns image bytes, save those bytes directly; the encoder detects image content independently of the filename extension.
 
+This deployment installs only the full Chromium build, not Playwright's headless shell, so a Playwright driver must launch with `channel: 'chromium'`; the default headless launch looks for the shell and fails with "Executable doesn't exist".
+
 ## Encode the GIF
 
-Require `python3`, `ffmpeg`, and `ffprobe`. If either media binary is missing, report the dependency instead of installing software without authorization.
+Require `python3` with Pillow (`python3 -c 'import PIL'`). The bundled encoder is Pillow-based: no `ffmpeg`, no `ffprobe`, no download. If Pillow is missing, report the dependency instead of installing software without authorization.
 
 Export `GIF_SKILL_DIR` as this skill's absolute directory on its own line before the python command — an inline `GIF_SKILL_DIR=... python3 "$GIF_SKILL_DIR/..."` assignment fails, because the argument expands before the assignment takes effect:
 
@@ -60,19 +62,21 @@ python3 "$GIF_SKILL_DIR/scripts/encode_gif.py" \
   /absolute/path/to/frames \
   /absolute/path/to/demo.gif \
   --durations 1.5,1.5,1.5,3.5 \
-  --fps 10 \
   --max-width 1200 \
-  --colors 128
+  --colors 128 \
+  --dump-frames /absolute/path/to/encoded-frames
 ```
 
-One duration applies to every frame; otherwise provide one comma-separated positive duration per frame, holding the final settled state longest. The encoder rejects fewer than two frames, mismatched dimensions or durations, invalid limits, accidental overwrite, unexpected duration, and output above `--max-bytes`.
+One duration applies to every frame; otherwise provide one comma-separated positive duration per frame, holding the final settled state longest. The encoder rejects fewer than two frames, mismatched dimensions or durations, invalid limits, accidental overwrite, an unhonourable duration, and output above `--max-bytes`.
 
-For a large artifact, reduce `--max-width` first, then `--colors` or `--fps`; retain readable text and the final state long enough to inspect. Use `--force` only after resolving the exact output path.
+The palette reserves the most saturated colours of the animation before it covers the rest, which is what keeps a brand accent — often a few dozen pixels — from turning into a muddy neighbour. It applies no dithering, so text edges stay crisp and the file stays small; that also means large photographic gradients band, which a UI screenshot does not have.
+
+When the output exceeds `--max-bytes`, the encoder halves the colours and then the width on its own and reports each step in `adjustments`; read that field and re-check the artifact, because a reduced palette can flatten an accent. Use `--force` only after resolving the exact output path.
 
 ## Verify the artifact
 
 1. Read the encoder's JSON summary and confirm the output path, source and encoded frame counts, dimensions, duration, and byte size.
-2. Visually read the encoded GIF itself, not only the source frames. Confirm that the transition is legible, the last state is held long enough, and no sensitive content appears. If the viewer renders only the first frame, decode representative frames from the encoded GIF with `ffmpeg` and inspect those; the pre-encode screenshots do not prove the encoded order, palette, or final hold.
+2. Visually read the encoded GIF itself, not only the source frames. Confirm that the transition is legible, the last state is held long enough, and no sensitive content appears. If the viewer renders only the first frame, read the PNGs written by `--dump-frames`; the pre-encode screenshots do not prove the encoded order, palette, or final hold.
 3. Run `git status --short` and confirm frames and the artifact landed only under ignored paths.
 4. Return the absolute GIF path, render it when the client supports local media, and state whether the recording used a real API, fixture, or another transport. When the task does not include attaching the GIF to a pull request, stop here.
 

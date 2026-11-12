@@ -88,7 +88,7 @@ RUN printf '%s\n' \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         bash bubblewrap ca-certificates curl git jq less nginx-light \
-        python3 tini \
+        python3 python3-pil tini \
     && install -m 0755 -d /etc/apt/keyrings \
     && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
         -o /etc/apt/keyrings/githubcli-archive-keyring.gpg \
