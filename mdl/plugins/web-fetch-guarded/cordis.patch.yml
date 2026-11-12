@@ -1,0 +1,25 @@
+# The layer this bundle contributes to whichever profile lists it.
+#
+# The first row registers the guarded provider; the second puts `web_fetch` in
+# the model's catalog. The tool row is a HOST row on purpose: the shipped presets
+# own their own `tool-web` with `fetch: false`, and a preset is copy-only, so the
+# global layer is the only way to enable the tool without forking a preset.
+# `search: false` keeps the preset's `web_search` as the single owner of that
+# name.
+#
+# The `web` row is deliberately NOT patched here. A patch entry replaces a row's
+# whole `config`, so naming `fetchProvider` would erase the `searchProvider: lite`
+# set by the search plugin's own block. `fetch()` resolves its provider by
+# auto-selection while exactly one usable fetch provider is registered, which is
+# this deployment's state; the search owner stays the single owner of the search
+# setting.
+- insert:
+    - id: web-fetch-guarded
+      name: dsh-web-fetch-guarded
+
+- id: tool-web
+  name: '@deepseek-ai/dsh-tool-web'
+  config:
+    fetch: true
+    search: false
+  disabled: false

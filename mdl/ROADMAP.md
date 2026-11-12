@@ -35,6 +35,8 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 27 | Índice de código consultable por el agente (graphify) | [SPEC-027](specs/027-indice-de-codigo-graphify.md) | Validada |
 | 28 | SearXNG como motor de búsqueda del despliegue | [SPEC-028](specs/028-searxng-como-motor-de-busqueda.md) | Validada |
 | 29 | Búsqueda web propia: cadena lite sin bundle de terceros | [SPEC-029](specs/029-busqueda-web-lite.md) | Validada |
+| 30 | Diagramas generados por el agente con archify | [SPEC-030](specs/030-archify-diagramas.md) | Validada |
+| 31 | Stack de desarrollo: `web_fetch` con guard, compuertas de seguridad y búsqueda estructural | [SPEC-031](specs/031-stack-herramientas-desarrollo.md) | Validada |
 
 ## Dependencias
 
@@ -58,6 +60,8 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 - La Fase 23 parte de la Fase 22 validada: reemplaza la copia no versionada del visor de HTML por un bundle del repositorio con fila en el perfil `web`, retira el preset `html-preview` y se valida sobre el contenedor reiniciado.
 - La Fase 24 relaja la restricción que `SPEC-005` dejó explícitamente fuera de alcance, y solo puede hacerlo con una especificación propia y validación de seguridad (`MDL-SEC-02`): el plano privilegiado se habilita en el hostname público únicamente con una aserción de Cloudflare Access verificada dentro del proceso. No depende de otra fase y no cambia el comportamiento por defecto.
 - La Fase 25 no depende de una fase anterior y no modifica paquetes de upstream: agrega el botón, el arrastre y el extractor por el mecanismo de `SPEC-022` y `SPEC-023`, y se valida sobre el contenedor reiniciado.
+- La Fase 30 no depende de una fase anterior y no toca la composición ni el catálogo de herramientas: instala una herramienta en la imagen y publica una skill en el volumen, y se valida sobre la imagen reconstruida.
+- La Fase 31 parte de la Fase 29 (comparte el seam `web`) y no toca los presets: la herramienta de fetch se enciende en la capa global del registro y los binarios de seguridad entran a la imagen, así que se valida sobre la imagen reconstruida y el despliegue reiniciado.
 
 ## Próxima acción
 
@@ -78,6 +82,10 @@ La Fase 27 está validada: el índice de código de `graphify` viaja en la image
 La Fase 28 está validada: SearXNG corre como servicio propio del compose, sin puertos publicados, con `formats: [html, json]` y una lista de motores medida. `google cse` es el que sostiene la cobertura general —160 de 160 resultados en la prueba— y `bing` quedó fuera al devolver resultados ajenos a la consulta. Su respaldo por el que respondía la fase fue retirado con el bundle en la Fase 29.
 
 La Fase 29 está validada: `web_search` lo sirve un proveedor del repositorio con la cadena fija SearXNG → Tavily → Bing → Brave, sin bundle de terceros. El eslabón que falla se omite 30 s, el error nombra a cada eslabón con su motivo y el eslabón raspado exige que la fuente mencione la consulta. Degradación probada con el motor inalcanzable: 2 573 ms en el primer intento y 37 ms en el segundo, con Tavily respondiendo en ambos.
+
+La Fase 30 está validada sobre la imagen reconstruida el 2026-11-12: `archify` viaja fijado por etiqueta y commit en `/opt/mdl/archify`, su lanzador responde en `PATH`, `doctor` pasa sus 33 comprobaciones dentro del contenedor, el `entrypoint` republica la skill en `$DSH_HOME/skills` y el visor de la GUI abre el artefacto. El gate visual queda opt-in por `ARCHIFY_CHROME`: sin navegador, `browser-check` se omite y la revisión visual se declara pendiente.
+
+La Fase 31 está validada: los tres binarios viajan en la imagen (gitleaks 8.30.1, osv-scanner 2.7.1, ast-grep 0.51.2, unos 136 MB), el `entrypoint` publica las skills `ast-grep` y `security-scan`, la fila de `web_fetch` compone sobre `tool-web` con `fetch: true` sin perder `searchProvider: lite`, y el guard se ejerció sobre el módulo instalado dentro del contenedor con sus 37 comprobaciones y sus cuatro rechazos en vivo. Una sesión nueva de la GUI pidió `web_fetch` sobre una página pública y recibió `200`, que es la comprobación de que la herramienta llega al modelo. La Tanda 2 (navegador headless y `ffmpeg`) y la Tanda 3 (LSP como herramienta) siguen fuera de fase.
 
 ## Decisiones del despliegue VPS
 

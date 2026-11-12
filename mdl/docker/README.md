@@ -150,6 +150,57 @@ sudo docker exec -u node mdl-harness-mdl-harness-1 \
 
 Una escritura a través del rol fijado responde `cannot execute DELETE in a read-only transaction` (`SQLSTATE 25006`), y las lecturas y los diagnósticos `inspect_database` siguen funcionando con ese rol.
 
+**Diagramas con archify.** [SPEC-030](../specs/030-archify-diagramas.md) instala el árbol de `archify` —la etiqueta `v3.2.0`, commit `208acba8d4…`, verificado en la build— en `/opt/mdl/archify`, con su lanzador en `/usr/local/bin/archify`, y publica la skill en `$DSH_HOME/skills/archify` en cada arranque. No es una fila de la composición ni una herramienta del modelo: la fila `skill-filesystem` del preset ya escanea esa raíz, así que el catálogo de herramientas no cambia y la capacidad aparece en el catálogo de skills.
+
+El `SKILL.md` de la imagen lleva anexada la nota de [`archify-deployment-note.md`](archify-deployment-note.md) con las rutas absolutas del CLI, la raíz de recursos y el gate visual. Esa nota existe porque el cuerpo de la skill pide sustituir `bin/archify.mjs` por la ruta instalada y porque el agente, sin ella, intentó aprovisionar un navegador por su cuenta.
+
+El gate visual es opt-in. La imagen no trae Chrome ni Chromium, así que `finalize` termina con `browser-check: skipped`, el diagnóstico `viewer/chrome-unavailable`, el resto de los gates en `pass` y una salida distinta de cero; el artefacto queda entregado y la revisión visual queda declarada pendiente. Definir `ARCHIFY_CHROME` en el entorno del host y montar ese binario en el contenedor es lo que habilita el gate completo; sumar el navegador a la imagen se evaluó y se descartó por tamaño frente a [SPEC-017](../specs/017-optimizacion-imagen.md).
+
+Comprobación:
+
+```sh
+sudo docker exec -u node mdl-harness-mdl-harness-1 archify --help | head -5
+sudo docker exec -u node mdl-harness-mdl-harness-1 \
+  node /opt/mdl/archify/bin/archify.mjs doctor | tail -2
+sudo docker exec -u node mdl-harness-mdl-harness-1 \
+  bash -lc 'ls -l "$DSH_HOME/skills/archify/SKILL.md" && tail -3 "$DSH_HOME/skills/archify/SKILL.md"'
+# la publicación también se ve en el log del contenedor:
+# mdl-harness: skills published: archify ast-grep security-scan
+```
+
+**Lectura de páginas con guard SSRF.** [SPEC-031](../specs/031-stack-herramientas-desarrollo.md) enciende `web_fetch` con `mdl/plugins/web-fetch-guarded`, un proveedor propio (`id: guarded`) en lugar del de upstream. El proveedor de upstream declara que sin protección SSRF «must not be enabled» en un despliegue que alcanza redes internas, y este las alcanza: `host.docker.internal` resuelve a `172.17.0.1`, `searxng` a `172.19.0.2` y la GUI escucha en loopback.
+
+El guard valida **direcciones resueltas** y no nombres, abre el socket contra la dirección validada con el nombre en SNI y en `Host` (lo que cierra el DNS rebinding), y revalida cada redirección siguiendo sólo el mismo origen. La fila de `web_fetch` vive en la capa global del registro de herramientas porque los presets son copy-only y los que envía la imagen traen `fetch: false`; `search: false` deja `web_search` donde estaba. La fila `web` no se parchea a propósito: un parche reemplaza el `config` completo de la fila y borraría el `searchProvider` del bloque del buscador.
+
+Comprobación:
+
+```sh
+sudo docker exec -u node mdl-harness-mdl-harness-1 \
+  node /srv/projects/deepseek-harness/mdl/plugins/web-fetch-guarded/check.mjs
+# 37 comprobaciones: matriz de direcciones, reglas de URL, cuatro rechazos en vivo
+# (Ollama del host, loopback, motor del compose, metadata link-local) y una lectura pública
+```
+
+**Compuertas de seguridad y búsqueda estructural.** La misma fase instala tres binarios estáticos, fijados por versión y sha256, y las skills que enseñan a usarlos:
+
+| Herramienta | Versión | Para qué |
+|---|---|---|
+| `gitleaks` | 8.30.1 | Secretos en la rama, con baseline para lo ya conocido |
+| `osv-scanner` | 2.7.1 | Avisos de dependencias desde los lockfiles |
+| `ast-grep` | 0.51.2 | Buscar y reescribir por forma sintáctica |
+
+Los activos son los de amd64 y la build falla con un mensaje propio en otra arquitectura, en vez de instalar un binario que no corre. `gitleaks` no se usa sobre el historial completo: en este repositorio eso devuelve 509 hallazgos de entropía en fixtures e i18n que esconden un positivo real (`mdl/docker/.env`, ignorado por git, contiene `SEARXNG_SECRET`). Las skills `ast-grep` y `security-scan` se publican en `$DSH_HOME/skills` con el mismo bucle que archify.
+
+Comprobación:
+
+```sh
+sudo docker exec -u node mdl-harness-mdl-harness-1 sh -lc \
+  'gitleaks version; osv-scanner --version; ast-grep --version'
+sudo docker exec -u node mdl-harness-mdl-harness-1 bash -lc \
+  'base=$(git -C /srv/projects/deepseek-harness merge-base HEAD origin/main); \
+   gitleaks git --log-opts="$base..HEAD" --redact; echo "exit=$?"'
+```
+
 ## Correr las compuertas del repositorio dentro del contenedor
 
 La imagen de runtime no trae `pnpm`, así que `pnpm run …` no existe aquí y las compuertas que lo requieren (`doc-sync`, `change-scope`, el typecheck del `pre-push`) fallan con `pnpm: not found`. `corepack` sí está, y basta con darle un `COREPACK_HOME` escribible y un shim en el `PATH`:
