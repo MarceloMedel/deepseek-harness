@@ -40,6 +40,8 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 32 | Navegador headless para el gate visual | [SPEC-032](specs/032-navegador-headless.md) | Validada |
 | 33 | GIF de PR sin ffmpeg: encoder Pillow en la skill | [SPEC-033](specs/033-gif-sin-ffmpeg.md) | Validada |
 | 34 | LSP como herramienta: medido y no montado | [SPEC-034](specs/034-lsp-medido-no-montado.md) | Rechazada |
+| 35 | Shell del workspace en la GUI | [SPEC-035](specs/035-shell-workspace-gui.md) | Validada |
+| 36 | Descarga de los artefactos generados | [SPEC-036](specs/036-descarga-artefactos.md) | Validada |
 
 ## Dependencias
 
@@ -68,6 +70,8 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 - La Fase 32 parte de la Fase 30 (completa su `ARC-05`) y se valida con el tamaño medido antes de aceptarlo: por encima de 500 MB la fase se replantea. `ffmpeg` queda fuera de alcance con su costo medido, así que la skill de GIFs sigue bloqueada.
 - La Fase 33 parte de la Fase 32 (el navegador es la otra mitad de la captura) y se valida midiendo el artefacto: tamaño, línea de tiempo y fidelidad del color de acento contra la referencia de ffmpeg.
 - La Fase 34 cierra la Tanda 3 y no depende de ninguna anterior: se rechazó tras medir que el proveedor actual limita las referencias al archivo consultado. Reabrirla exige un proveedor que mantenga el proyecto cargado y selección de proyecto por cara.
+- La Fase 35 no depende de ninguna anterior: reutiliza el ejecutor bash y la política de sandbox que ya están en producción, y nace de un prototipo dinámico ya validado en la GUI. Se valida sobre el perfil de preview, sin sustituir la instancia viva.
+- La Fase 36 parte de las Fases 22 y 23 (extiende los dos visores que esas fases dejaron) y no añade rutas ni filas de composición: se valida con los `check.mjs` de los dos bundles y la descarga real en el teléfono.
 
 ## Próxima acción
 
@@ -98,6 +102,10 @@ La Fase 32 está validada: el gate visual de `archify` corre bajo el sandbox del
 La Fase 33 está validada: `record-browser-gif` corre de punta a punta dentro del contenedor sin ningún binario de medios. La comparación medida decidió el encoder y también corrigió la primera estimación: `ffmpeg` costaba +451 MB por `apt` y 552 MB extraídos, `python3-pil` cuesta +6,1 MB, y el primer intento con Pillow empeoraba el color de marca (`#d40000` → `#704e50`) mientras el error medio global decía que era mejor — lo arregló reservar los colores saturados antes de cubrir la paleta y quitar el dithering, que además deja el archivo en un tercio del de ffmpeg. El circuito completo desde la imagen reconstruida produjo un GIF de 70 KB con tres estados y el acento a distancia 27.
 
 La Fase 34 cierra la Tanda 3 con un no medido. El costo de montar la familia LSP es despreciable —`initialize` en 132–152 ms, consultas calientes de 8 a 112 ms y 67 MB de memoria sobre 2 591 archivos—, pero el proveedor abre y cierra un documento por consulta, y tsserver busca referencias sólo entre documentos cargados: `ToolDefinition`, que aparece 121 veces en 36 archivos, devuelve 16 referencias en un archivo con el archivo consultado abierto, 25 en cuatro con el paquete abierto, y vuelve a 16 al cerrarlos. La definición cruzada aterriza en `lib/types/*.d.ts` y la implementación de una costura devuelve la interfaz, no el proveedor. Montarla habría empeorado el trabajo con un costo casi nulo, que es exactamente el error que la medición existía para evitar. Reabrirla exige un proveedor que mantenga el proyecto cargado y selección de proyecto por cara, con la matriz de validación ya escrita.
+
+La Fase 35 está validada: la GUI ejecuta comandos en el workspace de la sesión desde un cajón propio, sin otra aplicación. Cada comando es una ejecución en primer plano por `ctx.shell` con la política de sandbox de la sesión, un comando a la vez por sesión y `cd` moviendo el directorio del siguiente; el despliegue lo sirve como bundle del perfil (`/plugins/dsh-shell-panel/client.js` responde `200`, `/shell-panel/none/info` devuelve la política y la raíz, y un comando real corre con `exit 0`) y el usuario lo validó en el teléfono y en los tres temas. Un límite medido y aceptado: una página ya cargada no adopta un plugin añadido después al manifiesto, porque el manifiesto se inyecta en el HTML de arranque y el HMR solo refresca módulos presentes; la superficie aparece al recargar. Quedaron fuera, en la misma decisión, las sesiones PTY persistentes y los programas interactivos.
+
+La Fase 36 está validada: el HTML y el Markdown generados se guardan en el dispositivo desde el mismo visor que los muestra. La descarga es una cabecera `Content-Disposition` sobre la ruta cruda que ya existía, así que hereda su cercado y su tipo, y entrega el documento entero aunque supere el límite de lectura del visor; el nombre viaja en `filename*` para los acentos y solo la base resuelta llega a la cabecera. El defecto que la primera entrega introdujo en el teléfono —navegar al archivo reemplazaba la app instalada y no había forma de volver— se corrigió dentro de la fase: en una ventana instalada no se ofrece `Abrir ↗` y la descarga va a la hoja de compartir, que vuelve a la app. Los `check.mjs` de los dos bundles cubren ambas formas, incluida la hoja cancelada.
 
 ## Decisiones del despliegue VPS
 

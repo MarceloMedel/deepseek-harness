@@ -72,6 +72,7 @@ window.__ModuleLoader__.load({
         copied: 'Copied',
         copyFailed: 'Copy failed',
         download: 'Download',
+        shareFailed: 'This device could not share the document.',
         close: 'Close',
         back: 'Back to the list',
         toc: 'Outline',
@@ -93,6 +94,7 @@ window.__ModuleLoader__.load({
         copied: 'Copiado',
         copyFailed: 'No se pudo copiar',
         download: 'Descargar',
+        shareFailed: 'Este dispositivo no pudo compartir el documento.',
         close: 'Cerrar',
         back: 'Volver a la lista',
         toc: 'Índice',
@@ -219,6 +221,57 @@ window.__ModuleLoader__.load({
     /** Absolute URL of one workspace path under the host route. */
     function assetUrl(sessionId, rel) {
       return `${location.origin}${ROUTE}/${encodeURIComponent(String(sessionId))}/${encodeRel(rel)}`
+    }
+
+    /**
+     * Whether the GUI is running as an installed app rather than in a browser
+     * tab. That case has no tab, no download manager and no address bar: any
+     * navigation takes the application itself away from the user.
+     */
+    function isStandalone() {
+      if (typeof window === 'undefined') return false
+      if (window.navigator?.standalone === true) return true
+      try {
+        return window.matchMedia?.('(display-mode: standalone)')?.matches === true
+      } catch {
+        return false
+      }
+    }
+
+    /** Whether this engine can hand a file to the system share sheet. */
+    function canShareFiles() {
+      return typeof navigator !== 'undefined'
+        && typeof navigator.canShare === 'function'
+        && typeof navigator.share === 'function'
+        && typeof File === 'function'
+    }
+
+    /**
+     * Save one document through the system share sheet, which returns to the app
+     * instead of replacing it. The bytes come from the same download route, so
+     * the name and the type are the file's own.
+     * @param url - the download route for one document.
+     * @param name - the file name to hand the sheet.
+     * @returns true when the sheet handled it; false when this engine cannot.
+     */
+    async function shareDocument(url, name) {
+      if (!canShareFiles()) return false
+      const response = await fetch(url)
+      if (response.ok !== true) throw new Error(`HTTP ${String(response.status)}`)
+      const blob = await response.blob()
+      const file = new File([blob], name, { type: blob.type === '' ? 'text/markdown' : blob.type })
+      if (navigator.canShare({ files: [file] }) !== true) return false
+      await navigator.share({ files: [file], title: name })
+      return true
+    }
+
+    /**
+     * Absolute URL that saves one workspace path instead of displaying it.
+     * The host answers with `Content-Disposition`, so the name and the type come
+     * from the file on the server and not from what the viewer happens to hold.
+     */
+    function downloadUrl(sessionId, rel) {
+      return `${assetUrl(sessionId, rel)}?download=1`
     }
 
     /** Whether one destination is neither a workspace path nor a path relative to one. */
@@ -540,6 +593,11 @@ window.__ModuleLoader__.load({
       return React.createElement('button', { type: 'button', className: 'dsh-mdp-btn', onClick, ...extra }, label)
     }
 
+    /** A labelled desktop toolbar control that saves a file instead of acting on the panel. */
+    function linkButton(label, href, filename) {
+      return React.createElement('a', { className: 'dsh-mdp-btn', href, download: filename, title: label }, label)
+    }
+
     /** A compact icon button carrying its label as tooltip and accessible name. */
     function iconButton(name, label, onClick, extra) {
       return React.createElement('button', {
@@ -557,17 +615,15 @@ window.__ModuleLoader__.load({
       return React.createElement('div', { className: 'dsh-mdp-empty' }, text)
     }
 
-    /** Save text as a file from the browser. */
-    function downloadText(text, filename) {
-      const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' })
-      const url = URL.createObjectURL(blob)
-      const anchor = document.createElement('a')
-      anchor.href = url
-      anchor.download = filename
-      document.body.append(anchor)
-      anchor.click()
-      anchor.remove()
-      URL.revokeObjectURL(url)
+    /** A compact icon link that saves a file, carrying its label as tooltip and accessible name. */
+    function iconDownload(name, label, href, filename) {
+      return React.createElement('a', {
+        className: 'dsh-mdp-ibtn',
+        href,
+        download: filename,
+        title: label,
+        'aria-label': label,
+      }, icon(name))
     }
 
     /** The `MD` toggle in the session header. */
@@ -651,6 +707,7 @@ window.__ModuleLoader__.load({
       const [pane, setPane] = React.useState('list')
       const [outlineOpen, setOutlineOpen] = React.useState(() => !isNarrow())
       const [copyState, setCopyState] = React.useState(null)
+      const [saveState, setSaveState] = React.useState(null)
       const [activeHeading, setActiveHeading] = React.useState(0)
       const scrollRef = React.useRef(null)
       const copyTimer = React.useRef(null)
@@ -790,11 +847,32 @@ window.__ModuleLoader__.load({
         copyTimer.current = setTimeout(() => setCopyState(null), COPIED_MS)
       }
 
-      /** Save the open document under its own file name. */
-      const onDownload = () => {
-        if (doc.status !== 'ok' || doc.text === null) return
-        downloadText(doc.text, doc.path !== '' ? baseName(doc.path) : 'document.md')
+      const installed = isStandalone()
+
+      /** The save URL of the open document, or null when there is nothing to save. */
+      const downloadHref = doc.status === 'ok' && doc.path !== '' && current.sessionId !== ''
+        ? downloadUrl(current.sessionId, doc.path)
+        : null
+      const downloadName = doc.path !== '' ? baseName(doc.path) : 'document.md'
+
+      /**
+       * Save the open document. In an installed app the system sheet keeps the
+       * application where it is; a browser tab keeps the plain download, which
+       * saves without navigating.
+       */
+      const onSave = async () => {
+        if (downloadHref === null) return
+        try {
+          const shared = await shareDocument(downloadHref, downloadName)
+          if (shared) return
+        } catch (error) {
+          if (error?.name === 'AbortError') return
+          setSaveState('failed')
+          return
+        }
+        setSaveState('failed')
       }
+      const saveLabel = saveState === 'failed' ? t.shareFailed : t.download
 
       /** Jump the document to one outline entry. */
       const jumpTo = (index) => {
@@ -846,7 +924,9 @@ window.__ModuleLoader__.load({
         React.createElement('span', { className: 'dsh-mdp-spacer' }),
         button(t.toc, () => setOutlineOpen(value => !value), { 'data-on': outlineOpen ? 'true' : 'false', disabled: headings.length === 0 }),
         button(copyLabel, onCopy),
-        button(t.download, onDownload),
+        downloadHref === null ? null : installed
+          ? button(saveLabel, () => { void onSave() })
+          : linkButton(t.download, downloadHref, downloadName),
         button(t.refresh, () => setGeneration(value => value + 1)),
         button(t.close, () => store.close()),
       )
@@ -871,7 +951,9 @@ window.__ModuleLoader__.load({
         React.createElement('div', { className: 'dsh-mdp-mactions' },
           iconButton('outline', t.toc, () => setOutlineOpen(value => !value), { 'data-on': outlineOpen ? 'true' : 'false', disabled: headings.length === 0 }),
           iconButton(copyState === 'ok' ? 'check' : 'copy', copyLabel, onCopy, copyState === null ? undefined : { 'data-state': copyState }),
-          iconButton('download', t.download, onDownload),
+          downloadHref === null ? null : installed
+            ? iconButton('download', saveLabel, () => { void onSave() })
+            : iconDownload('download', t.download, downloadHref, downloadName),
           iconButton('close', t.close, () => store.close()),
         ),
       )

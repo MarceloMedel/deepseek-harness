@@ -1,0 +1,28 @@
+{
+  "name": "dsh-shell-panel",
+  "version": "1.0.0",
+  "description": "Shell for the DSH web GUI: runs commands in the session workspace under the same sandbox the agent's bash tool uses, from a floating drawer",
+  "type": "module",
+  "main": "host.mjs",
+  "exports": {
+    ".": "./host.mjs",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "host.mjs",
+    "client.js",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "license": "MIT",
+  "private": true
+}

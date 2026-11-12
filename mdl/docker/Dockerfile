@@ -191,6 +191,9 @@ COPY mdl/docker/entrypoint.sh /usr/local/bin/mdl-entrypoint
 # publishes.
 COPY mdl/plugins/md-preview /opt/mdl/plugins/md-preview
 COPY mdl/plugins/html-preview /opt/mdl/plugins/html-preview
+# The workspace shell (SPEC-035): plain-JS bundle whose host half imports only
+# packages the runtime profile already provides, so it needs no install step.
+COPY mdl/plugins/shell-panel /opt/mdl/plugins/shell-panel
 # The black-cat working mascot: plain-JS bundle, ships its own GIF.
 COPY mdl/plugins/cat-mascot /opt/mdl/plugins/cat-mascot
 # The lite search provider (SPEC-029) is a single host-side module with no
@@ -216,8 +219,8 @@ RUN cd /opt/mdl/plugins/chat-files \
         node_modules/pdfjs-dist/types node_modules/pdfjs-dist/image_decoders \
     && rm -rf /root/.npm
 RUN chmod 0755 /usr/local/bin/mdl-entrypoint \
-    && chmod -R a+rX /opt/mdl/plugins/md-preview /opt/mdl/plugins/html-preview /opt/mdl/plugins/cat-mascot /opt/mdl/plugins/chat-files /opt/mdl/plugins/web-search-lite /opt/mdl/plugins/web-fetch-guarded /opt/mdl/skills \
-    && chmod 0755 /opt/mdl/plugins/md-preview/install.sh /opt/mdl/plugins/html-preview/install.sh /opt/mdl/plugins/cat-mascot/install.sh /opt/mdl/plugins/chat-files/install.sh /opt/mdl/plugins/web-search-lite/install.sh /opt/mdl/plugins/web-fetch-guarded/install.sh \
+    && chmod -R a+rX /opt/mdl/plugins/md-preview /opt/mdl/plugins/html-preview /opt/mdl/plugins/cat-mascot /opt/mdl/plugins/chat-files /opt/mdl/plugins/web-search-lite /opt/mdl/plugins/web-fetch-guarded /opt/mdl/plugins/shell-panel /opt/mdl/skills \
+    && chmod 0755 /opt/mdl/plugins/md-preview/install.sh /opt/mdl/plugins/html-preview/install.sh /opt/mdl/plugins/cat-mascot/install.sh /opt/mdl/plugins/chat-files/install.sh /opt/mdl/plugins/web-search-lite/install.sh /opt/mdl/plugins/web-fetch-guarded/install.sh /opt/mdl/plugins/shell-panel/install.sh \
     && chmod 0644 /etc/nginx/nginx.conf /etc/mdl-harness/privileged-access.yml /etc/mdl-harness/neon-mcp.yml /etc/mdl-harness/graphify-mcp.yml \
     && chown root:root /etc/nginx/nginx.conf
 
