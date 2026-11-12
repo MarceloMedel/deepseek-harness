@@ -38,7 +38,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 30 | Diagramas generados por el agente con archify | [SPEC-030](specs/030-archify-diagramas.md) | Validada |
 | 31 | Stack de desarrollo: `web_fetch` con guard, compuertas de seguridad y búsqueda estructural | [SPEC-031](specs/031-stack-herramientas-desarrollo.md) | Validada |
 | 32 | Navegador headless para el gate visual | [SPEC-032](specs/032-navegador-headless.md) | Validada |
-| 33 | GIF de PR sin ffmpeg: encoder Pillow en la skill | [SPEC-033](specs/033-gif-sin-ffmpeg.md) | En implementación |
+| 33 | GIF de PR sin ffmpeg: encoder Pillow en la skill | [SPEC-033](specs/033-gif-sin-ffmpeg.md) | Validada |
 
 ## Dependencias
 
@@ -92,6 +92,8 @@ La Fase 30 está validada sobre la imagen reconstruida el 2026-11-12: `archify` 
 La Fase 31 está validada: los tres binarios viajan en la imagen (gitleaks 8.30.1, osv-scanner 2.7.1, ast-grep 0.51.2, unos 136 MB), el `entrypoint` publica las skills `ast-grep` y `security-scan`, la fila de `web_fetch` compone sobre `tool-web` con `fetch: true` sin perder `searchProvider: lite`, y el guard se ejerció sobre el módulo instalado dentro del contenedor con sus 37 comprobaciones y sus cuatro rechazos en vivo. Una sesión nueva de la GUI pidió `web_fetch` sobre una página pública y recibió `200`, que es la comprobación de que la herramienta llega al modelo.
 
 La Fase 32 está validada: el gate visual de `archify` corre bajo el sandbox del agente y devuelve los cuatro gates en `pass` contra el envoltorio que la imagen instala. Exigió descubrir dos límites medidos —Landlock deja `/dev/shm` sin escritura y `$HOME` no es escribible, así que Chrome abortaba con `SIGTRAP`— y resolverlos con un envoltorio en `ARCHIFY_CHROME` que además baja el core a cero, porque un crash había dejado dos de 19 MB en el workspace. La medición corrigió dos veces la estimación de la propuesta: `apt` costaba +858 MB y quedó descartado, y las bibliotecas reales son +308 MB, no +40 MB de una lista curada. El navegador queda en 310 MB y el delta medido de las dos últimas fases en +633 MB de imagen. `ffmpeg` quedó fuera con su costo medido, así que la skill de GIFs sigue bloqueada por él, y la Tanda 3 (LSP como herramienta) sigue fuera de fase.
+
+La Fase 33 está validada: `record-browser-gif` corre de punta a punta dentro del contenedor sin ningún binario de medios. La comparación medida decidió el encoder y también corrigió la primera estimación: `ffmpeg` costaba +451 MB por `apt` y 552 MB extraídos, `python3-pil` cuesta +6,1 MB, y el primer intento con Pillow empeoraba el color de marca (`#d40000` → `#704e50`) mientras el error medio global decía que era mejor — lo arregló reservar los colores saturados antes de cubrir la paleta y quitar el dithering, que además deja el archivo en un tercio del de ffmpeg. El circuito completo desde la imagen reconstruida produjo un GIF de 70 KB con tres estados y el acento a distancia 27.
 
 ## Decisiones del despliegue VPS
 

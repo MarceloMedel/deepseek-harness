@@ -1,6 +1,6 @@
 # SPEC-033 — GIF de PR sin ffmpeg: encoder Pillow en la skill
 
-Estado: En implementación
+Estado: Validada
 Fase: 33
 Commit base: `ca9adca74e`
 Aprobación para iniciar: usuario, 2026-11-12 — «se ve perfecto en la variante de 128 colores», tras la comparación medida entre ffmpeg, Pillow y Pillow con `gifsicle`.
@@ -83,11 +83,14 @@ Entorno: contenedor `mdl-harness`, 2026-11-12. Frames reales de la GUI en `/tmp/
 | Los frames del GIF se pueden revisar | Cumplido | `--dump-frames` escribió `encoded-000.png`, `encoded-001.png`, `encoded-002.png` |
 | Los errores fallan fuerte | Cumplido | Salida existente, un solo frame, duraciones que no cuadran y dimensiones distintas: cuatro mensajes propios |
 | Costo de las dos vías | Comprobado | `python3-pil` +6,1 MB (16 paquetes) contra `ffmpeg` +451 MB por `apt` y 552 MB extraídos |
-| `GIF-01` Pillow en la imagen | No ejecutada | Pendiente de la build |
-| Captura real con Playwright bajo este despliegue | Parcialmente ejecutada | La captura de los tres frames funcionó con `channel: 'chromium'`; el flujo completo con servidor y turno real no se ejerció |
+| `GIF-01` Pillow en la imagen | Cumplido | `python3 -c 'import PIL'` → `Pillow 9.4.0` con Python 3.11.2 dentro del contenedor reconstruido |
+| **Circuito completo desde una sesión** | **Cumplido** | Captura con Playwright (`channel: 'chromium'`) sobre el servidor real → `python3 scripts/encode_gif.py frames demo.gif --durations 1.5,1.5,3.5 --colors 128 --dump-frames encoded` → `bytes 70 086`, `encodedFrames 3`, `durationSeconds 6.5`, `width 1200`, `height 750`, `encoder pillow` |
+| El artefacto escrito conserva lo que dice | Cumplido | Relectura del GIF: 3 frames, 3 estados distintos, duraciones `[1500, 1500, 3500]`, 1200×750, acento `#d71313` a distancia 27,0 y MAE 2,48 |
+| Los frames se pueden revisar sin ffmpeg | Cumplido | `--dump-frames` escribió `encoded-000.png`, `encoded-001.png` y `encoded-002.png` del GIF codificado |
+| Un cambio de estado tiene que ser visible de verdad | Comprobado | Alternar `data-theme` en el documento no cambió un solo píxel (dos capturas con el mismo MD5); expandir la lista de sesiones sí produjo un estado distinto |
 
 ## Resultado y pendientes
 
-- Resultado: implementado y medido; el encoder funciona con la versión de Pillow que llevará la imagen y el artefacto es menor y con el acento preservado frente a la referencia de ffmpeg. Falta la build que instala `python3-pil` y la captura de un flujo completo.
-- Pendientes o excepciones aceptadas: sin dithering los degradados fotográficos harán bandas — declarado y aceptado para capturas de UI; la publicación en rama de assets no se ejerció.
-- Decisión de salida: pendiente de la validación sobre la imagen reconstruida.
+- Resultado: validada sobre la imagen reconstruida. El circuito completo —capturar, codificar y releer el GIF— corre dentro del contenedor con `python3-pil` y sin ningún binario de medios; el artefacto pesa 70 KB para tres estados y el acento queda a distancia 27 del original.
+- Pendientes o excepciones aceptadas: sin dithering los degradados fotográficos harán bandas — declarado y aceptado para capturas de UI; la publicación en rama de assets no se ejerció, y un turno real del modelo no formó parte de la demostración: los estados son reales pero la interacción es de navegador.
+- Decisión de salida: validada; la skill queda ejecutable en este despliegue y el GIF de un PR de GUI deja de estar bloqueado.
