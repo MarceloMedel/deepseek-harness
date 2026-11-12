@@ -34,11 +34,6 @@ services:
       # the mount below; the value is a path, never the credential.
       MDL_NEON_TOKEN_FILE: ${MDL_NEON_TOKEN_FILE:-/etc/mdl-harness/neon/token}
       GIT_TERMINAL_PROMPT: "0"
-      # Browser for archify's visual gate (SPEC-030). The image ships no browser,
-      # so an empty value leaves `browser-check` skipped and the artifact delivered
-      # with visual review pending. Pointing this at a Chromium or Chrome binary
-      # that is also mounted into the container runs the complete gate.
-      ARCHIFY_CHROME: ${ARCHIFY_CHROME:-}
       # No repository-specific git configuration here (SPEC-011). Cloning,
       # pushing and PRs all go over HTTPS with the mounted token, which reaches
       # every repository the token is scoped to; the credential helper in the
@@ -80,6 +75,12 @@ services:
     mem_limit: 4g
     pids_limit: 512
     stop_grace_period: 20s
+    # Chromium's shared-memory arena (SPEC-032). The default 64 MB is the known
+    # failure mode of headless Chrome on large pages, and archify's launch flags
+    # are fixed — it never passes `--disable-dev-shm-usage` — so the container
+    # size is the only lever. The browser binary and its two variables come from
+    # the image itself, which keeps a single owner for them.
+    shm_size: 512mb
 
   # SearXNG (SPEC-028): the deployment's own search aggregator, behind the
   # multi-provider bundle. Internal only — no published port, no host socket,

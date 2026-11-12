@@ -102,69 +102,52 @@ RUN printf '%s\n' \
         | env UV_INSTALL_DIR=/usr/local/bin sh \
     && rm -rf /var/lib/apt/lists/* /root/.cache
 
-RUN mkdir -p /data/dsh /workspace \
-    && chown -R node:node /data /workspace
+# Browser for the visual gate (SPEC-032). Debian's `chromium` package drags mesa,
+# llvm and gtk with it: measured at +858 MB against this image, over the phase's
+# ceiling. Playwright's own chromium build is 379 MB on disk (310 MB once pruned)
+# and `install --with-deps` adds the 100 system packages it declares, +308 MB
+# measured. Pinning the playwright version pins the browser revision — the one the
+# workspace's own playwright expects (1.61.1 / chromium-1228) — so a single
+# browser serves the gate and the repository's tests. `--no-shell` matters: without
+# it the install also drops a 213 MB headless shell that `--headless=new` never
+# uses. Locales other than en-US, the Widevine tree and playwright's recorder
+# ffmpeg are removed: 76 MB that no artifact here consumes.
+#
+# What archify cannot pass, this wrapper supplies. Two measured facts: Landlock
+# denies writes to /dev/shm for every agent command, so Chrome's shared-memory
+# arena fails with EACCES; and $HOME is not writable, so the crash database cannot
+# be created and Chrome aborts with SIGTRAP before any DevTools pipe exists.
+# `--disable-dev-shm-usage` moves the arena to disk and the wrapper's own HOME
+# gives crashpad a database. With both, archify's gate passes end to end from a
+# session; with either missing it fails as `browser-check-runtime`. The wrapper
+# also drops the core size to zero: a crash dumped 19 MB cores into the session
+# workspace, which is the user's repository.
+ARG PLAYWRIGHT_VERSION=1.61.1
+RUN npm install --prefix /tmp/pw --no-audit --no-fund "playwright@${PLAYWRIGHT_VERSION}" \
+    && PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers /tmp/pw/node_modules/.bin/playwright install --with-deps --no-shell chromium \
+    && rm -rf /tmp/pw /root/.npm /var/lib/apt/lists/* \
+    && find /opt/pw-browsers -type d -name locales -prune -exec sh -c \
+         'find "$1" -maxdepth 1 -name "*.pak" ! -name "en-US.pak" -delete' _ {} \; \
+    && find /opt/pw-browsers -type d -name WidevineCdm -prune -exec rm -rf {} + \
+    && rm -rf /opt/pw-browsers/ffmpeg-* \
+    && chrome_bin="$(find /opt/pw-browsers -type f -path '*chrome-linux*/chrome' | head -1)" \
+    && test -n "$chrome_bin" \
+    && { printf '%s\n' '#!/bin/sh' \
+      '# archify launches Chrome with fixed arguments; this wrapper supplies the two' \
+      '# things it cannot pass and that this container needs (SPEC-032).' \
+      'set -e' \
+      'ulimit -c 0 2>/dev/null || true' \
+      'home="${TMPDIR:-/tmp}/archify-chrome-home"' \
+      'mkdir -p "$home/crash"' \
+      'export HOME="$home"' \
+      "exec '${chrome_bin}' --no-sandbox --disable-dev-shm-usage --crash-dumps-dir=\"\$home/crash\" \"\$@\"" \
+      > /usr/local/bin/chrome-for-archify; } \
+    && chmod 0755 /usr/local/bin/chrome-for-archify \
+    && chmod -R a+rX /opt/pw-browsers
 
-# The code-index MCP server (SPEC-027). The `[mcp]` extra is part of the
-# requirement, not a detail: without it the binary installs and then exits with
-# `ModuleNotFoundError: No module named 'mcp'`. `UV_PYTHON_DOWNLOADS=never`
-# pins the interpreter to the image's own `python3`, and the tool tree lives
-# under /opt so the volume never holds it and a rebuild replaces it.
-ENV UV_TOOL_DIR=/opt/uv-tools \
-    UV_TOOL_BIN_DIR=/usr/local/bin \
-    UV_PYTHON_DOWNLOADS=never
-RUN UV_CACHE_DIR=/tmp/uv-cache uv tool install "graphifyy[mcp]==0.9.91" \
-    && rm -rf /tmp/uv-cache \
-    && chmod -R a+rX /opt/uv-tools
-
-# Archify (SPEC-030): the diagram generator the `archify` skill drives. The tree
-# is pinned by tag AND commit — a tag can be moved, so the build verifies both —
-# and it has no runtime dependencies (`archify doctor` loads every renderer
-# without a node_modules), so the install is a checkout and a launcher. The
-# deployment note is appended to the skill body here, before publication, so the
-# copy the entrypoint writes into the volume already names this image's paths.
-ARG ARCHIFY_TAG=v3.2.0
-ARG ARCHIFY_COMMIT=208acba8d412335185b2056fedf54b3405df43fb
-COPY mdl/docker/archify-deployment-note.md /etc/mdl-harness/archify-deployment-note.md
-RUN git clone -q --depth 1 --branch "$ARCHIFY_TAG" https://github.com/tt-a1i/archify.git /tmp/archify \
-    && test "$(git -C /tmp/archify rev-parse HEAD)" = "$ARCHIFY_COMMIT" \
-    && mkdir -p /opt/mdl/archify \
-    && cp -a /tmp/archify/archify/. /opt/mdl/archify/ \
-    && cat /etc/mdl-harness/archify-deployment-note.md >> /opt/mdl/archify/SKILL.md \
-    && rm -rf /tmp/archify \
-    && printf '%s\n' '#!/bin/sh' 'exec node /opt/mdl/archify/bin/archify.mjs "$@"' \
-        > /usr/local/bin/archify \
-    && chmod 0755 /usr/local/bin/archify \
-    && chmod 0644 /etc/mdl-harness/archify-deployment-note.md \
-    && chmod -R a+rX /opt/mdl/archify
-
-# Repository gates (SPEC-031): secret scanning, dependency advisories and
-# structural search. All three are static binaries pinned by version AND sha256,
-# so a moved release asset fails the build instead of installing something else.
-# The assets are the amd64 ones; another architecture is refused with a named
-# message rather than given a binary that cannot run.
-ARG GITLEAKS_VERSION=8.30.1
-ARG OSV_SCANNER_VERSION=2.7.1
-ARG AST_GREP_VERSION=0.51.2
-RUN if [ "$(dpkg --print-architecture)" != "amd64" ]; then \
-        echo "SPEC-031 pins the amd64 assets of gitleaks/osv-scanner/ast-grep; add the $(dpkg --print-architecture) ones before building" >&2; \
-        exit 1; \
-    fi \
-    && curl -fsSL -o /tmp/gitleaks.tgz \
-        "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
-    && echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  /tmp/gitleaks.tgz" | sha256sum -c - \
-    && tar -xzf /tmp/gitleaks.tgz -C /tmp gitleaks \
-    && install -m 0755 /tmp/gitleaks /usr/local/bin/gitleaks \
-    && curl -fsSL -o /tmp/osv-scanner \
-        "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64" \
-    && echo "fb7dab19a8bd9bbe5c3189f09d4b7ee1820c9553a23bac202648a56efd2f6ee8  /tmp/osv-scanner" | sha256sum -c - \
-    && install -m 0755 /tmp/osv-scanner /usr/local/bin/osv-scanner \
-    && curl -fsSL -o /tmp/ast-grep.zip \
-        "https://github.com/ast-grep/ast-grep/releases/download/${AST_GREP_VERSION}/app-x86_64-unknown-linux-gnu.zip" \
-    && echo "40604c21c38d4c7581c56bdddeef277c56bf3c0113620aa96e78ae87e82366df  /tmp/ast-grep.zip" | sha256sum -c - \
-    && python3 -m zipfile -e /tmp/ast-grep.zip /tmp/ast-grep \
-    && install -m 0755 /tmp/ast-grep/ast-grep /usr/local/bin/ast-grep \
-    && rm -rf /tmp/gitleaks /tmp/gitleaks.tgz /tmp/osv-scanner /tmp/ast-grep /tmp/ast-grep.zip
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers \
+    ARCHIFY_CHROME=/usr/local/bin/chrome-for-archify \
+    ARCHIFY_CHROME_NO_SANDBOX=1
 
 # GitHub credential surface (SPEC-010): `gh` resolves to the wrapper below on
 # PATH and reads the token per invocation from the read-only mount, so the secret

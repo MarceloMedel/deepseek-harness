@@ -68,6 +68,7 @@ La imagen de runtime instala solo lo que el agente usa de verdad ([SPEC-017](../
 | `bubblewrap`, `tini`, `nginx-light` | Cadena de sandbox, entrypoint y proxy de `SPEC-004` |
 | `python3` + `uv` | Trabajo sobre proyectos Python; `uv` cubre `pip` y `venv` |
 | `gh` | PR y credencial de GitHub de `SPEC-010` a través del wrapper |
+| Navegador de Playwright (`1.61.1`) | Gate visual de `archify` sobre artefactos locales (`SPEC-032`) |
 
 Estas herramientas se retiraron porque ningún consumidor las necesita en runtime; reponer cualquiera es volver a agregarla a la lista de `apt` del `Dockerfile`:
 
@@ -154,11 +155,21 @@ Una escritura a través del rol fijado responde `cannot execute DELETE in a read
 
 El `SKILL.md` de la imagen lleva anexada la nota de [`archify-deployment-note.md`](archify-deployment-note.md) con las rutas absolutas del CLI, la raíz de recursos y el gate visual. Esa nota existe porque el cuerpo de la skill pide sustituir `bin/archify.mjs` por la ruta instalada y porque el agente, sin ella, intentó aprovisionar un navegador por su cuenta.
 
-El gate visual es opt-in. La imagen no trae Chrome ni Chromium, así que `finalize` termina con `browser-check: skipped`, el diagnóstico `viewer/chrome-unavailable`, el resto de los gates en `pass` y una salida distinta de cero; el artefacto queda entregado y la revisión visual queda declarada pendiente. Definir `ARCHIFY_CHROME` en el entorno del host y montar ese binario en el contenedor es lo que habilita el gate completo; sumar el navegador a la imagen se evaluó y se descartó por tamaño frente a [SPEC-017](../specs/017-optimizacion-imagen.md).
+El gate visual corre en la imagen desde [SPEC-032](../specs/032-navegador-headless.md). El navegador es el de `playwright@1.61.1` en `/opt/pw-browsers` —la misma revisión (`chromium-1228`) que el lockfile del repositorio ya fija, así que sirve al gate y a las pruebas del workspace— con las bibliotecas que `playwright install --with-deps` declara, podado de locales salvo `en-US` y del árbol `WidevineCdm` (71 MB que ningún artefacto local usa).
+
+La vía de `apt` se midió y se descartó: `chromium` + `ffmpeg` resolvían **+858 MB** sobre esta imagen y sólo `chromium` **+658 MB**, con `libllvm15` de 112 MB detrás. El navegador de Playwright deja `/opt/pw-browsers` en **310 MB** tras la poda, pero las bibliotecas que su instalador declara son **100 paquetes y +308 MB** —mesa y `libllvm15` llegan igual—, así que el payload real es ~618 MB sin comprimir. El delta medido de imagen por las dos últimas fases es **+633 MB** (`mdl-harness:prev` 2 627 MB → 3 260 MB), con el reparto de esta fase en unos 505 MB comprimidos; la build sin `--no-shell` pesaba 313 MB más.
+
+`ARCHIFY_CHROME` apunta a un **envoltorio** y no al binario, porque bajo el sandbox faltan dos cosas que `archify` no puede pasar: Landlock deja `/dev/shm` fuera del conjunto escribible —`touch /dev/shm/x` responde `Permission denied` y Chrome aborta con `Creating shared memory … failed`— y `$HOME` no es escribible, así que el crash reporter no crea su base de datos y Chrome muere con `SIGTRAP` antes de que exista el pipe de DevTools. El envoltorio exporta un `HOME` propio y añade `--no-sandbox`, `--disable-dev-shm-usage` y `--crash-dumps-dir`. Con eso el gate pasa; sin eso falla con `browser-check-runtime`, y ambas cosas están medidas.
+
+El sandbox propio de Chromium tampoco puede inicializar por su cuenta: los namespaces de usuario están bloqueados para todo el contenedor —`unshare(CLONE_NEWUSER)` responde `EPERM`, el mismo límite que obliga a landlock en lugar de bwrap— y por eso el envoltorio pasa `--no-sandbox`. El compose sube `shm_size` a 512 MB, que no sirve al camino del agente —el envoltorio usa disco— pero sí a una invocación directa por `docker exec`.
+
+El navegador sirve artefactos y servidores locales del workspace; ninguna herramienta del modelo lo expone como navegador de internet. `ffmpeg` y `ffprobe` quedan **fuera**: medidos en +451 MB por `apt` o 135-157 MB comprimidos como binario estático, rompen el techo junto al navegador, así que la skill `record-browser-gif` sigue bloqueada por esas dependencias.
 
 Comprobación:
 
 ```sh
+sudo docker exec -u node mdl-harness-mdl-harness-1 chrome-for-archify --version
+sudo docker exec -u node mdl-harness-mdl-harness-1 head -6 /usr/local/bin/chrome-for-archify
 sudo docker exec -u node mdl-harness-mdl-harness-1 archify --help | head -5
 sudo docker exec -u node mdl-harness-mdl-harness-1 \
   node /opt/mdl/archify/bin/archify.mjs doctor | tail -2
