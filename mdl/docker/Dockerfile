@@ -104,28 +104,45 @@ RUN printf '%s\n' \
 
 # Browser for the visual gate (SPEC-032). Debian's `chromium` package drags mesa,
 # llvm and gtk with it: measured at +858 MB against this image, over the phase's
-# 500 MB ceiling. Playwright's own chromium build costs +379 MB on disk and the
-# libraries it declares another +40 MB, and pinning the playwright version pins
-# the browser revision — the one the workspace's own playwright expects (1.61.1 /
-# chromium-1228), so a single browser serves the gate and the repository's tests.
-# Locales other than en-US and the Widevine DRM tree are removed: nothing served
-# here is localized or DRM-protected, and together they are 71 MB.
+# ceiling. Playwright's own chromium build is 379 MB on disk (310 MB once pruned)
+# and `install --with-deps` adds the 100 system packages it declares, +308 MB
+# measured. Pinning the playwright version pins the browser revision — the one the
+# workspace's own playwright expects (1.61.1 / chromium-1228) — so a single
+# browser serves the gate and the repository's tests. `--no-shell` matters: without
+# it the install also drops a 213 MB headless shell that `--headless=new` never
+# uses. Locales other than en-US, the Widevine tree and playwright's recorder
+# ffmpeg are removed: 76 MB that no artifact here consumes.
 #
-# User namespaces are unavailable in this container — `unshare(CLONE_NEWUSER)`
-# returns EPERM — so Chromium's own sandbox cannot initialize. `archify` only
-# passes `--no-sandbox` when this variable is set, which is why the image owns it.
-# The browser serves local artifacts and local servers, never the public web: no
-# tool in the model's catalog drives it.
+# What archify cannot pass, this wrapper supplies. Two measured facts: Landlock
+# denies writes to /dev/shm for every agent command, so Chrome's shared-memory
+# arena fails with EACCES; and $HOME is not writable, so the crash database cannot
+# be created and Chrome aborts with SIGTRAP before any DevTools pipe exists.
+# `--disable-dev-shm-usage` moves the arena to disk and the wrapper's own HOME
+# gives crashpad a database. With both, archify's gate passes end to end from a
+# session; with either missing it fails as `browser-check-runtime`. The wrapper
+# also drops the core size to zero: a crash dumped 19 MB cores into the session
+# workspace, which is the user's repository.
 ARG PLAYWRIGHT_VERSION=1.61.1
 RUN npm install --prefix /tmp/pw --no-audit --no-fund "playwright@${PLAYWRIGHT_VERSION}" \
-    && PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers /tmp/pw/node_modules/.bin/playwright install --with-deps chromium \
+    && PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers /tmp/pw/node_modules/.bin/playwright install --with-deps --no-shell chromium \
     && rm -rf /tmp/pw /root/.npm /var/lib/apt/lists/* \
     && find /opt/pw-browsers -type d -name locales -prune -exec sh -c \
          'find "$1" -maxdepth 1 -name "*.pak" ! -name "en-US.pak" -delete' _ {} \; \
     && find /opt/pw-browsers -type d -name WidevineCdm -prune -exec rm -rf {} + \
+    && rm -rf /opt/pw-browsers/ffmpeg-* \
     && chrome_bin="$(find /opt/pw-browsers -type f -path '*chrome-linux*/chrome' | head -1)" \
     && test -n "$chrome_bin" \
-    && ln -sfn "$chrome_bin" /usr/local/bin/chrome-for-archify \
+    && { printf '%s\n' '#!/bin/sh' \
+      '# archify launches Chrome with fixed arguments; this wrapper supplies the two' \
+      '# things it cannot pass and that this container needs (SPEC-032).' \
+      'set -e' \
+      'ulimit -c 0 2>/dev/null || true' \
+      'home="${TMPDIR:-/tmp}/archify-chrome-home"' \
+      'mkdir -p "$home/crash"' \
+      'export HOME="$home"' \
+      "exec '${chrome_bin}' --no-sandbox --disable-dev-shm-usage --crash-dumps-dir=\"\$home/crash\" \"\$@\"" \
+      > /usr/local/bin/chrome-for-archify; } \
+    && chmod 0755 /usr/local/bin/chrome-for-archify \
     && chmod -R a+rX /opt/pw-browsers
 
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers \

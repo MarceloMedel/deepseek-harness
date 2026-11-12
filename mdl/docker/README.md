@@ -159,7 +159,9 @@ El gate visual corre en la imagen desde [SPEC-032](../specs/032-navegador-headle
 
 La vía de `apt` se midió y se descartó: `chromium` + `ffmpeg` resolvían **+858 MB** sobre esta imagen y sólo `chromium` **+658 MB**, con `libllvm15` de 112 MB detrás. El navegador de Playwright son 379 MB en disco más 40 MB de bibliotecas, es decir ~350 MB tras la poda, dentro del techo de 500 MB que la fase se fijó.
 
-Dos variables acompañan al navegador. `ARCHIFY_CHROME` apunta al binario instalado por un enlace estable, y `ARCHIFY_CHROME_NO_SANDBOX=1` no es una comodidad: los namespaces de usuario están bloqueados para todo el contenedor —`unshare(CLONE_NEWUSER)` responde `EPERM`, el mismo límite que obliga a landlock en lugar de bwrap— así que el sandbox propio de Chromium no puede inicializar, y `archify` sólo antepone `--no-sandbox` con esa variable o con uid 0. El compose sube `shm_size` a 512 MB porque los flags de `archify` son fijos y `/dev/shm` de 64 MB es el modo de falla conocido de Chrome headless.
+`ARCHIFY_CHROME` apunta a un **envoltorio** y no al binario, porque bajo el sandbox faltan dos cosas que `archify` no puede pasar: Landlock deja `/dev/shm` fuera del conjunto escribible —`touch /dev/shm/x` responde `Permission denied` y Chrome aborta con `Creating shared memory … failed`— y `$HOME` no es escribible, así que el crash reporter no crea su base de datos y Chrome muere con `SIGTRAP` antes de que exista el pipe de DevTools. El envoltorio exporta un `HOME` propio y añade `--no-sandbox`, `--disable-dev-shm-usage` y `--crash-dumps-dir`. Con eso el gate pasa; sin eso falla con `browser-check-runtime`, y ambas cosas están medidas.
+
+El sandbox propio de Chromium tampoco puede inicializar por su cuenta: los namespaces de usuario están bloqueados para todo el contenedor —`unshare(CLONE_NEWUSER)` responde `EPERM`, el mismo límite que obliga a landlock en lugar de bwrap— y por eso el envoltorio pasa `--no-sandbox`. El compose sube `shm_size` a 512 MB, que no sirve al camino del agente —el envoltorio usa disco— pero sí a una invocación directa por `docker exec`.
 
 El navegador sirve artefactos y servidores locales del workspace; ninguna herramienta del modelo lo expone como navegador de internet. `ffmpeg` y `ffprobe` quedan **fuera**: medidos en +451 MB por `apt` o 135-157 MB comprimidos como binario estático, rompen el techo junto al navegador, así que la skill `record-browser-gif` sigue bloqueada por esas dependencias.
 
@@ -167,6 +169,7 @@ Comprobación:
 
 ```sh
 sudo docker exec -u node mdl-harness-mdl-harness-1 chrome-for-archify --version
+sudo docker exec -u node mdl-harness-mdl-harness-1 head -6 /usr/local/bin/chrome-for-archify
 sudo docker exec -u node mdl-harness-mdl-harness-1 archify --help | head -5
 sudo docker exec -u node mdl-harness-mdl-harness-1 \
   node /opt/mdl/archify/bin/archify.mjs doctor | tail -2
