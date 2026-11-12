@@ -3,17 +3,36 @@ set -euo pipefail
 
 mkdir -p "$DSH_HOME" /workspace
 
-# GUI plugin bundles (SPEC-022, SPEC-023, SPEC-025), the black-cat mascot, and
-# the lite search provider (SPEC-029) that replaced the third-party bundle. They
-# live in the image, so publishing them into the volume on every boot is what
-# makes them survive a recreated container and upgrade with the image; each
-# script is idempotent and refuses to take the deployment down with it.
-for bundle in md-preview html-preview chat-files cat-mascot web-search-lite; do
+# GUI plugin bundles (SPEC-022, SPEC-023, SPEC-025), the black-cat mascot, the
+# lite search provider (SPEC-029) that replaced the third-party bundle, and the
+# guarded fetch provider (SPEC-031). They live in the image, so publishing them
+# into the volume on every boot is what makes them survive a recreated container
+# and upgrade with the image; each script is idempotent and refuses to take the
+# deployment down with it.
+for bundle in md-preview html-preview chat-files cat-mascot web-search-lite web-fetch-guarded; do
   if [[ -x "/opt/mdl/plugins/$bundle/install.sh" ]]; then
     "/opt/mdl/plugins/$bundle/install.sh" \
-      || echo "mdl-harness: $bundle could not be published; the GUI runs without it" >&2
+      || echo "mdl-harness: $bundle could not be published; the deployment runs without it" >&2
   fi
 done
+
+# Skills (SPEC-030, SPEC-031) ride in the image and are published into the
+# volume on every boot, so an empty volume and a rebuilt image converge on the
+# same content. They are skills, not plugin rows: the preset's skill-filesystem
+# row already scans $DSH_HOME/skills, so the composition does not change and the
+# model's tool catalog is untouched. The copy is replaced rather than merged, so
+# a file an older version shipped cannot survive the upgrade.
+install -d "$DSH_HOME/skills"
+for skill_dir in /opt/mdl/archify /opt/mdl/skills/*; do
+  [[ -f "$skill_dir/SKILL.md" ]] || continue
+  skill_name="$(basename "$skill_dir")"
+  rm -rf "$DSH_HOME/skills/$skill_name"
+  cp -a "$skill_dir" "$DSH_HOME/skills/$skill_name"
+done
+echo "mdl-harness: skills published: $(ls "$DSH_HOME/skills" 2>/dev/null | tr '\n' ' ')"
+if [[ ! -f /opt/mdl/archify/SKILL.md ]]; then
+  echo "mdl-harness: no /opt/mdl/archify; the archify skill is not published" >&2
+fi
 
 # The bundled settings file is the deployment's provider configuration, not a
 # secret. It seeds an empty home on first boot; an existing settings.yaml in

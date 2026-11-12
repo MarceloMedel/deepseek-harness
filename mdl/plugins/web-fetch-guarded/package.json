@@ -1,0 +1,25 @@
+{
+  "name": "dsh-web-fetch-guarded",
+  "version": "1.0.0",
+  "description": "A ctx.web fetch provider that refuses loopback, private, link-local and CGNAT targets, so web_fetch can be enabled in a deployment that reaches internal services",
+  "type": "module",
+  "main": "host.mjs",
+  "exports": {
+    ".": "./host.mjs",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "host.mjs",
+    "cordis.patch.yml",
+    "README.md",
+    "install.sh",
+    "check.mjs"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "license": "MIT",
+  "private": true
+}

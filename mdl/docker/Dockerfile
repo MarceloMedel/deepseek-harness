@@ -117,6 +117,55 @@ RUN UV_CACHE_DIR=/tmp/uv-cache uv tool install "graphifyy[mcp]==0.9.91" \
     && rm -rf /tmp/uv-cache \
     && chmod -R a+rX /opt/uv-tools
 
+# Archify (SPEC-030): the diagram generator the `archify` skill drives. The tree
+# is pinned by tag AND commit — a tag can be moved, so the build verifies both —
+# and it has no runtime dependencies (`archify doctor` loads every renderer
+# without a node_modules), so the install is a checkout and a launcher. The
+# deployment note is appended to the skill body here, before publication, so the
+# copy the entrypoint writes into the volume already names this image's paths.
+ARG ARCHIFY_TAG=v3.2.0
+ARG ARCHIFY_COMMIT=208acba8d412335185b2056fedf54b3405df43fb
+COPY mdl/docker/archify-deployment-note.md /etc/mdl-harness/archify-deployment-note.md
+RUN git clone -q --depth 1 --branch "$ARCHIFY_TAG" https://github.com/tt-a1i/archify.git /tmp/archify \
+    && test "$(git -C /tmp/archify rev-parse HEAD)" = "$ARCHIFY_COMMIT" \
+    && mkdir -p /opt/mdl/archify \
+    && cp -a /tmp/archify/archify/. /opt/mdl/archify/ \
+    && cat /etc/mdl-harness/archify-deployment-note.md >> /opt/mdl/archify/SKILL.md \
+    && rm -rf /tmp/archify \
+    && printf '%s\n' '#!/bin/sh' 'exec node /opt/mdl/archify/bin/archify.mjs "$@"' \
+        > /usr/local/bin/archify \
+    && chmod 0755 /usr/local/bin/archify \
+    && chmod 0644 /etc/mdl-harness/archify-deployment-note.md \
+    && chmod -R a+rX /opt/mdl/archify
+
+# Repository gates (SPEC-031): secret scanning, dependency advisories and
+# structural search. All three are static binaries pinned by version AND sha256,
+# so a moved release asset fails the build instead of installing something else.
+# The assets are the amd64 ones; another architecture is refused with a named
+# message rather than given a binary that cannot run.
+ARG GITLEAKS_VERSION=8.30.1
+ARG OSV_SCANNER_VERSION=2.7.1
+ARG AST_GREP_VERSION=0.51.2
+RUN if [ "$(dpkg --print-architecture)" != "amd64" ]; then \
+        echo "SPEC-031 pins the amd64 assets of gitleaks/osv-scanner/ast-grep; add the $(dpkg --print-architecture) ones before building" >&2; \
+        exit 1; \
+    fi \
+    && curl -fsSL -o /tmp/gitleaks.tgz \
+        "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+    && echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  /tmp/gitleaks.tgz" | sha256sum -c - \
+    && tar -xzf /tmp/gitleaks.tgz -C /tmp gitleaks \
+    && install -m 0755 /tmp/gitleaks /usr/local/bin/gitleaks \
+    && curl -fsSL -o /tmp/osv-scanner \
+        "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64" \
+    && echo "fb7dab19a8bd9bbe5c3189f09d4b7ee1820c9553a23bac202648a56efd2f6ee8  /tmp/osv-scanner" | sha256sum -c - \
+    && install -m 0755 /tmp/osv-scanner /usr/local/bin/osv-scanner \
+    && curl -fsSL -o /tmp/ast-grep.zip \
+        "https://github.com/ast-grep/ast-grep/releases/download/${AST_GREP_VERSION}/app-x86_64-unknown-linux-gnu.zip" \
+    && echo "40604c21c38d4c7581c56bdddeef277c56bf3c0113620aa96e78ae87e82366df  /tmp/ast-grep.zip" | sha256sum -c - \
+    && python3 -m zipfile -e /tmp/ast-grep.zip /tmp/ast-grep \
+    && install -m 0755 /tmp/ast-grep/ast-grep /usr/local/bin/ast-grep \
+    && rm -rf /tmp/gitleaks /tmp/gitleaks.tgz /tmp/osv-scanner /tmp/ast-grep /tmp/ast-grep.zip
+
 # GitHub credential surface (SPEC-010): `gh` resolves to the wrapper below on
 # PATH and reads the token per invocation from the read-only mount, so the secret
 # never enters a process environment; the git helper answers github.com only.
@@ -164,6 +213,13 @@ COPY mdl/plugins/cat-mascot /opt/mdl/plugins/cat-mascot
 # The lite search provider (SPEC-029) is a single host-side module with no
 # dependency tree, so it is copied as-is: no install step and no network.
 COPY mdl/plugins/web-search-lite /opt/mdl/plugins/web-search-lite
+# The guarded fetch provider (SPEC-031): one host-side module, no dependency
+# tree, published beside the search provider it shares the `web` seam with.
+COPY mdl/plugins/web-fetch-guarded /opt/mdl/plugins/web-fetch-guarded
+# The skills this deployment ships beside archify (SPEC-031): ast-grep patterns
+# and the repository security gates. The entrypoint publishes them into
+# $DSH_HOME/skills on every boot, so a recreated container converges.
+COPY mdl/skills /opt/mdl/skills
 # The chat-attachment bundle (SPEC-025) carries its own extractor tree. It is
 # installed here because `.dockerignore` keeps node_modules out of the build
 # context and the runtime tree must not learn about pdf.js; the browser build,
@@ -177,8 +233,8 @@ RUN cd /opt/mdl/plugins/chat-files \
         node_modules/pdfjs-dist/types node_modules/pdfjs-dist/image_decoders \
     && rm -rf /root/.npm
 RUN chmod 0755 /usr/local/bin/mdl-entrypoint \
-    && chmod -R a+rX /opt/mdl/plugins/md-preview /opt/mdl/plugins/html-preview /opt/mdl/plugins/cat-mascot /opt/mdl/plugins/chat-files /opt/mdl/plugins/web-search-lite \
-    && chmod 0755 /opt/mdl/plugins/md-preview/install.sh /opt/mdl/plugins/html-preview/install.sh /opt/mdl/plugins/cat-mascot/install.sh /opt/mdl/plugins/chat-files/install.sh /opt/mdl/plugins/web-search-lite/install.sh \
+    && chmod -R a+rX /opt/mdl/plugins/md-preview /opt/mdl/plugins/html-preview /opt/mdl/plugins/cat-mascot /opt/mdl/plugins/chat-files /opt/mdl/plugins/web-search-lite /opt/mdl/plugins/web-fetch-guarded /opt/mdl/skills \
+    && chmod 0755 /opt/mdl/plugins/md-preview/install.sh /opt/mdl/plugins/html-preview/install.sh /opt/mdl/plugins/cat-mascot/install.sh /opt/mdl/plugins/chat-files/install.sh /opt/mdl/plugins/web-search-lite/install.sh /opt/mdl/plugins/web-fetch-guarded/install.sh \
     && chmod 0644 /etc/nginx/nginx.conf /etc/mdl-harness/privileged-access.yml /etc/mdl-harness/neon-mcp.yml /etc/mdl-harness/graphify-mcp.yml \
     && chown root:root /etc/nginx/nginx.conf
 

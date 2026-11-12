@@ -34,6 +34,11 @@ services:
       # the mount below; the value is a path, never the credential.
       MDL_NEON_TOKEN_FILE: ${MDL_NEON_TOKEN_FILE:-/etc/mdl-harness/neon/token}
       GIT_TERMINAL_PROMPT: "0"
+      # Browser for archify's visual gate (SPEC-030). The image ships no browser,
+      # so an empty value leaves `browser-check` skipped and the artifact delivered
+      # with visual review pending. Pointing this at a Chromium or Chrome binary
+      # that is also mounted into the container runs the complete gate.
+      ARCHIFY_CHROME: ${ARCHIFY_CHROME:-}
       # No repository-specific git configuration here (SPEC-011). Cloning,
       # pushing and PRs all go over HTTPS with the mounted token, which reaches
       # every repository the token is scoped to; the credential helper in the
