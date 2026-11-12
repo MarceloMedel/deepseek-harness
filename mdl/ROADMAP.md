@@ -37,7 +37,7 @@ Este documento define orden, dependencias y estado. Las reglas permanentes y el 
 | 29 | Búsqueda web propia: cadena lite sin bundle de terceros | [SPEC-029](specs/029-busqueda-web-lite.md) | Validada |
 | 30 | Diagramas generados por el agente con archify | [SPEC-030](specs/030-archify-diagramas.md) | Validada |
 | 31 | Stack de desarrollo: `web_fetch` con guard, compuertas de seguridad y búsqueda estructural | [SPEC-031](specs/031-stack-herramientas-desarrollo.md) | Validada |
-| 32 | Navegador headless para el gate visual | [SPEC-032](specs/032-navegador-headless.md) | En implementación |
+| 32 | Navegador headless para el gate visual | [SPEC-032](specs/032-navegador-headless.md) | Validada |
 
 ## Dependencias
 
@@ -89,7 +89,7 @@ La Fase 30 está validada sobre la imagen reconstruida el 2026-11-12: `archify` 
 
 La Fase 31 está validada: los tres binarios viajan en la imagen (gitleaks 8.30.1, osv-scanner 2.7.1, ast-grep 0.51.2, unos 136 MB), el `entrypoint` publica las skills `ast-grep` y `security-scan`, la fila de `web_fetch` compone sobre `tool-web` con `fetch: true` sin perder `searchProvider: lite`, y el guard se ejerció sobre el módulo instalado dentro del contenedor con sus 37 comprobaciones y sus cuatro rechazos en vivo. Una sesión nueva de la GUI pidió `web_fetch` sobre una página pública y recibió `200`, que es la comprobación de que la herramienta llega al modelo.
 
-La Fase 32 está en implementación con su requisito central cumplido: el gate visual de `archify` corre desde el sandbox del agente y devuelve `browser-check: pass`, cosa que exigió descubrir dos límites medidos —Landlock deja `/dev/shm` sin escritura y `$HOME` no es escribible, así que Chrome aborta con `SIGTRAP`— y resolverlos con un envoltorio en `ARCHIFY_CHROME` en lugar de un enlace al binario. La medición corrigió dos veces la estimación de la propuesta: `apt` costaba +858 MB y quedó descartado, y las bibliotecas que el navegador necesita de verdad son +308 MB, no los +40 MB de una lista curada, así que el payload ronda 618 MB y el techo de 500 MB espera el número comprimido de la imagen. `ffmpeg` quedó fuera con su costo medido, y la skill de GIFs sigue bloqueada por él. La Tanda 3 (LSP como herramienta) sigue fuera de fase.
+La Fase 32 está validada: el gate visual de `archify` corre bajo el sandbox del agente y devuelve los cuatro gates en `pass` contra el envoltorio que la imagen instala. Exigió descubrir dos límites medidos —Landlock deja `/dev/shm` sin escritura y `$HOME` no es escribible, así que Chrome abortaba con `SIGTRAP`— y resolverlos con un envoltorio en `ARCHIFY_CHROME` que además baja el core a cero, porque un crash había dejado dos de 19 MB en el workspace. La medición corrigió dos veces la estimación de la propuesta: `apt` costaba +858 MB y quedó descartado, y las bibliotecas reales son +308 MB, no +40 MB de una lista curada. El navegador queda en 310 MB y el delta medido de las dos últimas fases en +633 MB de imagen. `ffmpeg` quedó fuera con su costo medido, así que la skill de GIFs sigue bloqueada por él, y la Tanda 3 (LSP como herramienta) sigue fuera de fase.
 
 ## Decisiones del despliegue VPS
 

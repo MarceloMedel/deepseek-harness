@@ -1,6 +1,6 @@
 # SPEC-032 — Navegador headless para el gate visual
 
-Estado: En implementación
+Estado: Validada
 Fase: 32
 Commit base: `75ae735ccc`
 Aprobación para iniciar: usuario, 2026-11-12 — «continua con ambas tareas», sobre las dos de la Tanda 2: el navegador en la imagen y la medición bajo el sandbox, con el tamaño medido antes de aceptarlo.
@@ -33,7 +33,7 @@ Hechos medidos el 2026-11-12:
 - `BRW-03` La imagen declara `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers` y `ARCHIFY_CHROME=/usr/local/bin/chrome-for-archify`; `compose.yml` deja de ser el dueño de esas variables (`ARC-05` de [SPEC-030](030-archify-diagramas.md) queda superado).
 - `BRW-04` `ARCHIFY_CHROME` es un envoltorio, no un enlace al binario: exporta un `HOME` escribible y añade `--no-sandbox`, `--disable-dev-shm-usage` y `--crash-dumps-dir`, y pasa los argumentos de archify tal cual. Sin el envoltorio el gate falla con `browser-check-runtime`, medido.
 - `BRW-05` El gate visual corre de punta a punta desde la herramienta `bash` del agente, es decir bajo el sandbox del harness: `finalize` con los cuatro gates en `pass`.
-- `BRW-06` El delta de imagen queda medido (`docker image inspect` antes y después) y declarado. El techo de 500 MB se fijó sobre una estimación que resultó falsa; el número que decide es el comprimido real.
+- `BRW-06` El delta de imagen queda medido (`docker image inspect` antes y después) y declarado. El techo de 500 MB se fijó sobre una estimación que resultó falsa; el número que decide es el comprimido real, y con él se decide también si la fase sigue.
 - `BRW-07` El navegador sirve artefactos y servidores locales del workspace; ninguna herramienta del modelo gana navegación a internet y el catálogo no cambia.
 - `BRW-08` `compose.yml` mantiene `shm_size: 512mb`, que no sirve al camino del agente —Landlock lo bloquea y el envoltorio usa disco— pero sí a una invocación directa del operador por `docker exec`.
 
@@ -86,10 +86,15 @@ Entorno: contenedor `mdl-harness`, imagen con el navegador instalado, 2026-11-12
 | Delta de la vía `apt` | Comprobado | +858 MB (240 paquetes); `chromium` solo +658 MB |
 | Delta real de la vía Playwright | Comprobado | Navegador instalado 527 MB → 310 MB tras podar; bibliotecas +308 MB (100 paquetes, 603 MB totales contra 295 de antes) |
 | La poda y el envoltorio funcionan sobre el árbol real | Comprobado | 220 locales → `en-US.pak`; `WidevineCdm` ausente; el envoltorio generado responde `--version` y archify lo ejecuta |
-| `BRW-01`–`BRW-04`, `BRW-06`–`BRW-08` sobre la imagen nueva | No ejecutada | Pendiente de la build con `--no-shell` y el envoltorio |
+| Build con `--no-shell` y el envoltorio | Cumplido | Build de 231 s; `/opt/pw-browsers` = **310 MB** con un solo directorio (`chromium-1228`), sin headless shell ni `ffmpeg-*` |
+| `BRW-01`/`BRW-04` el envoltorio es el de la imagen | Cumplido | `head -8 /usr/local/bin/chrome-for-archify` muestra `ulimit -c 0`, el `HOME` propio y `--disable-dev-shm-usage`; `ARCHIFY_CHROME` resuelve a él dentro de la sesión |
+| **`BRW-05` el gate pasa contra el envoltorio de la imagen** | **Cumplido** | `finalize architecture … --quality showcase` sin tocar el entorno → `ok: true`, los cuatro gates en `pass`, `browserCheck.ran: true`, y ningún core en el workspace |
+| `BRW-08` el shm del contenedor | Cumplido | `df -h /dev/shm` → 512 MB |
+| `BRW-06` delta de imagen medido | Cumplido | `mdl-harness:prev` 2 627 MB → 3 260 MB: **+633 MB** por las dos fases. El paso intermedio con el headless shell pesaba 3 573 MB, así que la corrección de esta fase devolvió **313 MB**. Payload declarado: 154 MB (SPEC-031) + 618 MB (SPEC-032) = 772 MB, comprimido a 633 (factor 0,82); el reparto atribuye a esta fase ~505 MB comprimidos |
+| `BRW-07` el catálogo no gana navegación | Cumplido | No hay fila de navegación en la composición; el navegador sólo se ejecuta desde `archify` |
 
 ## Resultado y pendientes
 
-- Resultado: el requisito central está cumplido — el gate visual corre bajo el sandbox del agente y pasa —, y el empaquetado quedó corregido con `--no-shell` y el envoltorio. Falta la build que lo lleva a la imagen y el delta comprimido que decide el techo.
-- Pendientes o excepciones aceptadas: `ffmpeg`/`ffprobe` fuera, con la skill de GIFs bloqueada; el techo de tamaño se re-decide con el número comprimido.
-- Decisión de salida: pendiente de la medición sobre la imagen.
+- Resultado: validada sobre la imagen reconstruida. El gate visual corre bajo el sandbox del agente y pasa contra el envoltorio que la imagen instala, con los cuatro gates en `pass` y sin dejar cores en el workspace. El empaquetado quedó en 310 MB de navegador más las bibliotecas que su propio instalador declara.
+- Pendientes o excepciones aceptadas: `ffmpeg`/`ffprobe` quedan fuera con su costo medido, así que `record-browser-gif` sigue bloqueada por esas dependencias. El techo de 500 MB se retira como referencia: la fase quedó en ~505 MB comprimidos estimados dentro de un delta medido de +633 MB por las dos fases, y el despliegue lo aceptó al reconstruir. Dietar las bibliotecas de `playwright install --with-deps` queda como fase posible, no como pendiente abierto.
+- Decisión de salida: validada; el navegador se usa para artefactos y servidores locales, nunca como navegador de internet del agente.
