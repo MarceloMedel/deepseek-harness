@@ -4,12 +4,12 @@ set -euo pipefail
 mkdir -p "$DSH_HOME" /workspace
 
 # GUI plugin bundles (SPEC-022, SPEC-023, SPEC-025), the black-cat mascot, the
-# lite search provider (SPEC-029) that replaced the third-party bundle, and the
-# guarded fetch provider (SPEC-031). They live in the image, so publishing them
-# into the volume on every boot is what makes them survive a recreated container
-# and upgrade with the image; each script is idempotent and refuses to take the
-# deployment down with it.
-for bundle in md-preview html-preview chat-files cat-mascot web-search-lite web-fetch-guarded; do
+# lite search provider (SPEC-029) that replaced the third-party bundle, the
+# guarded fetch provider (SPEC-031), and the workspace shell (SPEC-035). They
+# live in the image, so publishing them into the volume on every boot is what
+# makes them survive a recreated container and upgrade with the image; each
+# script is idempotent and refuses to take the deployment down with it.
+for bundle in md-preview html-preview chat-files cat-mascot web-search-lite web-fetch-guarded shell-panel; do
   if [[ -x "/opt/mdl/plugins/$bundle/install.sh" ]]; then
     "/opt/mdl/plugins/$bundle/install.sh" \
       || echo "mdl-harness: $bundle could not be published; the deployment runs without it" >&2
