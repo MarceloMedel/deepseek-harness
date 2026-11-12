@@ -68,7 +68,8 @@ La imagen de runtime instala solo lo que el agente usa de verdad ([SPEC-017](../
 | `bubblewrap`, `tini`, `nginx-light` | Cadena de sandbox, entrypoint y proxy de `SPEC-004` |
 | `python3` + `uv` | Trabajo sobre proyectos Python; `uv` cubre `pip` y `venv` |
 | `gh` | PR y credencial de GitHub de `SPEC-010` a través del wrapper |
-| Navegador de Playwright (`1.61.1`) | Gate visual de `archify` sobre artefactos locales (`SPEC-032`) |
+| Navegador de Playwright (`1.61.1`) | Gate visual de `archify` y captura para los GIF de PR (`SPEC-032`) |
+| `python3-pil` | Codificar los GIF de `record-browser-gif` sin ffmpeg (`SPEC-033`) |
 
 Estas herramientas se retiraron porque ningún consumidor las necesita en runtime; reponer cualquiera es volver a agregarla a la lista de `apt` del `Dockerfile`:
 
@@ -163,7 +164,11 @@ La vía de `apt` se midió y se descartó: `chromium` + `ffmpeg` resolvían **+8
 
 El sandbox propio de Chromium tampoco puede inicializar por su cuenta: los namespaces de usuario están bloqueados para todo el contenedor —`unshare(CLONE_NEWUSER)` responde `EPERM`, el mismo límite que obliga a landlock en lugar de bwrap— y por eso el envoltorio pasa `--no-sandbox`. El compose sube `shm_size` a 512 MB, que no sirve al camino del agente —el envoltorio usa disco— pero sí a una invocación directa por `docker exec`.
 
-El navegador sirve artefactos y servidores locales del workspace; ninguna herramienta del modelo lo expone como navegador de internet. `ffmpeg` y `ffprobe` quedan **fuera**: medidos en +451 MB por `apt` o 135-157 MB comprimidos como binario estático, rompen el techo junto al navegador, así que la skill `record-browser-gif` sigue bloqueada por esas dependencias.
+El navegador sirve artefactos y servidores locales del workspace; ninguna herramienta del modelo lo expone como navegador de internet.
+
+**GIF de PR sin ffmpeg.** [SPEC-033](../specs/033-gif-sin-ffmpeg.md) desbloquea `record-browser-gif` con `python3-pil` (**+6,1 MB**, 16 paquetes) en lugar de `ffmpeg` (+451 MB por `apt`, 552 MB extraídos como estático). El encoder de la skill pasa a Pillow: una paleta compartida que **rescata primero los colores saturados raros** —`#d40000` ocupa 21 píxeles de un millón y una paleta por frecuencia lo convertía en `#704e50`— y sin dithering, que en una UI de colores planos sólo agrega ruido que después hay que comprimir. Medido sobre esta GUI: 33–49 KB contra los 100 KB de ffmpeg para los mismos tres frames y la misma línea de tiempo, con el acento en `#d71212`.
+
+Playwright sólo instala el navegador completo (`--no-shell`), así que un driver que capture debe lanzar con `channel: 'chromium'`; el modo headless por defecto busca el shell podado y falla.
 
 Comprobación:
 
